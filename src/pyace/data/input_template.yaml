@@ -1,0 +1,242 @@
+cutoff: 7 # cutoff for neighbour list construction
+seed: 42  # random seed
+
+
+#################################################################
+## Metadata section
+##
+## This is arbitrary key (string)-value (string) pairs that would
+## be added to the potential YAML file:
+#################################################################
+#metadata:
+#  info: some info
+#  comment: some comment
+#  purpose: some purpose
+## ==============================================================
+## end of metadata section
+## ==============================================================
+
+
+#################################################################
+## Potential definition section
+##
+## In sections embeddings,  bonds and functions one could use
+##  keywords (ALL, UNARY, BINARY, TERNARY, QUATERNARY, QUINARY).
+## The settings provided by more specific keyword will override
+##  those from less specific keyword, i.e.
+##  ALL < UNARY < BINARY < ('Al','Ni')
+#################################################################
+potential:
+  deltaSplineBins: 0.001
+  elements: [ Al, Ni ]  # list of all element
+
+  # Embeddings are specified for each individual elements,
+  # all parameters could be distinct for different species
+  embeddings: # possible keywords: ALL, UNARY, elements: Al, Ni
+    ALL: {
+      npot: 'FinnisSinclairShiftedScaled',
+      fs_parameters: [ 1, 1, 1, 0.5 ],
+      ndensity: 2,
+      # core repulsion parameters
+      # rho_core_cut: 200000,
+      # drho_core_cut: 250
+    }
+
+  # Bonds are specified for each possible pairs of elements
+  # One could use keywords: ALL (Al,Ni, AlNi, NiAl)
+  bonds: # possible keywords: ALL, UNARY, BINARY, elements pairs as AlAl, AlNi, NiAl, etc...
+    ALL: {
+      radbase: ChebExpCos,
+      radparameters: [ 5.25 ],
+      rcut: 7,
+      dcut: 0.01,
+      NameOfCutoffFunction: cos,
+#      r_in: 0,
+#      delta_in: 0,
+#      # core-repulsion parameters
+#       core-repulsion: [ 0.0, 5.0 ],
+    }
+
+    # BINARY will overwrite ALL settings when they are repeated
+    BINARY: {
+      radbase: ChebPow,
+      radparameters: [ 6.25 ],
+      ## cutoff may vary for different bonds
+      rcut: 6.5,
+      dcut: 0.01,
+
+      ## inner cutoff, applied in a range [r_in, r_in + delta_in]
+#      r_in: 1.0,
+#      delta_in: 0.5,
+
+      ## core-repulsion parameters
+#      core-repulsion: [ 0.0, 3.0 ],
+    }
+
+  ## possible keywords: ALL, UNARY, BINARY, TERNARY, QUATERNARY, QUINARY,
+  ## element combinations as (Al,Al), (Al, Ni), (Al, Ni, Zn), etc...
+  functions:
+    UNARY: {
+      nradmax_by_orders: [15, 3, 2, 2, 1],
+      lmax_by_orders: [ 0, 2, 2, 1, 1],
+      ## initialization of functions coefficients: zero (default) or random
+      # coefs_init: zero
+    }
+
+    BINARY: {
+      nradmax_by_orders: [15, 3, 2, 2, 1],
+      lmax_by_orders: [ 0, 2, 2, 1, 1],
+      ## initialization of functions coefficients: zero (default) or random
+      # coefs_init: zero
+    }
+
+  ## potential to start with for continuing basis extension fit
+  # initial_potential: some_start_or_interim_potential.yaml
+
+## ==============================================================
+## end of potential section
+## ==============================================================
+
+
+#################################################################
+## Dataset specification section
+#################################################################
+data:
+### Option 1: pandas dataframe in pckl.gzip
+  filename: some.pckl.gzip       # force to read reference pickled dataframe from given file
+  #  ignore_weights: False          # whether to ignore energy and force weighting columns in dataframe
+  ## path to folder with cache files with pickled dataframes
+  ## if not specified, then will be taken from env variable $PACEMAKERDATAPATH
+  #  datapath: ../data
+### end of option 1
+
+### Option 2: querying data from structure database
+#  config: {
+#    element: Al,                # element name
+#    calculator: FHI-aims/PBE/tight, # calculator type from `structdb`
+#    # single atom reference energy
+#    #  if not specified, then it will be queried from database
+#    ref_energy: -1.234
+#  }
+#
+#  seed: 42                       # random seed for shuffling the data
+#  query_limit: 1000              # limiting number of entries to query from `structdb`
+#                                 # ignored if reading from cache
+### end of option 2
+
+
+#  ## Test dataset specification
+#   test_filename: some_test.pckl.gzip
+#  test_size: 0.10  # Take 10% of train data. If test_size>1 - take test_size samples from train data
+
+#################################################################
+## Fit settings section
+##
+## If not specified, then uniform weight and energy-only fit (kappa=0),
+## fit_cycles=1, noise_relative_sigma = 0 settings will be used.
+## If ladder fitting scheme is used, then intermediate version of
+## the potential after each ladder step will be saved into
+## interim_potential_ladder_step_{LADDER_STEP}.yaml.
+#################################################################
+fit:
+  loss: { kappa: 0.5, L1_coeffs: 0,  L2_coeffs: 0, w0_rad: 0, w1_rad: 0, w2_rad: 0 }
+  # if kappa: auto, then it will be determined from the variation of energy per atom and forces norms in train set
+
+## If `weighting` is not specified - uniform weighting would be used
+## Alternativ options for weighting:
+## 1. EnergyBasedWeightingPolicy: Weights are decay wrt. energy distance to minimum energy structure in dataset
+  weighting: { type: EnergyBasedWeightingPolicy,
+
+              ## number of structures to select
+              nfit: 10000,
+              ## low-range of energies (eV/atom), all structures from this range will be selected  (up to `nfit` structures)
+              DElow: 1.0,
+              ## upper-range of energies (eV/atom). All structures outside this range will be excluded
+              DEup: 10.0,
+
+              ## upper-range of forces (eV/A). All structures with max forces above this value will be excluded
+              DFup: 50.0,
+
+              ## delta E and delta F, see paper for more details
+              DE: 1.0,
+              DF: 1.0,
+
+              wlow: 0.75,
+
+              ## How to compute distance to minimal energy structure:
+              ## "cohesive" - take lowest energy per atom in complete dataset
+              ## "convex_hull" - take energy distance above convex hull
+              energy: convex_hull,
+
+              ## Type of structures: all (default value) or bulk (periodic structures only) or cluster (non-periodic structures only)
+              reftype: all,
+
+              ## random seed
+              seed: 42
+             }
+
+## 2. ExternalWeightingPolicy: custom weights - corresponding to main dataset index and `w_energy` and `w_forces` columns should be provided in pckl.gzip file
+  #weighting: {type: ExternalWeightingPolicy, filename: custom_weights_only.pckl.gzip}
+
+  ## scipy.minimze algorithm: BFGS /  L-BFGS-B / Nelder-Mead / etc...
+  optimizer: BFGS
+
+  ## maximum number of scipy.minimize iterations
+  maxiter: 1000
+
+  ## additional options for scipy.minimize
+  #  options: {maxcor: 100}
+
+  ## Automatically find smalest interatomic distance in dataset  and set inner cutoff based on this
+#  repulsion: auto
+
+  ## number of consequentive runs of fitting algorithm for given potential shape, that helps convergence
+#  fit_cycles: 2
+
+#  noise_relative_sigma: 1e-2   # applying Gaussian noise with specified relative sigma/mean ratio to all potential optimizable coefficients
+#  noise_absolute_sigma: 1e-3   # applying Gaussian noise with specified absolute sigma to all potential optimizable coefficients
+
+  ## enable ensemble fitting mode
+#  randomize_func_coeffs: 1e-3  # reset the function coefficients according to Gaussian distribution with given sigma
+
+  ## specify trainable parameters:
+#  trainable_parameters: ALL   ## ALL, UNARY, BINARY, ..., radial, func, {"AlNi": "func"}, {"AlNi": {"func","radial"}}, ...
+
+  ## Ladder fitting mode - incremental grows of the potential by ladder step in all species blocks
+  ##  - integer >= 1 - number of basis functions to add in ladder scheme,
+  ##  - float between 0 and 1 - relative ladder step size wrt. current basis step
+  ##  - list of both above values - select maximum between two possibilities on each iteration
+  ##  see Ladder scheme fitting for more info
+#  ladder_step: [ 10, 0.02 ]
+
+  ##  Order for growing the basis set. Possible values:
+  ##  body_order  -  new basis functions are added according to the body-order, i.e., a function with higher body-order
+  ##                will not be added until the list of functions of the previous body-order is exhausted
+  ##  power_order -  the order of adding new basis functions is defined by the "power rank" p of a function.
+  ##                p = len(ns) + sum(ns) + sum(ls). Functions with the smallest p are added first
+#  ladder_type: body_order
+
+  ## callbacks during the fitting. Module quick_validation.py should be provided and importable
+#  callbacks:
+#    - quick_validation.test_fcc_potential_callback
+
+#################################################################
+## Backend specification section
+#################################################################
+backend:
+  ## (recommended) tensorpot backend -  TensorFlow implementation of ACE
+  ## and speeds up the fitting by approx. factor number_of_parameters ^ 2 (due to analytical gradients calculation)
+  evaluator: tensorpot
+  batch_size: 100
+  # batch_size_reduction: True # automatic batch_size reduction if not enough memory (default - True)
+  # batch_size_reduction_factor: 1.618  # batch size reduction factor
+
+  ## (not recommended) pyace backend - C++ implementation of ACE
+  ## It is faster for single energies/forces calcualtion, but do not provide analytical gradients wrt. parameters
+  ## and thus requires much more evaluations for numerical estimation of gradients
+#  evaluator: pyace
+#  parallel_mode: process    # process, serial  - parallelization mode for `pyace` evaluator
+#  n_workers: 4              # number of parallel workers for `process` parallelization mode
+
+  ## frequency of detailed metric printing and test error calculations
+  display_step: 10

@@ -1,0 +1,3 @@
+[submodule "ace-evaluator"]
+	path = ace-evaluator
+	url = ../ace-evaluator
