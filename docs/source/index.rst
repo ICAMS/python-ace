@@ -3,8 +3,8 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-python-ace
-==========
+pacemaker
+=========
 
 `pacemaker` is a tool for fitting of interatomic potentials in a general nonlinear Atomic Cluster Expansion (ACE) form.
 
