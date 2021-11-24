@@ -32,28 +32,36 @@ optimization greatly benefits from autogradients provided by TensorFlow.
 ## How to continue fitting ?
 Fitting an ACE potential can be continued or restarted from any `.yaml` potential file produced previously.  
 If you want to continue fit without changing the basis size, you can do the following:
- -  Provide the path to the starting potential in corresponding field in the `input.yaml` file
-    ```yaml
-    potential: /path/to/your/potential.yaml
-    ```
- - or provide this path through the command line interface
-    ```text
-    pacemaker input.yaml -p /path/to/your/potential.yaml
-    ```
-    doing this will override specifications in the `input.yaml`.
+
+-  Provide the path to the starting potential in corresponding field in the `input.yaml` file
+  
+  ```yaml
+  potential: /path/to/your/potential.yaml
+  ```
+ 
+- or provide this path through the command line interface
+  
+  ```
+  pacemaker input.yaml -p /path/to/your/potential.yaml
+  ```  
+    
+  doing this will override specifications in the `input.yaml`.
 
 If you want to extend the basis (aka do the [ladder scheme fitting](#ladder-scheme-fitting)):
  - Specify your potential as initial potential
+    
     ```yaml
     potential:
            ...
            initial_potential: /path/to/your/potential.yaml
            ...
     ```
-  - or use the CLI:
-    ```text
-    pacemaker input.yaml -ip /path/to/your/potential.yaml
-    ```
+  
+- or use the CLI:
+  
+  ```
+  pacemaker input.yaml -ip /path/to/your/potential.yaml
+  ```
 
 ## I want to preserve the "shape" of potential, but refit it from scratch
 
@@ -64,6 +72,7 @@ potential:
   filename: /path/to/your/potential.yaml
   reset: true
 ```
+
 It will  reset potential from potential.yaml, i.e. set radial coefficients to delta_nk and B-basis function coefficients to zero.
 
 ## My potential behaves unphysical at short distances, how to fix it?
@@ -134,13 +143,17 @@ then no neighbours will be lost, and you could continue to use the dataset, but 
 
 If you increase the cutoff, then it is necessary to rebuild the neighbour lists by adding `--rebuild` option to pacemaker, i.e.
 
-> pacemaker ... --rebuild
+```
+pacemaker ... --rebuild
+```  
 
 ## How better to organize my dataset files ?
 It is recommended to store all dataset files (i.e. `df*.pckl.gzip`) in one folder and
 specify the environment variable `$PACEMAKERDATAPATH` (exectue it in terminal or add to for example `.bashrc`) 
 
->export PACEMAKERDATAPATH=/path/to/my/datases/files
+```
+export PACEMAKERDATAPATH=/path/to/my/datases/files
+```  
 
 ## What are good values for regularization parameters ?
 Ideally, one would prefer avoid using regularizations and would use additional data instead. When this is not possible, 
