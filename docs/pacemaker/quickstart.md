@@ -5,7 +5,7 @@ contains structural information as well as corresponding energies and forces tha
 Input file contains details about desired ACE potential configuration and various parameters influencing optimization 
 process.  
 In this section we will describe the format of the fitting dataset, we will run a fit with an example dataset and
-overview the output produced by `pacemaker`. Input parameters are detailed in the [section](#input-file-overview) below.    
+overview the output produced by `pacemaker`. Input parameters are detailed in the [section](inputfile.md#Input_file) below.    
 
 ## Fitting dataset preparation
 
