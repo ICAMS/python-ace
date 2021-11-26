@@ -1,0 +1,24 @@
+site_name: python-ace
+theme:
+  name: "material"
+
+plugins:
+  - search
+
+markdown_extensions:
+  - pymdownx.arithmatex:
+      generic: true
+
+extra_javascript:
+  - javascripts/mathjax.js
+  - https://polyfill.io/v3/polyfill.min.js?features=es6
+  - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js
+  
+nav:
+    - Installation: pacemaker/install.md
+    - Quick start: pacemaker/quickstart.md
+    - Pacemaker workflow: pacemaker/workflow.md
+    - Input file: pacemaker/inputfile.md
+    - CLI: pacemaker/cli.md
+    - Utilities: pacemaker/utilities.md
+    - FAQs: pacemaker/faq.md

@@ -6,7 +6,7 @@
 The `pacemaker` workflow is described in the following and summarized in the figure above.
 
 
-* `pacemaker` starts by constructing the potential according to the user specified basis configuration (:math:`\nu`-order, :math:`n_\textrm{max}`, :math:`l_\textrm{max}`, etc.) 
+* `pacemaker` starts by constructing the potential according to the user specified basis configuration ($\nu$ -order, :math:`n_\textrm{max}`, :math:`l_\textrm{max}`, etc.) 
 or loads it from an available potential file. Then the B-basis functions are constructed, to this end generalized Clebsch-Gordan coefficients are set up
 for generating product basis functions that are invariant with respect to rotation and inversion.
 * Then `pacemaker` constructs the neighborlist for all structures in the dataframe. The neighborlist can be added to the reference dataframe for a fast restart of future parameterization runs.
