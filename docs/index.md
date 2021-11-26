@@ -4,3 +4,4 @@
 
 ## Documentation
 
+Please use the navigation bar on the left to explore the documentation.

@@ -47,18 +47,19 @@ If you want to continue fit without changing the basis size, you can do the foll
     
   doing this will override specifications in the `input.yaml`.
 
-If you want to extend the basis (aka do the [ladder scheme fitting](#ladder-scheme-fitting)):
- - Specify your potential as initial potential
-    
-    ```yaml
-    potential:
-           ...
-           initial_potential: /path/to/your/potential.yaml
-           ...
-    ```
+If you want to extend the basis (aka do the [ladder scheme fitting](#inputfile.md#ladder_hiererchical_basis_extension)):
+ 
+- Specify your potential as initial potential
   
+  ```yaml
+  potential:
+         ...
+         initial_potential: /path/to/your/potential.yaml
+         ...
+  ```
+
 - or use the CLI:
-  
+
   ```
   pacemaker input.yaml -ip /path/to/your/potential.yaml
   ```
@@ -80,6 +81,7 @@ It will  reset potential from potential.yaml, i.e. set radial coefficients to de
 If training data lacks data at shorter distances, expected repulsive behaviour is not always reproduced.
 In order to avoid it, you should use core-repulsion potential when you define the potential in `input.yaml` 
 which replaces ACE potential with an exponential repulsion:
+
 ```yaml
 ## input.yaml
 
