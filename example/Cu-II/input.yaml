@@ -1,0 +1,94 @@
+cutoff: 7.5  # cutoff for neighbour list construction
+seed: 42  # random seed
+
+
+#################################################################
+## Metadata section
+##
+## This is arbitrary key (string)-value (string) pairs that would
+## be added to the potential YAML file:
+#################################################################
+metadata:
+  comment: Example of fitting simple copper potential for Cu-II dataset
+
+
+#################################################################
+## Potential definition section
+#################################################################
+potential:
+  deltaSplineBins: 0.001
+  elements: [ Cu ]  # list of all elements
+
+  # Embeddings are specified for each individual elements,
+  # all parameters could be distinct for different species
+  embeddings: # possible keywords: ALL, UNARY, elements: Al, Ni
+    ALL: {
+      npot: 'FinnisSinclairShiftedScaled',
+      fs_parameters: [ 1, 1, 1, 0.5 ],
+      ndensity: 2,
+    }
+
+  # Bonds are specified for each possible pairs of elements
+  # One could use keywords: ALL (Al,Ni, AlNi, NiAl)
+  bonds: # possible keywords: ALL, UNARY, BINARY, elements pairs as AlAl, AlNi, NiAl, etc...
+    ALL: {
+      radbase: SBessel,
+      radparameters: [ 5.25 ],
+      rcut: 7.5,
+      dcut: 0.01,
+      NameOfCutoffFunction: cos,
+    }
+
+    
+
+  ## possible keywords: ALL, UNARY, BINARY, TERNARY, QUATERNARY, QUINARY,
+  ## element combinations as (Al,Al), (Al, Ni), (Al, Ni, Zn), etc...
+  functions:
+    UNARY: {
+      nradmax_by_orders: [15, 6, 4, 3, 2, 1],
+      lmax_by_orders:    [ 0, 3, 3, 2, 2, 1],
+    }
+
+
+
+#################################################################
+## Dataset specification section
+#################################################################
+data:
+### Option 1: pandas dataframe in pckl.gzip
+  filename: Cu_df2_1k.pkl.gzip  # force to read reference pickled dataframe from given file
+
+
+
+  ## Test dataset specification
+  test_size: 0.10  # Take 10% of train data. If test_size>1 - take test_size samples from train data
+
+#################################################################
+## Fit settings section
+#################################################################
+fit:
+  loss: { kappa: auto, L1_coeffs: 1e-8,  L2_coeffs: 1e-8, w0_rad: 1e-8, w1_rad: 1e-8, w2_rad: 1e-8 }
+
+## If `weighting` is not specified - uniform weighting would be used
+
+  ## scipy.minimze algorithm: BFGS /  L-BFGS-B / Nelder-Mead / etc...
+  optimizer: BFGS
+
+  ## maximum number of scipy.minimize iterations
+  maxiter: 1000
+
+  ## EXTRA OPTIONS ##
+  repulsion: auto    # set inner cutoff based on the minimal distance in the dataset
+
+  #  see Ladder scheme fitting for more info
+  ladder_step: 200
+
+  ladder_type: power_order
+
+#################################################################
+## Backend specification section
+#################################################################
+backend:
+  evaluator: tensorpot
+  batch_size: 100
+  display_step: 50

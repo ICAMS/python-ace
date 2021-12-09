@@ -1,0 +1,94 @@
+cutoff: 7 # cutoff for neighbour list construction
+seed: 42  # random seed
+
+
+#################################################################
+## Metadata section
+#################################################################
+metadata:
+  comment: Exempliar fit of HEA dataset
+
+
+#################################################################
+## Potential definition section
+#################################################################
+potential:
+  deltaSplineBins: 0.001
+  elements: [Cr, Fe, Ni, Mn, Co]
+
+  # Embeddings are specified for each individual elements,
+  # all parameters could be distinct for different species
+  embeddings: # possible keywords: ALL, UNARY, elements: Al, Ni
+    ALL: {
+      npot: 'FinnisSinclairShiftedScaled',
+      fs_parameters: [ 1, 1, 1, 0.5],
+      ndensity: 2,
+    }
+
+  # Bonds are specified for each possible pairs of elements
+  # One could use keywords: ALL (Al,Ni, AlNi, NiAl)
+  bonds: # possible keywords: ALL, UNARY, BINARY, elements pairs as AlAl, AlNi, NiAl, etc...
+    ALL: {
+      radbase: ChebExpCos,
+      radparameters: [ 5.25 ],
+      rcut: 7,
+      dcut: 0.01,
+      NameOfCutoffFunction: cos,
+    }
+
+  ## possible keywords: ALL, UNARY, BINARY, TERNARY, QUATERNARY, QUINARY,
+  ## element combinations as (Al,Al), (Al, Ni), (Al, Ni, Zn), etc...
+  functions:
+    ALL: {
+      nradmax_by_orders: [15, 3, 3, 2, 1],
+      lmax_by_orders: [ 0, 2, 2, 1, 1],
+    }
+
+    QUATERNARY: {
+      nradmax_by_orders: [15, 3, 2, 1, 1],
+      lmax_by_orders: [ 0, 2, 2, 1, 1]
+    }
+
+    QUINARY: {
+      nradmax_by_orders: [15, 3, 2, 1, 1],
+      lmax_by_orders: [ 0, 2, 2, 1, 1]
+    }
+
+#################################################################
+## Dataset specification section
+#################################################################
+data:
+  ### Option 1: pandas dataframe in pckl.gzip
+  filename: HEA_randII_example.pckl.gzip
+
+#################################################################
+## Fit settings section
+#################################################################
+fit:
+  loss: { kappa: 0.95, L1_coeffs: 0,  L2_coeffs: 0,  w1_coeffs: 0, w2_coeffs: 0,
+          w0_rad: 0, w1_rad: 0, w2_rad: 0 }
+
+  weighting: { type: EnergyBasedWeightingPolicy, nfit: 200, DElow: 1.0, DEup: 10.0, DE: 1000000.0, DF: 1000000.0,
+               # wlow: 0.75,
+               energy: convex_hull, #  "convex_hull" or "cohesive"
+               seed: 42
+             }
+
+  optimizer: BFGS # L-BFGS-B # Nelder-Mead
+  maxiter: 1500
+
+  fit_cycles: 1               # (optional) number of consequentive runs of fitting algorithm, that helps convergence
+
+  ladder_step: 5
+
+  ladder_type: body_order
+
+#################################################################
+## Backend specification section
+#################################################################
+backend:
+  evaluator: tensorpot  # tensorpot backend (recommended)
+  batch_size: 20
+
+  ## frequency of detailed metric calculation and printing
+  display_step: 50

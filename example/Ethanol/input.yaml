@@ -1,0 +1,81 @@
+cutoff: 4 # cutoff for neighbour list construction
+seed: 42  # random seed
+
+
+#################################################################
+## Metadata section
+#################################################################
+metadata:
+  comment: Exempliar fit of 1000 ethanol molecule MD-snpashots from revMD17 dataset
+
+
+#################################################################
+## Potential definition section
+#################################################################
+potential:
+  deltaSplineBins: 0.001
+  elements: [ C, O, H]
+
+  # Embeddings are specified for each individual elements,
+  # all parameters could be distinct for different species
+  embeddings: # possible keywords: ALL, UNARY, elements: Al, Ni
+    ALL: {
+      npot: 'FinnisSinclairShiftedScaled',
+      fs_parameters: [ 1, 1, 1, 0.5],
+      ndensity: 2,
+    }
+
+  # Bonds are specified for each possible pairs of elements
+  bonds: # possible keywords: ALL, UNARY, BINARY, elements pairs as AlAl, AlNi, NiAl, etc...
+    ALL: {
+      radbase: ChebExpCos,
+      radparameters: [ 5.25 ],
+      rcut: 4,
+      dcut: 0.01,
+      NameOfCutoffFunction: cos,
+      # core-repulsion parameters
+      core-repulsion: [ 0.0, 5.0 ],
+    }
+
+  ## possible keywords: ALL, UNARY, BINARY, TERNARY, QUATERNARY, QUINARY,
+  functions:
+    ALL: {
+      nradmax_by_orders: [15, 3, 2, 2, 1],
+      lmax_by_orders: [ 0, 2, 2, 1, 1],
+    }
+
+
+#################################################################
+## Dataset specification section
+#################################################################
+data:
+  filename: ethanol.pckl.gzip       # force to read reference pickled dataframe from given file
+
+
+#################################################################
+## Fit settings section
+#################################################################
+fit:
+  loss: { kappa: 0.99, L1_coeffs: 0,  L2_coeffs: 0,  w1_coeffs: 0, w2_coeffs: 0,
+          w0_rad: 0, w1_rad: 0, w2_rad: 0 }
+
+
+  optimizer: BFGS # L-BFGS-B # Nelder-Mead
+  maxiter: 2000
+
+  fit_cycles: 2               # (optional) number of consequentive runs of fitting algorithm, that helps convergence
+
+  ladder_step: 15
+
+  ladder_type: body_order
+
+
+#################################################################
+## Backend specification section
+#################################################################
+backend:
+  evaluator: tensorpot  # tensorpot backend (recommended)
+  batch_size: 1000
+  
+  ## frequency of detailed metric calculation and printing
+  display_step: 50
