@@ -273,6 +273,6 @@ For more information see [here](https://lammps.sandia.gov/doc/Build_cmake.html).
 
 
 
-# More examples
+## More examples
 
-Please, find more examples in `python-ace/example` folder and subfolders.
+Please, find more examples in `python-ace/examples` folder and subfolders.
