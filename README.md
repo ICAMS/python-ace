@@ -7,8 +7,8 @@ Please see the `docs` folder for documentation or check [online documentation](h
 
 Please cite following papers:
 
-* Bochkarev, A., Lysogorskiy, Y., Menon, S., Qamar, M., Mrovec, M., & Drautz, R. (2022). Efficient parametrization of the atomic cluster expansion. Physical Review Materials, 6(1), 013804.
-* Lysogorskiy, Y., Oord, C. V. D., Bochkarev, A., Menon, S., Rinaldi, M., Hammerschmidt, T., ... & Drautz, R. (2021). Performant implementation of the atomic cluster expansion (PACE) and application to copper and silicon. npj Computational Materials, 7(1), 1-12.
+* [Bochkarev, A., Lysogorskiy, Y., Menon, S., Qamar, M., Mrovec, M., & Drautz, R. (2022). Efficient parametrization of the atomic cluster expansion. Physical Review Materials, 6(1), 013804](https://journals.aps.org/prmaterials/abstract/10.1103/PhysRevMaterials.6.013804)
+* [Lysogorskiy, Y., Oord, C. V. D., Bochkarev, A., Menon, S., Rinaldi, M., Hammerschmidt, T., ... & Drautz, R. (2021). Performant implementation of the atomic cluster expansion (PACE) and application to copper and silicon. npj Computational Materials, 7(1), 1-12](https://www.nature.com/articles/s41524-021-00559-9)
 
 ```bibtex
 @article{bochkarev2022efficient,
