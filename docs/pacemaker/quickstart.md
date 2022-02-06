@@ -111,6 +111,8 @@ data:
 
 ```
 
+Please check [examples folder](https://github.com/ICAMS/python-ace/tree/master/examples) for more examples of input file.
+
 ## Run fitting
 
 Running a fit is as easy as executing the command:
