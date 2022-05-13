@@ -14,10 +14,8 @@ from collections import defaultdict, Counter
 import logging
 
 
-# LOG_FMT = '%(asctime)s - {} - %(levelname).5s: %(message)s'.format(hostname)
-#LOG_FMT = '%(asctime)s ({}[{}]): %(message)s'.format( p)
+
 logging.basicConfig(level=logging.INFO)
-#, format=LOG_, datefmt="%Y/%m/%d %H:%M:%S")
 logger = logging.getLogger()
 
       
