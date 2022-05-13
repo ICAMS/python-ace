@@ -113,19 +113,20 @@ def main(args):
 
     for root, _, filenames in walk_file_or_dir(working_dir):
 
-        if filenames and vasprun_file in filenames:
-            try:
+        try:
+            if filenames and vasprun_file in filenames:                
                 vasp_output_dict = read_vasp_output(root, vasprun_file, free_atom_energy_dict)
                 for key, value in vasp_output_dict.items():
                     data[key] += value
                 logger.info('Data collected successfully from {} with entries {}'.format(os.path.join(root,vasprun_file),len(vasp_output_dict["name"])))
-            except Exception as e:
-                logger.error('Filename could not be read: {}'.format(str(e)))
-        else:
-            vasp_output_dict = read_vasp_output(root, outcar_file, free_atom_energy_dict)
-            for key, value in vasp_output_dict.items():
-                data[key] += value
-            logger.info('Data collected successfully from {} with entries {}'.format(os.path.join(root,outcar_file),len(vasp_output_dict["name"])))
+            else:
+                vasp_output_dict = read_vasp_output(root, outcar_file, free_atom_energy_dict)
+                for key, value in vasp_output_dict.items():
+                    data[key] += value
+                logger.info('Data collected successfully from {} with entries {}'.format(os.path.join(root,outcar_file),len(vasp_output_dict["name"])))
+        except Exception as e:
+            logger.error('Filename could not be read: {}'.format(str(e)))
+
             
     df = pd.DataFrame(data)
     df.to_pickle('{}'.format(output_dataset_filename), compression='gzip', protocol=4)
