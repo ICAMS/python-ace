@@ -49,7 +49,7 @@ def get_ase_atoms_energy_forces(configuration):
     return ase_atoms, free_energy, forces    
     
 
-def read_from_vasprun(root_directory, vasprun_file, free_atom_energy_dict):
+def read_vasp_output(root_directory, vasprun_file, free_atom_energy_dict):
 
     vasprun = os.path.join(root_directory, vasprun_file)
 
@@ -95,16 +95,16 @@ def main(args):
     parser.add_argument("-wd", "--working-dir", help="top directory where keep calculations",
                         type=str, default='.', dest="working_dir")
         
-    parser.add_argument("--pickle-filename", help="pickle filename",
-                        type=str, default="collected.pckl.gzip", dest="pickle_filename")
+    parser.add_argument("--output-dataset-filename", help="pickle filename, default is collected.pckl.gzip",
+                        type=str, default="collected.pckl.gzip", dest="output_dataset_filename")
     
-    parser.add_argument('--free-atom-energy', help="dictionary of reference energies, Type: energy",
+    parser.add_argument('--free-atom-energy', help="dictionary of reference energies (i.e. Al:-0.123 Cu:-0.456 Zn:-0.789)",
                         nargs='*', dest="free_atom_energy", default=defaultdict(lambda:0), action=ParseKwargs)
     
     args_parse = parser.parse_args(args)
     working_dir = os.path.abspath(args_parse.working_dir)
     free_atom_energy_dict = args_parse.free_atom_energy
-    pickle_filename = args_parse.pickle_filename
+    output_dataset_filename = args_parse.output_dataset_filename
     
     ##############################################################################################
     logger.info('Following atomic reference energies will be subtracted : {}'.format(', '.join([str(k)+':'+str(v) for k,v in free_atom_energy_dict.items()])))
@@ -117,24 +117,21 @@ def main(args):
 
         if filenames and vasprun_file in filenames:
             try:
-                vasp_output_dict = read_from_vasprun(root, vasprun_file, free_atom_energy_dict)
+                vasp_output_dict = read_vasp_output(root, vasprun_file, free_atom_energy_dict)
                 for key, value in vasp_output_dict.items():
                     data[key] += value
                 logger.info('Data collected successfully from {} with entries {}'.format(os.path.join(root,vasprun_file),len(vasp_output_dict["name"])))
             except Exception as e:
                 logger.error('Filename could not be read: {}'.format(str(e)))
-        elif filenames and not vasprun_file in filenames:
-            try:
-                vasp_output_dict = read_from_vasprun(root, outcar_file, free_atom_energy_dict)
-                for key, value in vasp_output_dict.items():
-                    data[key] += value
-                logger.info('Data collected successfully from {} with entries {}'.format(os.path.join(root,outcar_file),len(vasp_output_dict["name"])))
-            except Exception as e:
-                logger.error('Filename could not be read: {}'.format(str(e)))
+        else:
+            vasp_output_dict = read_vasp_output(root, outcar_file, free_atom_energy_dict)
+            for key, value in vasp_output_dict.items():
+                data[key] += value
+            logger.info('Data collected successfully from {} with entries {}'.format(os.path.join(root,outcar_file),len(vasp_output_dict["name"])))
             
     df = pd.DataFrame(data)
-    df.to_pickle('{}'.format(pickle_filename), compression='gzip', protocol=4)
-    logger.info('Store dataset into {}'.format(pickle_filename))
+    df.to_pickle('{}'.format(output_dataset_filename), compression='gzip', protocol=4)
+    logger.info('Store dataset into {}'.format(output_dataset_filename))
     
     df['NUMBER_OF_ATOMS'] = df['ase_atoms'].map(len)
     df['energy_corrected_per_atom'] = df['energy_corrected']/df['NUMBER_OF_ATOMS']
