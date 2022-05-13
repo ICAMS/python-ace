@@ -103,6 +103,7 @@ try:
     shutil.copyfile('bin/pace_update_yaml_potential.py', 'bin/pace_update_yaml_potential')
     shutil.copyfile('bin/pace_timing.py', 'bin/pace_timing')
     shutil.copyfile('bin/pace_info.py', 'bin/pace_info')
+    shutil.copyfile('bin/pace_collect.py', 'bin/pace_collect')
 except FileNotFoundError as e:
     print("File not found (skipping):", e)
 
@@ -141,5 +142,5 @@ setup(
         "input_template.yaml"
     ]},
     scripts=["bin/pacemaker", "bin/pace_yaml2yace", "bin/pace_update_ace",
-             "bin/pace_update_yaml_potential", "bin/pace_timing", "bin/pace_info"]
+             "bin/pace_update_yaml_potential", "bin/pace_timing", "bin/pace_info", "bin/pace_collect"]
 )
