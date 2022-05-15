@@ -43,3 +43,22 @@ Usage:
 ```c
 pace_info [-h] potential_file
 ```
+
+## Collect and store VASP data in pickle file
+
+Utility to collect VASP calculations from a top-level directory and store them in a `*.pickle.gzip` file that can be used for fitting with `pacemaker`. 
+The reference energies should be provided for each element (default value is zero). Usage: 
+
+```
+usage: pace_collect [-h] [-wd WORKING_DIR] [--output-dataset-filename OUTPUT_DATASET_FILENAME]
+                       [--free-atom-energy [FREE_ATOM_ENERGY [FREE_ATOM_ENERGY ...]]]
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -wd WORKING_DIR, --working-dir WORKING_DIR
+                        top directory where keep calculations
+  --output-dataset-filename OUTPUT_DATASET_FILENAME
+                        pickle filename, default is collected.pckl.gzip
+  --free-atom-energy [FREE_ATOM_ENERGY [FREE_ATOM_ENERGY ...]]
+                        dictionary of reference energies (i.e. Al:-0.123 Cu:-0.456 Zn:-0.789)
+```
