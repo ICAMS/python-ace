@@ -91,6 +91,9 @@ df = pd.DataFrame(data)
 # and save it 
 df.to_pickle('my_data.pckl.gzip', compression='gzip', protocol=4)
 ```
+
+or use the utility `pace_collect` from a top-level directory to collect VASP calculations and store them in a 
+`collected.pckl.gzip` file.
 The resulting dataframe can be used for fitting with `pacemaker`.
 
 ## Creating an input file
