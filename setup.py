@@ -88,8 +88,8 @@ class CMakeBuild(build_ext):
         print()  # Add an empty line for cleaner output
 
 
-if sys.version_info < (3, 7) or sys.version_info >= (3, 9):
-    sys.exit('Sorry, only Python 3.7/3.8 are supported, but version ' + str(sys.version_info) + ' found')
+# if sys.version_info < (3, 7) or sys.version_info >= (3, 9):
+#     sys.exit('Sorry, only Python 3.7/3.8 are supported, but version ' + str(sys.version_info) + ' found')
 
 with open('README.md') as readme_file:
     readme = readme_file.read()
@@ -133,7 +133,7 @@ setup(
     cmdclass=versioneer.get_cmdclass(dict(build_ext=CMakeBuild)),
     zip_safe=False,
     url='https://git.noc.ruhr-uni-bochum.de/atomicclusterexpansion/pyace',
-    install_requires=['numpy<=1.19.5', 'ase', 'pandas>=1.2.2', 'ruamel.yaml'],
+    install_requires=['numpy', 'ase', 'pandas>=1.2.2', 'ruamel.yaml'],
     classifiers=[
         'Programming Language :: Python :: 3',
     ],
