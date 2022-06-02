@@ -1,6 +1,5 @@
 import gc
 import logging
-import warnings
 
 from datetime import datetime
 from functools import partial
@@ -17,7 +16,6 @@ from pyace.multispecies_basisextension import extend_multispecies_basis, expand_
 from pyace.const import *
 from pyace.fitadapter import FitBackendAdapter
 from pyace.preparedata import get_fitting_dataset, normalize_energy_forces_weights
-from pyace.const import FWEIGHTS_COL, EWEIGHTS_COL, ENERGY_CORRECTED_COL
 from pyace.lossfuncspec import LossFunctionSpecification
 from pyace.metrics_aggregator import MetricsAggregator
 
@@ -28,7 +26,7 @@ log.setLevel(logging.DEBUG)
 
 __username = None
 
-FITTING_DATA_INFO_FILENAME = "fitting_data_info.csv"
+FITTING_DATA_INFO_FILENAME = "fitting_data_info.pckl.gzip"
 
 
 def get_username():
@@ -328,7 +326,6 @@ class GeneralACEFit:
         else:
             raise ValueError("'data-config' should be dictionary or pd.DataFrame")
 
-
         if self.fitting_data is not None:
             normalize_energy_forces_weights(self.fitting_data)
         if self.test_data is not None:
@@ -377,9 +374,6 @@ class GeneralACEFit:
         self.metrics_aggregator.test_metric_callback(metrics_dict, extended_display_step=extended_display_step)
 
     def save_fitting_data_info(self):
-        # columns to save: w_energy, w_forces, NUMBER_OF_ATOMS, PROTOTYPE_NAME, prop_id,structure_id, gen_id, if any
-        # columns_to_save = ["PROTOTYPE_NAME", "NUMBER_OF_ATOMS", "prop_id", "structure_id", "gen_id", "pbc"] + \
-        #                   [ENERGY_CORRECTED_COL, EWEIGHTS_COL, FWEIGHTS_COL]
         columns_to_drop = ["tp_atoms", "atomic_env"]
         fitting_data_columns = self.fitting_data.columns
 
