@@ -378,14 +378,16 @@ class GeneralACEFit:
 
     def save_fitting_data_info(self):
         # columns to save: w_energy, w_forces, NUMBER_OF_ATOMS, PROTOTYPE_NAME, prop_id,structure_id, gen_id, if any
-        columns_to_save = ["PROTOTYPE_NAME", "NUMBER_OF_ATOMS", "prop_id", "structure_id", "gen_id", "pbc"] + \
-                          [ENERGY_CORRECTED_COL, EWEIGHTS_COL, FWEIGHTS_COL]
-
+        # columns_to_save = ["PROTOTYPE_NAME", "NUMBER_OF_ATOMS", "prop_id", "structure_id", "gen_id", "pbc"] + \
+        #                   [ENERGY_CORRECTED_COL, EWEIGHTS_COL, FWEIGHTS_COL]
+        columns_to_drop = ["tp_atoms", "atomic_env"]
         fitting_data_columns = self.fitting_data.columns
 
-        columns_to_save = [col for col in columns_to_save if col in fitting_data_columns]
+        columns_to_save = [col for col in fitting_data_columns if col not in columns_to_drop]
 
-        self.fitting_data[columns_to_save].to_csv(FITTING_DATA_INFO_FILENAME, index=None, sep=",")
+        self.fitting_data[columns_to_save].to_pickle(FITTING_DATA_INFO_FILENAME,
+                                                     compression="gzip",
+                                                     protocol=4)
         log.info("Fitting dataset info saved into {}".format(FITTING_DATA_INFO_FILENAME))
 
     def fit(self) -> BBasisConfiguration:
