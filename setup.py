@@ -88,8 +88,8 @@ class CMakeBuild(build_ext):
         print()  # Add an empty line for cleaner output
 
 
-if sys.version_info < (3, 7) or sys.version_info >= (3, 9):
-    sys.exit('Sorry, only Python 3.7/3.8 are supported, but version ' + str(sys.version_info) + ' found')
+# if sys.version_info < (3, 7) or sys.version_info >= (3, 9):
+#     sys.exit('Sorry, only Python 3.7/3.8 are supported, but version ' + str(sys.version_info) + ' found')
 
 with open('README.md') as readme_file:
     readme = readme_file.read()
@@ -103,6 +103,7 @@ try:
     shutil.copyfile('bin/pace_update_yaml_potential.py', 'bin/pace_update_yaml_potential')
     shutil.copyfile('bin/pace_timing.py', 'bin/pace_timing')
     shutil.copyfile('bin/pace_info.py', 'bin/pace_info')
+    shutil.copyfile('bin/pace_collect.py', 'bin/pace_collect')
 except FileNotFoundError as e:
     print("File not found (skipping):", e)
 
@@ -132,7 +133,7 @@ setup(
     cmdclass=versioneer.get_cmdclass(dict(build_ext=CMakeBuild)),
     zip_safe=False,
     url='https://git.noc.ruhr-uni-bochum.de/atomicclusterexpansion/pyace',
-    install_requires=['numpy<=1.19.5', 'ase', 'pandas>=1.2.2', 'ruamel.yaml'],
+    install_requires=['numpy', 'ase', 'pandas>=1.2.2', 'ruamel.yaml'],
     classifiers=[
         'Programming Language :: Python :: 3',
     ],
@@ -141,5 +142,5 @@ setup(
         "input_template.yaml"
     ]},
     scripts=["bin/pacemaker", "bin/pace_yaml2yace", "bin/pace_update_ace",
-             "bin/pace_update_yaml_potential", "bin/pace_timing", "bin/pace_info"]
+             "bin/pace_update_yaml_potential", "bin/pace_timing", "bin/pace_info", "bin/pace_collect"]
 )
