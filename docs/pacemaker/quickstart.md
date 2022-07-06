@@ -7,7 +7,35 @@ process.
 In this section we will describe the format of the fitting dataset, we will run a fit with an example dataset and
 overview the output produced by `pacemaker`. Input parameters are detailed in the [section](inputfile.md#Input_file) below.    
 
-## Fitting dataset preparation
+## Automatic DFT data collection
+
+You can collect DFT calculations (currently only for VASP from `vasprun.xml` or `OUTCAR` files) by using `pace_collect`
+utility. For example, if your data is in `my_dft_calculation/` folder and subfolders, and single atoms reference energies
+are -0.123 eV for Al and  -0.456 eV for Cu, then run command 
+```
+pace_collect -wd path/to/my_dft_calculation --free-atom-energy Al:-0.123 Cu:-0.456
+```
+that will scan through all folders and subfolders and collect DFT free energies (that are force-consistent) and forces 
+and make a single atom corrections. Resulting dataset will be stored into `collected.pckl.gzip` file.
+
+If you need more flexibility for DFT dataset manipulation,
+please check [Manual fitting dataset preparation](#markdown-header-manual-fitting-dataset-preparation).
+
+## Automatic input file generation
+
+In order to fit an ACE potential, one need to create a configurational  file with relevant settings. 
+`pacemaker` utilizes `.yaml` format for configurations. 
+
+In order to interactively generate default `pacemaker` input file `input.yaml`, please run 
+```
+pacemaker -t
+```
+and enter requested information, such as dataset filename, test set size (optional), list of elements, cutoff,
+number of functions.  Doing so will produce an `input.yaml` file with the most general
+settings that can be adjusted for a particular task. Detailed overview of the input file parameters can be found in the
+[section](#input-file-overview) below.
+
+## Manual fitting dataset preparation
 
 In order to use your data for fitting with `pacemaker` one would need to provide it in the form of `pandas` DataFrame.
 An example DataFrame can be red as:
@@ -97,12 +125,7 @@ or use the utility `pace_collect` from a top-level directory to collect VASP cal
 The resulting dataframe can be used for fitting with `pacemaker`.
 
 ## Creating an input file
-
-In order to fit an ACE potential to the data prepared following the previous section, one need to create a configurational
-file with relevant settings. `pacemaker` utilizes `.yaml` format for configurations. An input file template can be created
-by running `pacemaker --template` (or `pacemaker -t`). Doing so will produce an `input.yaml` file with the most general 
-settings that can be adjusted for a particular task. Detailed overview of the input file parameters can be found in the 
-[section](#input-file-overview) below.  
+ 
 In this example we will use template as it is, however one would need to provide a path to the
 example dataset `exmpl_df.pckl.gzip`. This can be done by changing `filename` parameter in the `data` section of the 
 `input.yaml`:
@@ -129,8 +152,8 @@ nohup pacemaker input.yaml &
 ```
 For more `pacemaker` command options see the corresponding [section](#pacemaker-commands).  
 
-Default behavior of pacemaker is to utilize a GPU accelerated fitting of ACE using `tensorpotential`. However, GPU
-parallelization is not supported at the moment. Therefore, if your machine has a multi GPU setup one would need to select
+Default behavior of pacemaker is to utilize a GPU accelerated fitting of ACE using `tensorpotential`. However, 
+parallelization over multiple GPU is not supported at the moment. Therefore, if your machine has a multi GPU setup one would need to select
 a single one before running `pacemaker`. This can be done by executing  `export CUDA_VISIBLE_DEVICES=ind` in the shell
 replacing `ind` with the GPU index (i.g. 0, 1, ...) or -1 to disable GPU usage.  
 Note, that `tensorpotential` can be used without a GPU as well.
@@ -277,6 +300,16 @@ For more information see [here](https://lammps.sandia.gov/doc/Build_cmake.html).
 3. Build LAMMPS using `cmake --build .` or `make`
 
 
+Please note, that there is a KOKKOS implementation of PACE for LAMMPS as `pair_style pace/kk`, but you need to compile
+LAMMPS with this support, see official documentation [here](https://docs.lammps.org/Build_extras.html#kokkos).
+This implementation allows to run calculations on GPU which give the speedup of **up to x100** on modern GPU architectures 
+in comparison to single-core CPU. In that case you should modify LAMMPS input script as 
+```
+## in.lammps
+
+pair_style  pace product 
+pair_coeff  * * output_potential.yace Al Ni
+```
 
 ## More examples
 

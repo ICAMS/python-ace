@@ -28,6 +28,9 @@ EFFECTIVE_ENERGY = "effective_energy"
 
 log = logging.getLogger(__name__)
 
+REF_PROP_NAME = '1-body-000001:static'
+REF_GENERIC_PROTOTYPE_NAME = '1-body-000001'
+
 # ## QUERY DATA
 LATTICE_COLUMNS = ["_lat_ax", "_lat_ay", "_lat_az",
                    "_lat_bx", "_lat_by", "_lat_bz",
@@ -129,17 +132,7 @@ def query_data(config: Dict, seed=None, query_limit=None, db_conn_string=None):
         if REF_ENERGY_KW not in config:
             try:
                 # TODO: generalize query of reference property
-                REF_PROP_NAME = '1-body-000001:static'
-                REF_GENERIC_PROTOTYPE_NAME = '1-body-000001'
-                ref_prop = storage.query(StaticProperty).join(StructureEntry, GenericEntry).filter(
-                    Property.CALCULATOR == reference_calculator,
-                    Property.NAME == REF_PROP_NAME,
-                    StructureEntry.COMPOSITION.like(config["element"] + "-%"),
-                    StructureEntry.NUMBER_OF_ATOMS == 1,
-                    GenericEntry.PROTOTYPE_NAME == REF_GENERIC_PROTOTYPE_NAME
-                ).one()
-                # free atom reference energy
-                ref_energy = ref_prop.energy / ref_prop.n_atom
+                ref_energy = query_reference_energy(config["element"], reference_calculator, storage)
             except NoResultFound as e:
                 log.error(("No reference energy for {} was found in database. " +
                            "Either add property named `{}` with generic named `{}` to database or use `{}` " +
@@ -212,6 +205,20 @@ def query_data(config: Dict, seed=None, query_limit=None, db_conn_string=None):
             log.info("Seed is not provided, no shuffling")
         log.info("Total entries obtained from database:" + str(df_total.shape[0]))
         return df_total, ref_energy
+
+
+def query_reference_energy(element, reference_calculator, storage):
+    from structdborm import StructureEntry, StaticProperty, GenericEntry, Property
+    ref_prop = storage.query(StaticProperty).join(StructureEntry, GenericEntry).filter(
+        Property.CALCULATOR == reference_calculator,
+        Property.NAME == REF_PROP_NAME,
+        StructureEntry.COMPOSITION.like(element + "-%"),
+        StructureEntry.NUMBER_OF_ATOMS == 1,
+        GenericEntry.PROTOTYPE_NAME == REF_GENERIC_PROTOTYPE_NAME
+    ).one()
+    # free atom reference energy
+    ref_energy = ref_prop.energy / ref_prop.n_atom
+    return ref_energy
 
 
 class StructuresDatasetWeightingPolicy:
@@ -639,7 +646,7 @@ class StructuresDatasetSpecification:
 
 class EnergyBasedWeightingPolicy(StructuresDatasetWeightingPolicy):
 
-    def __init__(self, nfit=20000,
+    def __init__(self, nfit=None,
                  cutoff=None,
                  DElow=1.0,
                  DEup=10.0,
@@ -705,6 +712,10 @@ class EnergyBasedWeightingPolicy(StructuresDatasetWeightingPolicy):
                                                                                reftype=self.reftype, seed=self.seed)
 
     def generate_weights(self, df):
+        if self.nfit is None:
+            self.nfit = len(df)
+            log.info("Set nfit to the dataset size {}".format(self.nfit))
+
         if self.reftype == "bulk":
             log.info("Reducing to bulk data")
             df = df[df.pbc]
@@ -1019,7 +1030,8 @@ class ExternalWeightingPolicy(StructuresDatasetWeightingPolicy):
             if col_to_drop in df.columns:
                 df.drop(columns=col_to_drop, inplace=True)
 
-        mdf = pd.merge(df, self.weights_df[[WEIGHTS_ENERGY_COLUMN, WEIGHTS_FORCES_COLUMN]], left_index=True, right_index=True)
+        mdf = pd.merge(df, self.weights_df[[WEIGHTS_ENERGY_COLUMN, WEIGHTS_FORCES_COLUMN]], left_index=True,
+                       right_index=True)
         if not (mdf[FORCES_COLUMN].map(len) == mdf[WEIGHTS_FORCES_COLUMN].map(len)).all():
             error_msg = ("Shape of the `{}` column doesn't correspond to the shape of "
                          "`forces` column in original dataframe").format(WEIGHTS_FORCES_COLUMN)

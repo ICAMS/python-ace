@@ -48,7 +48,7 @@ data: # dataset specification section
   # query_limit: 1000              # limiting number of entries to query from `structdb`
                                    # ignored if reading from cache
     
-  # cache_ref_df: True             # whether to store the queried or modified dataset into file, default - True
+  # cache_ref_df: False             # whether to store the queried or modified dataset into file, default - True
   # filename: some.pckl.gzip       # force to read reference pickled dataframe from given file
   # ignore_weights: False          # whether to ignore energy and force weighting columns in dataframe
   # datapath: ../data              # path to folder with cache files with pickled dataframes 
@@ -66,7 +66,7 @@ Example of creating the **subselection of fitting dataframe** and saving it is g
 
 Example of generating **custom energy/forces weights** is given in `notebooks/data_custom_weights.ipynb`
 
-### Querying data
+### Querying data (using structDB only)
 You can just query and preprocess data, without running potential fitting.
 Here is the minimalistic input YAML:
 
@@ -197,7 +197,8 @@ potential:
 
   ## possible keywords: ALL, UNARY, BINARY, TERNARY, QUATERNARY, QUINARY,
   ##  element combinations as (Al,Al), (Al, Ni), (Al, Ni, Zn), etc...
-  functions: 
+  functions:
+    # number_of_functions_per_element: 700  # specify the total number of functions per element to keep
     UNARY: {
       nradmax_by_orders: [15, 3, 2, 2, 1],
       lmax_by_orders: [ 0, 2, 2, 1, 1],

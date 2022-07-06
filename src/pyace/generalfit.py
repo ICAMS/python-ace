@@ -217,8 +217,34 @@ class GeneralACEFit:
             else:
                 self.target_bbasisconfig = construct_bbasisconfiguration(potential_config,
                                                                          initial_basisconfig=self.initial_bbasisconfig)
+                if ("functions" in potential_config and
+                        "number_of_functions_per_element" in potential_config['functions']):
+                    num_block = len(self.target_bbasisconfig.funcspecs_blocks)
+                    number_of_functions_per_element = potential_config["functions"]["number_of_functions_per_element"]
+                    target_bbasis = ACEBBasisSet(self.target_bbasisconfig)
+                    nelements = target_bbasis.nelements
+                    ladder_step = number_of_functions_per_element * nelements // num_block
+                    expected_number_of_functions = ladder_step * num_block
+                    log.info(
+                        """Target potential contains {total_number_of_functions} functions,"""
+                        """ but is limited to maximum {number_of_functions_per_element}"""
+                        """ functions per element  for {nelements} elements ({num_block} blocks)""".format(
+                            total_number_of_functions=self.target_bbasisconfig.total_number_of_functions,
+                            number_of_functions_per_element=number_of_functions_per_element,
+                            nelements=nelements,
+                            num_block=num_block))
+
+                    initial_basisconfig = self.target_bbasisconfig.copy()
+                    clean_bbasisconfig(initial_basisconfig)
+                    current_bbasisconfig = extend_multispecies_basis(initial_basisconfig, self.target_bbasisconfig,
+                                                                     "power_order", ladder_step)
+                    self.target_bbasisconfig = current_bbasisconfig
+                    log.info("Resulted potential contains {} functions".format(
+                        self.target_bbasisconfig.total_number_of_functions))
+
                 log.info("Target potential shape constructed from dictionary, it contains {} functions".format(
                     self.target_bbasisconfig.total_number_of_functions))
+
         elif isinstance(potential_config, str):
             self.target_bbasisconfig = BBasisConfiguration(potential_config)
             log.info("Target potential loaded from file '{}', it contains {} functions".format(potential_config,
@@ -236,6 +262,8 @@ class GeneralACEFit:
                 ("Non-supported type: {}. Only dictionary (configuration), " +
                  "str (YAML file name) or BBasisConfiguration are supported").format(
                     type(potential_config)))
+        # save target_potential.yaml
+        self.target_bbasisconfig.save(TARGET_POTENTIAL_YAML)
 
         if FIT_LADDER_STEP_KW in fit_config and not self.ladder_scheme:
             if self.initial_bbasisconfig is None:
@@ -374,6 +402,9 @@ class GeneralACEFit:
         self.metrics_aggregator.test_metric_callback(metrics_dict, extended_display_step=extended_display_step)
 
     def save_fitting_data_info(self):
+        # columns to save: w_energy, w_forces, NUMBER_OF_ATOMS, PROTOTYPE_NAME, prop_id,structure_id, gen_id, if any
+        # columns_to_save = ["PROTOTYPE_NAME", "NUMBER_OF_ATOMS", "prop_id", "structure_id", "gen_id", "pbc"] + \
+        #                   [ENERGY_CORRECTED_COL, EWEIGHTS_COL, FWEIGHTS_COL]
         columns_to_drop = ["tp_atoms", "atomic_env"]
         fitting_data_columns = self.fitting_data.columns
 
@@ -467,7 +498,7 @@ class GeneralACEFit:
             log.warning(
                 ("Number of finished fit cycles ({}) >= number of expected fit cycles ({}). " +
                  "Use another potential or remove `{}` from potential metadata")
-                    .format(finished_fit_cycles, fit_cycles, "_" + FIT_FIT_CYCLES_KW))
+                .format(finished_fit_cycles, fit_cycles, "_" + FIT_FIT_CYCLES_KW))
             return current_bbasisconfig
 
         fitting_attempts_list = []

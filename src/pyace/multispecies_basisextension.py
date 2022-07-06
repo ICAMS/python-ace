@@ -25,7 +25,7 @@ BINARY = "BINARY"
 TERNARY = "TERNARY"
 QUATERNARY = "QUATERNARY"
 QUINARY = "QUINARY"
-KEYWORDS = [ALL, UNARY, BINARY, TERNARY, QUATERNARY, QUINARY]
+KEYWORDS = [ALL, UNARY, BINARY, TERNARY, QUATERNARY, QUINARY, 'number_of_functions_per_element']
 
 NARY_MAP = {UNARY: 1, BINARY: 2, TERNARY: 3, QUATERNARY: 4, QUINARY: 5}
 PERIODIC_ELEMENTS = chemical_symbols = [
@@ -225,7 +225,8 @@ def species_key_to_bonds(key):
     return bonds
 
 
-def create_multispecies_basis_config(potential_config: Dict, unif_mus_ns_to_lsLScomb_dict: Dict = None,
+def create_multispecies_basis_config(potential_config: Dict,
+                                     unif_mus_ns_to_lsLScomb_dict: Dict = None,
                                      func_coefs_initializer="zero",
                                      initial_basisconfig: BBasisConfiguration = None) -> BBasisConfiguration:
     """
@@ -636,7 +637,7 @@ def create_species_block(elements_vec: List, block_spec_dict: Dict,
                             if func_coefs_initializer == "zero":
                                 coefs = [0] * ndensity
                             elif func_coefs_initializer == "random":
-                                coefs = np.random.randn(ndensity)
+                                coefs = np.random.randn(ndensity)*1e-4
                             else:
                                 raise ValueError(
                                     "Unknown func_coefs_initializer={}. Could be only 'zero' or 'random'".format(
