@@ -273,7 +273,7 @@ class StructuresDatasetSpecification:
                  ignore_weights: bool = False,
                  query_limit: int = None,
                  seed: int = None,
-                 cache_ref_df: bool = True,
+                 cache_ref_df: bool = False,
                  progress_bar: bool = False,
                  df: pd.DataFrame = None,
                  force_rebuild: bool = False,

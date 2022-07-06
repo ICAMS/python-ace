@@ -1,15 +1,27 @@
 #!/usr/bin/env python
 
 import argparse
+import getpass  # for getpass.getuser()
 import glob
+import logging
 import os
+import shutil
 
-import pandas as pd
 import pkg_resources
-import ruamel.yaml as yaml
+import re
+import readline
+import socket
 import sys
 
-import logging
+hostname = socket.gethostname()
+username = getpass.getuser()
+
+import pandas as pd
+import ruamel.yaml as yaml
+
+LOG_FMT = '%(asctime)s %(levelname).1s - %(message)s'.format(hostname)
+logging.basicConfig(level=logging.INFO, format=LOG_FMT, datefmt="%Y/%m/%d %H:%M:%S")
+log = logging.getLogger()
 
 from shutil import copyfile
 from pyace.generalfit import GeneralACEFit
@@ -18,16 +30,15 @@ from pyace import __version__, get_ace_evaluator_version
 from pyace.atomicenvironment import calculate_minimal_nn_atomic_env, calculate_minimal_nn_tp_atoms
 from pyace.validate import plot_analyse_error_distributions
 
-files_to_remove = ["fitting_data_info.csv", "log.txt", "nohup.out",
+files_to_remove = ["fitting_data_info.csv", "fitting_data_info.pckl.gzip", "log.txt", "nohup.out",
                    "target_potential.yaml", "current_extended_potential.yaml", "output_potential.yaml",
                    "ladder_metrics.txt", "cycle_metrics.txt", "metrics.txt",
                    "test_ladder_metrics.txt", "test_cycle_metrics.txt", "test_metrics.txt",
-                   "train_pred.pckl.gzip", "test_pred.pckl.gzip"
+                   "train_pred.pckl.gzip", "test_pred.pckl.gzip",
+                   "test_ef-distributions.png", "train_ef-distributions.png", "report"
                    ]
 
 DEFAULT_SEED = 42
-
-log = logging.getLogger()
 
 
 def main(args):
@@ -86,7 +97,7 @@ def main(args):
                         default=False)
 
     parser.add_argument("-t", "--template",
-                        help="Create a template 'input.yaml' file",
+                        help="Generate a template 'input.yaml' file by dialog",
                         dest="template", action="store_true",
                         default=False)
 
@@ -117,23 +128,22 @@ def main(args):
         sys.exit(0)
 
     if args_parse.clean:
-        print("Cleaning working directory...")
+        print("Cleaning working directory. Removing files/folders:")
 
         interim_potentails = glob.glob("interim_potential*.yaml")
         ensemble_potentails = glob.glob("ensemble_potential*.yaml")
         for filename in sorted(files_to_remove + interim_potentails + ensemble_potentails):
             if os.path.isfile(filename):
                 os.remove(filename)
-                print(" - " + filename)
-        print("done")
+                print(" - ", filename)
+            elif os.path.isdir(filename):
+                shutil.rmtree(filename)
+                print(" - ", filename, "(folder)")
+        print("Done")
         sys.exit(0)
 
     if args_parse.template:
-        print("Creating template 'input.yaml'...", end="")
-        template_input_yaml_filename = pkg_resources.resource_filename('pyace.data', 'input_template.yaml')
-        copyfile(template_input_yaml_filename, "input.yaml")
-        print("done")
-        sys.exit(0)
+        generate_template_input()
 
     if args_parse.dry_run:
         log.info("====== DRY RUN ======")
@@ -144,12 +154,14 @@ def main(args):
         log_file_name = args_parse.log
         log.info("Redirecting log into file {}".format(log_file_name))
         fileh = logging.FileHandler(log_file_name, 'a')
-        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        # formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        formatter = logging.Formatter(LOG_FMT)
         fileh.setFormatter(formatter)
-        # log = logging.getLogger()
         log.addHandler(fileh)
 
     log.info("Start pacemaker")
+    log.info("Hostname: {}".format(hostname))
+    log.info("Username: {}".format(username))
     log.info("pacemaker/pyace version: {}".format(__version__))
     log.info("ace_evaluator   version: {}".format(get_ace_evaluator_version()))
     log.info("Loading {}... ".format(input_yaml_filename))
@@ -199,9 +211,8 @@ def main(args):
         # raise ValueError("'backend' section is not given")
 
     if "backend" in args_parse:
-        backend_config["evaluator"]=args_parse.backend
+        backend_config["evaluator"] = args_parse.backend
         log.info("Backend settings is overwritten from arguments: ", backend_config)
-
 
     if 'evaluator' in backend_config:
         evaluator_name = backend_config['evaluator']
@@ -289,8 +300,8 @@ def main(args):
             pred_data = predict_and_save(general_fit, target_bbasisconfig, general_fit.fitting_data,
                                          fname="train_pred.pckl.gzip")
             log.info("Ploting validation graphs")
-            plot_analyse_error_distributions(pred_data, fig_prefix="train_",fig_path="report",
-                                             imagetype=backend_config.get("imagetype","png"))
+            plot_analyse_error_distributions(pred_data, fig_prefix="train_", fig_path="report",
+                                             imagetype=backend_config.get("imagetype", "png"))
 
         if general_fit.test_data is not None:
             log.info("For test data")
@@ -298,7 +309,88 @@ def main(args):
                                          fname="test_pred.pckl.gzip")
             log.info("Ploting validation graphs")
             plot_analyse_error_distributions(pred_data, fig_prefix="test_", fig_path="report",
-                                             imagetype=backend_config.get("imagetype","png"))
+                                             imagetype=backend_config.get("imagetype", "png"))
+
+
+def generate_template_input():
+    print("Generating 'input.yaml'")
+    readline.parse_and_bind("tab: complete")
+
+    # 1. Training set size
+    train_filename = input("Enter training dataset filename (ex.: data.pckl.gzip, [TAB] - autocompletion): ")
+    testset_size_inp = float(input("Enter test set fraction or size (ex.: 0.05 or [ENTER] - no test set): ") or 0)
+
+    # 2. Elements
+    elements_str = input("""Please enter list of elements (ex.: "Cu", "AlNi", [ENTER] - determine from dataset): """)
+    if elements_str:
+        patt = re.compile("([A-Z][a-z]?)")
+        elements = patt.findall(elements_str)
+        elements = sorted(elements)
+    else:
+        # determine from training set
+        print("Trying to load {}".format(train_filename))
+        df = pd.read_pickle(train_filename, compression="gzip")
+        if 'ase_atoms' in df.columns:
+            print("Determining available elements...")
+            elements_set = set()
+            df["ase_atoms"].map(lambda at: elements_set.update(at.get_chemical_symbols()));
+            elements = sorted(elements_set)
+            print("Found elements: ", elements)
+        else:
+            print("ERROR! No `ase_atoms` column found")
+            sys.exit(1)
+
+    print("Number of elements: ", len(elements))
+    print("Elements: ", elements)
+
+    # number of functions per element
+    number_of_functions_per_element = int(input(
+        """Enter number of functions per element ([ENTER] - default 700): """) or 700)
+    print("Number of functions per element: ", number_of_functions_per_element)
+
+    cutoff = float(input("Enter cutoff (Angstrom, default:7.0): ") or 7.0)
+    print("Cutoff: ", cutoff)
+
+    # weighting scheme
+    default_energy_based_weighting = """{ type: EnergyBasedWeightingPolicy, DElow: 1.0, DEup: 10.0, DFup: 50.0, DE: 1.0, DF: 1.0, wlow: 0.75, energy: convex_hull, reftype: all,seed: 42}"""
+    weighting = None
+    while True:
+        weighting_inp = input(
+            "Enter weighting scheme type - `uniform` or `energy` ([ENTER] - `uniform`): ") or 'uniform'
+        if weighting_inp in ['uniform', 'energy']:
+            break
+    if weighting_inp == "energy":
+        weighting = default_energy_based_weighting
+        print("Use EnergyBasedWeightingPolicy: ", weighting)
+    else:
+        weighting = None
+        print("Use UniformWeightingPolicy")
+
+    template_input_yaml_filename = pkg_resources.resource_filename('pyace.data', 'input_template.yaml')
+    copyfile(template_input_yaml_filename, "input.yaml")
+    with open("input.yaml", "r") as f:
+        input_yaml_text = f.read()
+
+    input_yaml_text = input_yaml_text.replace("{{ELEMENTS}}", str(elements))
+    input_yaml_text = input_yaml_text.replace("{{CUTOFF}}", str(cutoff))
+    input_yaml_text = input_yaml_text.replace("{{DATAFILENAME}}", train_filename)
+    input_yaml_text = input_yaml_text.replace("{{number_of_functions_per_element}}",
+                                              "number_of_functions_per_element: {}".format(
+                                                  number_of_functions_per_element))
+    if weighting:
+        input_yaml_text = input_yaml_text.replace("{{WEIGHTING}}", "weighting: " + weighting)
+    else:
+        input_yaml_text = input_yaml_text.replace("{{WEIGHTING}}", "")
+
+    if testset_size_inp > 0:
+        input_yaml_text = input_yaml_text.replace("{{test_size}}", "test_size: {}".format(testset_size_inp))
+    else:
+        input_yaml_text = input_yaml_text.replace("{{test_size}}", "")
+
+    with open("input.yaml", "w") as f:
+        print(input_yaml_text, file=f)
+    print("Input file is written into `input.yaml`")
+    sys.exit(0)
 
 
 def predict_and_save(general_fit, target_bbasisconfig, structures_dataframe, fname):
