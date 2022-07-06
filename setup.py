@@ -132,8 +132,8 @@ setup(
     # cmdclass=dict(build_ext=CMakeBuild),
     cmdclass=versioneer.get_cmdclass(dict(build_ext=CMakeBuild)),
     zip_safe=False,
-    url='https://git.noc.ruhr-uni-bochum.de/atomicclusterexpansion/pyace',
-    install_requires=['numpy', 'ase', 'pandas>=1.2.2', 'ruamel.yaml'],
+    url='https://github.com/ICAMS/python-ace',
+    install_requires=['numpy', 'ase', 'pandas', 'ruamel.yaml'],
     classifiers=[
         'Programming Language :: Python :: 3',
     ],
