@@ -450,7 +450,7 @@ def generate_functions_ext(potential_config):
             for key in generate_species_keys(elements, r=nary_val):
                 functions_ext[key].update(functions[nary_key])
     for k in functions:
-        if k not in KEYWORDS:
+        if k.strip() not in KEYWORDS:
             if isinstance(k, str):  # single species string
                 key = tuple(element_patt.findall(k))
             else:
