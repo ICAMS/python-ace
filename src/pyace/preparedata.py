@@ -21,6 +21,7 @@ FORCES_COLUMN = "forces"
 E_CORRECTED_PER_ATOM_COLUMN = "energy_corrected_per_atom"
 WEIGHTS_FORCES_COLUMN = "w_forces"
 WEIGHTS_ENERGY_COLUMN = "w_energy"
+WEIGHTS_FACTOR = "w_factor"
 REF_ENERGY_KW = "ref_energy"
 E_CHULL_DIST_PER_ATOM = "e_chull_dist_per_atom"
 E_FORMATION_PER_ATOM = "e_formation_per_atom"
@@ -641,6 +642,11 @@ class StructuresDatasetSpecification:
 
             log.info("Apply weights policy: " + str(self.weights_policy))
             self.df = self.weights_policy.generate_weights(self.df)
+        if WEIGHTS_FACTOR in self.df.columns:
+            log.info("Weights factor column `{}` is found, multiplying energy anf forces weights by this factor".format(
+                WEIGHTS_FACTOR))
+            self.df[WEIGHTS_ENERGY_COLUMN] *= self.df[WEIGHTS_FACTOR]
+            self.df[WEIGHTS_FORCES_COLUMN] *= self.df[WEIGHTS_FACTOR]
         return self.df
 
 

@@ -55,7 +55,7 @@ fit:
 
   {{WEIGHTING}}
 
-  optimizer: BFGS # or L-BFGS
+  optimizer: BFGS # or L-BFGS-B
 
   ## maximum number of minimize iterations
   maxiter: 2000

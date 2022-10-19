@@ -1,0 +1,294 @@
+python_code = """
+#cython: embedsignature=True, cdivision=True, boundscheck=False, \
+wraparound=False, initializedcheck=False
+__all__ = ['c_maxvol', 'c_rect_maxvol']
+import numpy as np
+cimport numpy as cnp
+from libc.stdlib cimport malloc, realloc, free
+from cython.parallel import prange
+
+from scipy.linalg.cython_blas cimport (
+        strsm, dtrsm, ctrsm, ztrsm,
+        scopy, ccopy, dcopy, zcopy,
+        sgemv, dgemv, cgemv, zgemv,
+        sger, dger, cgerc, cgeru, zgerc, zgeru,
+        isamax, idamax
+)
+
+from scipy.linalg.cython_lapack cimport (
+    sgetrf, dgetrf, cgetrf, zgetrf
+)
+
+cdef extern from "complex.h" nogil:
+    double cabs(double complex)
+    float cabsf(float complex)
+
+cdef extern from "math.h" nogil:
+    double fabs(double)
+    float fabsf(float)
+
+def c_rect_maxvol(A, tol=1., maxK=None, min_add_K=None, minK=None,
+        start_maxvol_iters=10, identity_submatrix=True, top_k_index=-1):
+    \"\"\"
+    Cython implementation of rectangular 2-volume maximization.
+    
+    For information see `rect_maxvol` function.
+    \"\"\"
+    cdef int N, r, id_sub
+    cdef cnp.ndarray lu, coef, basis
+    if type(A) != np.ndarray:
+        raise TypeError, "argument must be of numpy.ndarray type"
+    if len(A.shape) != 2:
+        raise ValueError, "argument must have 2 dimensions"
+    N, r = A.shape
+    if N <= r:
+        return np.arange(N, dtype=np.int32), np.eye(N, dtype=A.dtype)
+    lu = np.copy(A, order='F')
+    if maxK is None or maxK > N:
+        maxK = N
+    if maxK < r:
+        maxK = r
+    if minK is None or minK < r:
+        minK = r
+    if minK > N:
+        minK = N
+    if min_add_K is not None:
+        minK = max(minK, r+min_add_K)
+    if minK > maxK:
+        minK = maxK
+    if identity_submatrix:
+        id_sub = 1
+    else:
+        id_sub = 0
+    try:
+        if A.dtype is np.dtype(np.float32):
+            return srect_maxvol(N, r, <float *>lu.data, tol, minK, maxK,
+                start_maxvol_iters, id_sub, top_k_index)
+        elif A.dtype is np.dtype(np.float64):
+            return drect_maxvol(N, r, <double *>lu.data, tol, minK, maxK,
+                start_maxvol_iters, id_sub, top_k_index)
+        elif A.dtype is np.dtype(np.complex64):
+            return crect_maxvol(N, r, <float complex *>lu.data, tol, minK,
+                maxK, start_maxvol_iters, id_sub, top_k_index)
+        elif A.dtype is np.dtype(np.complex128):
+            return zrect_maxvol(N, r, <double complex*>lu.data, tol, minK,
+                maxK, start_maxvol_iters, id_sub, top_k_index)
+    except Exception:
+        raise
+
+def c_maxvol(A, tol=1.05, max_iters=100, top_k_index=-1):
+    \"\"\"
+    Cython implementation of 1-volume maximization.
+    
+    For information see `maxvol` function.
+    \"\"\"
+    cdef int N, r
+    cdef cnp.ndarray lu, coef, basis
+    if type(A) != np.ndarray:
+        raise TypeError, "argument must be of numpy.ndarray type"
+    if len(A.shape) != 2:
+        raise ValueError, "argument must have 2 dimensions"
+    N, r = A.shape
+    if N <= r:
+        return np.arange(N, dtype=np.int32), np.eye(N, dtype=A.dtype)
+    if tol < 1:
+        tol = 1.0
+    lu = np.copy(A, order='F')
+    coef = np.copy(lu, order='F')
+    basis = np.ndarray(r, dtype=np.int32)
+    try:
+        if A.dtype is np.dtype(np.float32):
+            smaxvol(N, r, <float *>lu.data, <float *>coef.data,
+                <int *>basis.data, tol, max_iters, top_k_index)
+        elif A.dtype == np.dtype(np.float64):
+            dmaxvol(N, r, <double *>lu.data, <double *>coef.data,
+                <int *>basis.data, tol, max_iters, top_k_index)
+        elif A.dtype is np.dtype(np.complex64):
+            cmaxvol(N, r, <float complex *>lu.data, <float complex *>
+                coef.data, <int *>basis.data, tol, max_iters, top_k_index)
+        elif A.dtype is np.dtype(np.complex128):
+            zmaxvol(N, r, <double complex*>lu.data, <double complex *>
+                coef.data, <int *>basis.data, tol, max_iters, top_k_index)
+        else:
+            raise TypeError("must be of float or complex type")
+    except Exception:
+        raise
+    return basis, coef
+
+"""
+
+maxvol_template = """
+cdef object ${D}rect_maxvol(int N, int R, $dtype *lu, $dtype2 tol, int minK,
+        int maxK, int start_maxvol_iters, int identity_submatrix,
+        int top_k_index):
+    cdef char cN = 'N'
+    cdef int i, j, i_one = 1, K, size = N*R
+    cdef $dtype d_one = 1.0, d_zero = 0.0, l
+    cdef $dtype2 tol2 = tol*tol, tmp, tmp2
+    cdef int *basis = <int *> malloc(N * sizeof(int))
+    cdef $dtype2 *chosen = <$dtype2 *> malloc(N * sizeof($dtype2))
+    cdef int [:]basis_buf
+    cdef int coef_realloc_step = R, coef_columns = R+coef_realloc_step
+    cdef $dtype *coef = <$dtype *> malloc(N * coef_columns * sizeof($dtype))
+    cdef $dtype *tmp_pointer
+    cdef $dtype2 *L = <$dtype2 *> malloc(N * sizeof($dtype2))
+    cdef $dtype *V = <$dtype *> malloc(N * sizeof($dtype))
+    cdef $dtype *tmp_row = <$dtype *> malloc(N * sizeof($dtype))
+    cdef $dtype [:,:] coef_buf
+    if top_k_index == -1 or top_k_index > N:
+        top_k_index = N
+    if top_k_index < R:
+        top_k_index = R
+    ${D}copy(&size, lu, &i_one, coef, &i_one)
+    tmp = 1.05 # tolerance for square maxvol
+    ${D}maxvol(N, R, lu, coef, basis, tmp, start_maxvol_iters, top_k_index)
+    # compute square length for each vector
+    for j in prange(top_k_index, schedule="static", nogil=True):
+        L[j] = 0.0
+        V[j] = 0.0
+        chosen[j] = 1.0
+    for i in range(R):
+        tmp_pointer = coef+i*N
+        for j in prange(top_k_index, schedule="static", nogil=True):
+            tmp = ${abs}(tmp_pointer[j])
+            L[j] += tmp*tmp
+    for i in prange(R, schedule="static", nogil=True):
+        L[basis[i]] = 0.0
+        chosen[basis[i]] = 0.0
+    i = i${D2}amax(&top_k_index, L, &i_one)-1
+    K = R
+    while K < minK or (L[i] > tol2 and K < maxK):
+        basis[K] = i
+        chosen[i] = 0.0
+        #${D}copy(&K, coef+i, &N, tmp_row, &i_one)
+        tmp_pointer = coef+i
+        for j in prange(K, schedule="static", nogil=True):
+            tmp_row[j] = tmp_pointer[j*N]$conj
+        ${D}gemv(&cN, &N, &K, &d_one, coef, &N, tmp_row, &i_one, &d_zero, V,
+            &i_one)
+        l = (-d_one)/(1+V[i])
+        $gerc(&N, &K, &l, V, &i_one, tmp_row, &i_one, coef, &N)
+        tmp = -l$dotreal
+        if coef_columns <= K:
+            coef_columns += coef_realloc_step
+            coef = <$dtype *> realloc(coef, N * coef_columns * sizeof($dtype))
+        tmp_pointer = coef+K*N
+        for j in prange(N, schedule="static", nogil=True):
+            tmp_pointer[j] = tmp*V[j]
+        for j in prange(top_k_index, schedule="static", nogil=True):
+            tmp2 = ${abs}(V[j])
+            L[j] -= tmp2*tmp2*tmp
+            L[j] *= chosen[j]
+        i = i${D2}amax(&top_k_index, L, &i_one)-1
+        K += 1
+    free(L)
+    free(V)
+    free(tmp_row)
+    C = np.ndarray((N, K), order='F', dtype=$npdtype)
+    coef_buf = C
+    for i in prange(K, schedule="static", nogil=True):
+        for j in range(N):
+            coef_buf[j, i] = coef[i*N+j]
+    free(coef)
+    if identity_submatrix == 1:
+        for i in prange(K, schedule="static", nogil=True):
+            tmp_pointer = &coef_buf[0, 0]+basis[i]
+            for j in range(K):
+                tmp_pointer[j*N] = 0.0
+            tmp_pointer[i*N] = 1.0
+    I = np.ndarray(K, dtype=np.int32)
+    basis_buf = I
+    for i in prange(K, schedule="static", nogil=True):
+        basis_buf[i] = basis[i]
+    free(basis)
+    return I, C
+
+cdef object ${D}maxvol(int N, int R, $dtype *lu, $dtype *coef, int *basis,
+        $dtype2 tol, int max_iters, int top_k_index):
+    cdef int *ipiv = <int *> malloc(R * sizeof(int))
+    cdef int *interchange = <int *> malloc(N * sizeof(int))
+    cdef $dtype *tmp_row = <$dtype *> malloc(R*sizeof($dtype))
+    cdef $dtype *tmp_column = <$dtype *> malloc(N*sizeof($dtype))
+    cdef int info = 0, size = N * R, i, j, tmp_int, i_one = 1, iters = 0
+    cdef int k_row, k_col
+    cdef char cR = 'R', cN = 'N', cU = 'U', cL = 'L'
+    cdef $dtype d_one = 1, alpha, max_value
+    cdef $dtype2 abs_max, tmp
+    if (ipiv == NULL or interchange == NULL or tmp_row == NULL or
+            tmp_column == NULL):
+        raise MemoryError("malloc failed to allocate temporary buffers")
+    if top_k_index == -1 or top_k_index > N:
+        top_k_index = N
+    if top_k_index < R:
+        top_k_index = R
+    ${D}getrf(&top_k_index, &R, lu, &N, ipiv, &info)
+    if info < 0:
+        raise ValueError("Internal maxvol_fullrank error, {} argument of"
+            " ${D}getrf_ had illegal value".format(info))
+    if info > 0:
+        raise ValueError("Input matrix must not be singular")
+    for i in prange(N, schedule="static", nogil=True):
+        interchange[i] = i
+    for i in prange(R, schedule="static", nogil=True):
+        j = ipiv[i]-1
+        if j != i:
+            tmp_int = interchange[i]
+            interchange[i] = interchange[j]
+            interchange[j] = tmp_int
+    free(ipiv)
+    for i in prange(R, schedule="static", nogil=True):
+        basis[i] = interchange[i]
+    free(interchange)
+    ${D}trsm(&cR, &cU, &cN, &cN, &N, &R, &d_one, lu, &N, coef, &N)
+    ${D}trsm(&cR, &cL, &cN, &cU, &N, &R, &d_one, lu, &N, coef, &N)
+    while iters < max_iters:
+        abs_max = -1
+        for k_row in range(top_k_index):
+            for k_col in range(R):
+                tmp = ${abs}(coef[k_row+k_col*N])
+                if tmp > abs_max:
+                    abs_max = tmp
+                    j = k_row
+                    i = k_col
+        max_value = coef[j+i*N]
+        if abs_max > tol:
+            ${D}copy(&R, coef+j, &N, tmp_row, &i_one)
+            tmp_row[i] -= d_one
+            ${D}copy(&N, coef+i*N, &i_one, tmp_column, &i_one)
+            basis[i] = j
+            alpha = (-d_one)/max_value
+            $geru(&N, &R, &alpha, tmp_column, &i_one, tmp_row, &i_one,
+                coef, &N)
+            iters += i_one
+        else:
+            break
+    free(tmp_row)
+    free(tmp_column)
+    return
+"""
+
+
+from string import Template
+
+code_maxvol = Template(maxvol_template)
+
+code_float = code_maxvol.substitute(D='s', D2='s', gerc='sger',
+    geru='sger', dtype='float', dtype2='float', npdtype='np.float32',
+    dotreal='', conj='', abs='fabsf')
+code_double = code_maxvol.substitute(D='d', D2='d', gerc='dger',
+    geru='dger', dtype='double', dtype2='double', npdtype='np.float64',
+    dotreal='', conj='', abs='fabs')
+code_floatcomplex = code_maxvol.substitute(D='c', D2='s', gerc='cgerc',
+    geru='cgeru', dtype='float complex', dtype2='float',
+    npdtype='np.complex64', dotreal='.real', conj='.conjugate()', abs='cabsf')
+code_doublecomplex = code_maxvol.substitute(D='z', D2='d', gerc='zgerc',
+    geru='zgeru',  dtype='double complex', dtype2='double',
+    npdtype='np.complex128', dotreal='.real', conj='.conjugate()', abs='cabs')
+
+f = open('_maxvol.pyx', 'w')
+f.write(python_code)
+f.write(code_float)
+f.write(code_double)
+f.write(code_floatcomplex)
+f.write(code_doublecomplex)
+f.close()

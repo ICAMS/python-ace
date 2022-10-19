@@ -10,8 +10,8 @@
 #include <pybind11/stl.h>
 #include <pybind11/complex.h>
 
-#include "ace_radial.h"
-#include "ace_types.h"
+#include "ace-evaluator/ace_radial.h"
+#include "ace-evaluator/ace_types.h"
 
 
 namespace py = pybind11;

@@ -12,7 +12,8 @@ find_program(YAML_CPP_CLANG_FORMAT_EXE NAMES clang-format)
 
 option(YAML_CPP_BUILD_CONTRIB "Enable yaml-cpp contrib in library" ON)
 option(YAML_CPP_BUILD_TOOLS "Enable parse tools" ON)
-option(YAML_BUILD_SHARED_LIBS "Build yaml-cpp shared library" ${BUILD_SHARED_LIBS})
+#option(YAML_BUILD_SHARED_LIBS "Build yaml-cpp shared library" ${BUILD_SHARED_LIBS})
+option(YAML_BUILD_SHARED_LIBS "Build yaml-cpp shared library" OFF)
 
 cmake_dependent_option(YAML_CPP_BUILD_TESTS
         "Enable yaml-cpp tests" ON

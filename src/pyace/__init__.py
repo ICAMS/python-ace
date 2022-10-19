@@ -15,7 +15,7 @@ from pyace.basis import BBasisFunctionSpecification, BBasisConfiguration, BBasis
     ACEBBasisFunction, ACECTildeBasisFunction, ACERadialFunctions, ACECTildeBasisSet, ACEBBasisSet, Fexp
 from pyace.calculator import ACECalculator
 from pyace.coupling import ACECouplingTree, generate_ms_cg_list, validate_ls_LS, is_valid_ls_LS, expand_ls_LS
-from pyace.evaluator import ACECTildeEvaluator, ACEBEvaluator,get_ace_evaluator_version
+from pyace.evaluator import ACECTildeEvaluator, ACEBEvaluator, get_ace_evaluator_version
 from pyace.pyacefit import PyACEFit
 from pyace.preparedata import *
 from pyace.radial import RadialFunctionsValues, RadialFunctionsVisualization, RadialFunctionSmoothness
@@ -36,8 +36,9 @@ __all__ = ["ACEAtomicEnvironment", "create_cube", "create_linear_chain", "aseato
            "RadialFunctionsValues", "RadialFunctionsVisualization", "RadialFunctionSmoothness",
            "StructuresDatasetSpecification",
 
-           "create_multispecies_basis_config"
+           "create_multispecies_basis_config",
            ]
 
 from . import _version
+
 __version__ = _version.get_versions()['version']

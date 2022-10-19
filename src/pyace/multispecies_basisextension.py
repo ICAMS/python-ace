@@ -3,7 +3,6 @@ import numpy as np
 import pickle
 import pkg_resources
 import re
-import ruamel.yaml as yaml
 
 from collections import defaultdict
 from copy import deepcopy
@@ -228,7 +227,9 @@ def species_key_to_bonds(key):
 def create_multispecies_basis_config(potential_config: Dict,
                                      unif_mus_ns_to_lsLScomb_dict: Dict = None,
                                      func_coefs_initializer="zero",
-                                     initial_basisconfig: BBasisConfiguration = None) -> BBasisConfiguration:
+                                     initial_basisconfig: BBasisConfiguration = None,
+                                     overwrite_blocks_from_initial_bbasis=False
+                                     ) -> BBasisConfiguration:
     """
     Creates a BBasisConfiguration using potential_config dict
 
@@ -281,12 +282,18 @@ def create_multispecies_basis_config(potential_config: Dict,
         }
     }
 
+
+
     :param potential_config: potential configuration dictionary, see above
     :param unif_mus_ns_to_lsLScomb_dict: "whitelist" (dictionary) of the { unify_mus_ns_comb(mus_comb, ns_comb): list of (ls,LS) }
     :param func_coefs_initializer: "zero" or "random"
     :param initial_basisconfig:
+    :param overwrite_blocks_from_initial_bbasis: (default False)
     :return: BBasisConfiguration
     """
+
+    overwrite_blocks_from_initial_bbasis = potential_config.get('overwrite_blocks_from_initial_bbasis',
+                                                                overwrite_blocks_from_initial_bbasis)
     element_ndensity_dict = None
     if initial_basisconfig is not None:
         # extract embeddings from initial_basisconfig
@@ -319,11 +326,20 @@ def create_multispecies_basis_config(potential_config: Dict,
                                                        )
     # compare with initial_basisconfig, if some blocks are missing in generated config - add them:
     if initial_basisconfig is not None:
-        new_block_names = [bl.block_name for bl in blocks_list]
-        for initial_block in initial_basisconfig.funcspecs_blocks:
-            if initial_block.block_name not in new_block_names:
-                blocks_list.append(initial_block)
-                log.info("Block {} is copied from initial potential".format(initial_block.block_name))
+        new_block_dict = {bl.block_name: bl for bl in blocks_list}
+        if overwrite_blocks_from_initial_bbasis: # overwrite new blocks with old-ones
+            for initial_block in initial_basisconfig.funcspecs_blocks:
+                new_block_dict[initial_block.block_name] = initial_block
+                log.info("Block {} is overwritten from initial potential".format(initial_block.block_name))
+                if initial_block.block_name not in new_block_dict:
+                    blocks_list.append(initial_block)
+            blocks_list = [bl for bl in new_block_dict.values()]
+        else: # only add missing blocks
+            for initial_block in initial_basisconfig.funcspecs_blocks:
+                if initial_block.block_name not in new_block_dict:
+                    blocks_list.append(initial_block)
+                    log.info("New block {} is added from initial potential".format(initial_block.block_name))
+
     new_basis_conf = BBasisConfiguration()
     new_basis_conf.deltaSplineBins = potential_config.get("deltaSplineBins", 0.001)
     new_basis_conf.funcspecs_blocks = blocks_list
@@ -337,8 +353,6 @@ def get_element_ndensity_dict(block_spec_dict):
     for el, spec_val in block_spec_dict.items():
         if len(el) == 1:
             element_ndensity_dict[el[0]] = spec_val['ndensity']
-    if len(element_ndensity_dict) == 0:
-        raise ValueError("`element_ndensity_dict` could be constructed from embeddings")
     return element_ndensity_dict
 
 
@@ -450,11 +464,12 @@ def generate_functions_ext(potential_config):
             for key in generate_species_keys(elements, r=nary_val):
                 functions_ext[key].update(functions[nary_key])
     for k in functions:
-        if k.strip() not in KEYWORDS:
+        if k not in KEYWORDS:
             if isinstance(k, str):  # single species string
                 key = tuple(element_patt.findall(k))
             else:
                 key = tuple(k)
+            # TODO extend permutations
             functions_ext[key].update(functions[k])
 
     # drop all keys, that has no specifications
@@ -576,7 +591,14 @@ def create_multispecies_basisblocks_list(potential_config: Dict,
         with open(default_mus_ns_uni_to_rawlsLS_np_rank_filename, "rb") as f:
             unif_mus_ns_to_lsLScomb_dict = pickle.load(f)
 
-    element_ndensity_dict = element_ndensity_dict or get_element_ndensity_dict(blocks_specifications_dict)
+    element_ndensity_dict =  element_ndensity_dict or {}
+    constr_element_ndensity_dict = get_element_ndensity_dict(blocks_specifications_dict)
+    for k, v in constr_element_ndensity_dict.items():
+        if k not in element_ndensity_dict:
+            element_ndensity_dict[k] = v
+    if not element_ndensity_dict:
+        raise ValueError("`element_ndensity_dict` neither provided nor constructed")
+
     blocks_list = []
     for elements_vec, block_spec_dict in blocks_specifications_dict.items():
         if verbose:
@@ -637,7 +659,7 @@ def create_species_block(elements_vec: List, block_spec_dict: Dict,
                             if func_coefs_initializer == "zero":
                                 coefs = [0] * ndensity
                             elif func_coefs_initializer == "random":
-                                coefs = np.random.randn(ndensity)*1e-4
+                                coefs = np.random.randn(ndensity) * 1e-4
                             else:
                                 raise ValueError(
                                     "Unknown func_coefs_initializer={}. Could be only 'zero' or 'random'".format(

@@ -5,12 +5,12 @@
 #include <vector>
 #include <string>
 
-#include "ace_arraynd.h"
-#include "ace_timing.h"
-#include "ace_evaluator.h"
-#include "ace_b_evaluator.h"
-#include "ace_recursive.h"
-#include "ace_version.h"
+#include "ace-evaluator/ace_arraynd.h"
+#include "ace-evaluator/ace_timing.h"
+#include "ace-evaluator/ace_evaluator.h"
+#include "ace/ace_b_evaluator.h"
+#include "ace-evaluator/ace_recursive.h"
+#include "ace-evaluator/ace_version.h"
 
 #include <pybind11/stl_bind.h>
 
@@ -57,6 +57,9 @@ PYBIND11_MODULE(evaluator, m) {
             .def(py::init<>())
             .def(py::init<ACEBBasisSet &>(), py::arg("bBasisSet"))
             .def(py::init<BBasisConfiguration &>(), py::arg("bBasisConfiguration"))
+            .def("load_active_set", &ACEBEvaluator::load_active_set, py::arg("asi_filename"),
+                 py::arg("is_linear") = true, py::arg("is_auto_determine") = true)
+            .def("set_active_set", &ACEBEvaluator::set_active_set, py::arg("species_type_active_set_inv"))
             .def("set_basis", &ACEBEvaluator::set_basis, R"mydelimiter(
 
     Set a basis to the evaluator
@@ -69,11 +72,7 @@ PYBIND11_MODULE(evaluator, m) {
     -------
     None
 
-    )mydelimiter")
-//            .def_property("element_type_mapping",
-//                          [](const ACEBEvaluator &e) { return e.element_type_mapping.to_vector(); },
-//                          [](ACEBEvaluator &e, vector<int> v) { e.element_type_mapping = v; })
-            ;
+    )mydelimiter");
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

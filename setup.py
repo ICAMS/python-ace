@@ -1,16 +1,31 @@
 import os
-import re
-import sys
-import sysconfig
 import platform
-import subprocess
+import re
 import shutil
+import subprocess
+import sys
 
 from distutils.version import LooseVersion
 from setuptools import setup, find_packages, Extension
 from setuptools.command.build_ext import build_ext
+from setuptools.command.install import install
 
 import versioneer
+
+
+class InstallMaxVolPyLocalPackage(install):
+    def run(self):
+        install.run(self)
+        returncode = subprocess.call(
+            "pip install Cython; cd lib/maxvolpy; python setup.py install; cd ../..", shell=True
+        )
+        if returncode != 0:
+            print("=" * 40)
+            print("=" * 16, "WARNING", "=" * 17)
+            print("=" * 40)
+            print("Installation of `lib/maxvolpy` return {} code!".format(returncode))
+            print("Active learning/selection of active set will not work!")
+
 
 class CMakeExtension(Extension):
     def __init__(self, name, target=None, sourcedir=''):
@@ -88,8 +103,8 @@ class CMakeBuild(build_ext):
         print()  # Add an empty line for cleaner output
 
 
-# if sys.version_info < (3, 7) or sys.version_info >= (3, 9):
-#     sys.exit('Sorry, only Python 3.7/3.8 are supported, but version ' + str(sys.version_info) + ' found')
+if sys.version_info < (3, 7):
+    sys.exit('Sorry, only Python>=3.7 are supported, but version ' + str(sys.version_info) + ' found')
 
 with open('README.md') as readme_file:
     readme = readme_file.read()
@@ -103,6 +118,7 @@ try:
     shutil.copyfile('bin/pace_update_yaml_potential.py', 'bin/pace_update_yaml_potential')
     shutil.copyfile('bin/pace_timing.py', 'bin/pace_timing')
     shutil.copyfile('bin/pace_info.py', 'bin/pace_info')
+    shutil.copyfile('bin/pace_activeset.py', 'bin/pace_activeset')
     shutil.copyfile('bin/pace_collect.py', 'bin/pace_collect')
 except FileNotFoundError as e:
     print("File not found (skipping):", e)
@@ -129,11 +145,15 @@ setup(
                  CMakeExtension('pyace/calculator', target='calculator'),
                  ],
     # add custom build_ext command
-    # cmdclass=dict(build_ext=CMakeBuild),
-    cmdclass=versioneer.get_cmdclass(dict(build_ext=CMakeBuild)),
+    cmdclass=versioneer.get_cmdclass(dict(install=InstallMaxVolPyLocalPackage, build_ext=CMakeBuild)),
     zip_safe=False,
-    url='https://github.com/ICAMS/python-ace',
-    install_requires=['numpy', 'ase', 'pandas', 'ruamel.yaml'],
+    url='https://git.noc.ruhr-uni-bochum.de/atomicclusterexpansion/pyace',
+    install_requires=['numpy',
+                      'ase',
+                      'pandas',
+                      'ruamel.yaml',
+                      'psutil'
+                      ],
     classifiers=[
         'Programming Language :: Python :: 3',
     ],
@@ -142,5 +162,6 @@ setup(
         "input_template.yaml"
     ]},
     scripts=["bin/pacemaker", "bin/pace_yaml2yace", "bin/pace_update_ace",
-             "bin/pace_update_yaml_potential", "bin/pace_timing", "bin/pace_info", "bin/pace_collect"]
+             "bin/pace_update_yaml_potential", "bin/pace_timing",
+             "bin/pace_info", "bin/pace_activeset", "bin/pace_collect"]
 )

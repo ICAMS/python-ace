@@ -5,11 +5,10 @@ import getpass  # for getpass.getuser()
 import glob
 import logging
 import os
-import shutil
-
 import pkg_resources
 import re
 import readline
+import shutil
 import socket
 import sys
 
@@ -321,15 +320,21 @@ def generate_template_input():
     testset_size_inp = float(input("Enter test set fraction or size (ex.: 0.05 or [ENTER] - no test set): ") or 0)
 
     # 2. Elements
+    determine_elements_from_dataset = False
     elements_str = input("""Please enter list of elements (ex.: "Cu", "AlNi", [ENTER] - determine from dataset): """)
     if elements_str:
         patt = re.compile("([A-Z][a-z]?)")
         elements = patt.findall(elements_str)
         elements = sorted(elements)
+        determine_elements_from_dataset = False
     else:
         # determine from training set
-        print("Trying to load {}".format(train_filename))
-        df = pd.read_pickle(train_filename, compression="gzip")
+        determine_elements_from_dataset = True
+
+    # checking dataset
+    print("Trying to load {}".format(train_filename))
+    df = pd.read_pickle(train_filename, compression="gzip")
+    if determine_elements_from_dataset:
         if 'ase_atoms' in df.columns:
             print("Determining available elements...")
             elements_set = set()
@@ -339,6 +344,15 @@ def generate_template_input():
         else:
             print("ERROR! No `ase_atoms` column found")
             sys.exit(1)
+    if "energy_corrected" not in df.columns:
+        print("No corrected cohesive energy (`energy_corrected` column)  is found in dataset {}".format(train_filename))
+        resp = input("Do you want to use `energy` column as `energy_corrected`? (yes/no/default-no): ") or "no"
+        if resp == "yes":
+            df["energy_corrected"] = df["energy"]
+            print("Saving upgraded dataset into {}...".format(train_filename), end="")
+            df.to_pickle(train_filename, compression="gzip")
+            print("done")
+
 
     print("Number of elements: ", len(elements))
     print("Elements: ", elements)

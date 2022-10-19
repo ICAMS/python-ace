@@ -152,6 +152,7 @@ class FitMetrics:
         self.low_rmse_f = 0
         self.low_mae_f = 0
         self.low_max_abs_f = 0
+        self.low_rmse_f_comp= 0
 
         if dataframe is not None:
             try:
@@ -162,6 +163,7 @@ class FitMetrics:
                     nrgs = dataframe['energy_corrected'].to_numpy().reshape(-1, ) / nat.reshape(-1, )
                     emin = min(nrgs)
                     mask = (nrgs <= (emin + de_low))
+                nat = nat.astype(int)
                 mask_f = np.repeat(mask, nat.reshape(-1, ))
                 self.low_rmse_epa = np.sqrt(np.mean(de_pa[mask] ** 2))
                 self.low_mae_epa = np.mean(np.abs(de_pa[mask]))
@@ -172,7 +174,7 @@ class FitMetrics:
                 self.low_max_abs_f_comp = np.max(np.abs(df[mask_f]).flatten())  # per component
                 self.low_rmse_f_comp = np.sqrt(np.mean(df[mask_f] ** 2))  # per component
                 self.low_mae_f_comp = np.mean(np.abs(df[mask_f]).flatten())  # per component
-            except:
+            except Exception as e:
                 pass
 
 

@@ -187,7 +187,7 @@ namespace YAML_PACE {
             shared_node_ref m_pRef;
             using nodes = std::set<node *, less>;
             nodes m_dependencies;
-            size_t m_index;
+            size_t m_index{};
             static std::atomic<size_t> m_amount;
         };
     }  // namespace detail

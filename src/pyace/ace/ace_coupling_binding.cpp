@@ -3,9 +3,9 @@
 #include <pybind11/stl.h>
 #include <vector>
 #include <iterator>
-#include "ace_c_basisfunction.h"
-#include "ace_couplings.h"
-#include "ace_utils.h"
+#include "ace-evaluator/ace_c_basisfunction.h"
+#include "ace-evaluator/ace_utils.h"
+#include "ace/ace_couplings.h"
 
 namespace py = pybind11;
 using namespace std;
@@ -13,11 +13,16 @@ using namespace std;
 ACEClebschGordan cs(12);
 vector<LS_TYPE> emptyLS(0);
 
-list<ms_cg_pair> generate_ms_cg_list_wrapper(const vector<LS_TYPE>& ls,
-                                            const vector<LS_TYPE>& LS,
-                                            const bool half_basis=true) {
-    list<ms_cg_pair> empty_res;
-    list<ms_cg_pair> ms_cs_pairs_list;
+vector<ms_cg_pair> generate_ms_cg_list_wrapper(const vector<LS_TYPE> &ls,
+                                               const vector<LS_TYPE> &LS,
+                                               LS_TYPE L = 0,
+                                               LS_TYPE M = 0,
+                                               const bool half_basis = true,
+                                               const bool check_is_even = true) {
+    vector<ms_cg_pair> empty_res;
+    vector<ms_cg_pair> ms_cs_pairs_list;
+
+    bool is_invariant_coupling = (L == 0) && (M == 0);
 
     const RANK_TYPE rank = ls.size();
 
@@ -25,37 +30,37 @@ list<ms_cg_pair> generate_ms_cg_list_wrapper(const vector<LS_TYPE>& ls,
     RANK_TYPE rankLind = 0;
     if (rank > 2) {
         rankL = rank - 2;
-        rankLind = rankL-1;
+        rankLind = rankL - 1;
     }
 
     vector<LS_TYPE> newLS;
-    if(rankL!=LS.size()) {
-        if (rank==1 || rank==2 ) //LS is empty
+    if (rankL != LS.size() && is_invariant_coupling) {
+        if (rank == 1 || rank == 2) //LS is empty
             newLS.resize(0);
-        else if (rank==3) { // LS has 1 element, 0 independent: LS[-1]==ls[-1]
+        else if (rank == 3) { // LS has 1 element, 0 independent: LS[-1]==ls[-1]
             newLS.resize(rankL);
-            newLS[0]=ls[rank-1];
-        } else if (rank==4) { // LS has 2 element, 1 independent: LS[-1]==LS[-2]
-            if(LS.size()==rankLind) { // independent value is given
+            newLS[0] = ls[rank - 1];
+        } else if (rank == 4) { // LS has 2 element, 1 independent: LS[-1]==LS[-2]
+            if (LS.size() == rankLind) { // independent value is given
                 newLS.resize(rankL);
-                newLS[0]=newLS[1]=LS[0];
+                newLS[0] = newLS[1] = LS[0];
             } else
                 return empty_res;
-        } else if (rank==5) { // LS has 3 elements, 2 independent: LS[-1] = ls[-1]
-            if(LS.size()==rankLind) {// independent value is given
+        } else if (rank == 5) { // LS has 3 elements, 2 independent: LS[-1] = ls[-1]
+            if (LS.size() == rankLind) {// independent value is given
                 newLS.resize(rankL);
-                for(RANK_TYPE r = 0; r<rankL-1; r++)
-                    newLS[r]=LS[r];
-                newLS[2] = ls[rank-1];
+                for (RANK_TYPE r = 0; r < rankL - 1; r++)
+                    newLS[r] = LS[r];
+                newLS[2] = ls[rank - 1];
             } else
                 return empty_res;
-        } else if (rank>=6) {// LS[-1]==LS[-2]
-            if(LS.size()==rankLind) {// independent value is given ( r=6, rL=rank-2=4, rLind=rank-3=3
+        } else if (rank >= 6) {// LS[-1]==LS[-2]
+            if (LS.size() == rankLind) {// independent value is given ( r=6, rL=rank-2=4, rLind=rank-3=3
                 newLS.resize(rankL);
-                for(RANK_TYPE r = 0; r<rankLind; r++)
-                    newLS[r]=LS[r];
+                for (RANK_TYPE r = 0; r < rankLind; r++)
+                    newLS[r] = LS[r];
                 //newLS
-                newLS[rankL-1] = newLS[rankL-2]; // two last elements of `LS` are equal
+                newLS[rankL - 1] = newLS[rankL - 2]; // two last elements of `LS` are equal
             } else
                 return empty_res;
         } else
@@ -63,35 +68,38 @@ list<ms_cg_pair> generate_ms_cg_list_wrapper(const vector<LS_TYPE>& ls,
     } else
         newLS = LS;
 
-    LS_TYPE Lmax=0;
-    for(int i=0;i<rank;i++) if(ls[i]>Lmax)  Lmax = ls[i];
-    for(int i=0;i<rankL;i++) if(newLS[i]>Lmax)  Lmax = newLS[i];
+    LS_TYPE Lmax = 0;
+    for (int i = 0; i < rank; i++) if (ls[i] > Lmax) Lmax = ls[i];
+    for (int i = 0; i < rankL; i++) if (newLS[i] > Lmax) Lmax = newLS[i];
 
-    if(cs.lmax<Lmax)
+    if (cs.lmax < Lmax)
         cs.init(Lmax);
 
-    int res = generate_ms_cg_list(rank, ls.data(), newLS.data(), half_basis,
-            cs, ms_cs_pairs_list);
+    int res = generate_equivariant_ms_cg_list(rank, ls.data(), newLS.data(),
+                                  L,M,
+                                  half_basis,
+                                  check_is_even,
+                                  cs, ms_cs_pairs_list);
 
     return ms_cs_pairs_list;
 }
 
-string ms_cg_pair_repr(ms_cg_pair& a) {
+string ms_cg_pair_repr(ms_cg_pair &a) {
     stringstream s;
-    s <<"<ms=[" << join(a.ms, ",") << "] : gen_cg=" << a.c <<">";
+    s << "<ms=[" << join(a.ms, ",") << "] : gen_cg=" << a.c << ">";
     return s.str();
 }
 
-bool ms_cg_pair_eq(ms_cg_pair& a,ms_cg_pair& b) {
-    return (a.ms==b.ms) & (a.c==b.c);
+bool ms_cg_pair_eq(ms_cg_pair &a, ms_cg_pair &b) {
+    return (a.ms == b.ms) & (a.c == b.c);
 }
 
-py::tuple expand_ls_LS_wrapper(int rank, vector<LS_TYPE> ls, vector<LS_TYPE> LS){
+py::tuple expand_ls_LS_wrapper(int rank, vector<LS_TYPE> ls, vector<LS_TYPE> LS) {
     expand_ls_LS(rank, ls, LS);
     return py::make_tuple(ls, LS);
 }
 
-bool is_valid_ls_LS(vector<LS_TYPE> ls, vector<LS_TYPE> LS){
+bool is_valid_ls_LS(vector<LS_TYPE> ls, vector<LS_TYPE> LS) {
     try {
         validate_ls_LS(ls, LS);
         return true;
@@ -125,17 +133,16 @@ PYBIND11_MODULE(coupling, m) {
             .def(py::init<int>(), py::arg("rank") = 2)
             .def_readonly("tree_indices_array", &ACECouplingTree::tree_indices_array);
 
-py::class_<ms_cg_pair>(m, "MsCgPair", R"mydelimiter(
+    py::class_<ms_cg_pair>(m, "MsCgPair", R"mydelimiter(
         pair of ms-combination and corresponding generalized Clebsch-Gordan coefficient
 )mydelimiter")
-            .def(py::init <>())
+            .def(py::init<>())
             .def_readonly("ms", &ms_cg_pair::ms)
-            .def_readonly("gen_cg",&ms_cg_pair::c)
+            .def_readonly("gen_cg", &ms_cg_pair::c)
             .def("__repr__", &ms_cg_pair_repr)
-            .def("__eq__", &ms_cg_pair_eq)
-            ;
+            .def("__eq__", &ms_cg_pair_eq);
 
-m.def("generate_ms_cg_list",&generate_ms_cg_list_wrapper, R"mydelimiter(
+    m.def("generate_ms_cg_list", &generate_ms_cg_list_wrapper, R"mydelimiter(
 
         Generate list of ms with corresponding generalized Clebsch-Gordan coefficients
 
@@ -145,14 +152,24 @@ m.def("generate_ms_cg_list",&generate_ms_cg_list_wrapper, R"mydelimiter(
             list of ls
         LS : List[Int] (default = [])
             list of LS (or lint)
+        L : Int (default = 0)
+            final coupling L
+        M : Int (default = 0)
+            final coupling M
         half_basis: boolean (default =True)
             whether generate only non-negative
             combinations of ms-vector, i.e. those
             that has first positive non-zero value
+        check_is_even: boolean (default =True)
+            whether to check if sum of ls is even
         Returns
         -------
             List[ms_cg_pair]
-)mydelimiter", py::arg("ls"), py::arg("LS")=emptyLS, py::arg("half_basis")=true);
+)mydelimiter", py::arg("ls"), py::arg("LS") = emptyLS,
+          py::arg("L") = 0,
+          py::arg("M") = 0,
+          py::arg("half_basis") = true,
+          py::arg("check_is_even") = true);
 
 #ifdef VERSION_INFO
     m.attr("__version__") = VERSION_INFO;

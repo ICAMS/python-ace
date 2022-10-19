@@ -58,7 +58,8 @@ def get_actual_ladder_step(ladder_step_param: Union[int, float, List],
 
 
 def construct_bbasisconfiguration(potential_config: Dict,
-                                  initial_basisconfig: BBasisConfiguration = None) -> BBasisConfiguration:
+                                  initial_basisconfig: BBasisConfiguration = None,
+                                  overwrite_blocks_from_initial_bbasis=False) -> BBasisConfiguration:
     from pyace.multispecies_basisextension import single_to_multispecies_converter, create_multispecies_basis_config
     # for backward compatibility with pacemaker 1.0 potential_dict format
     check_backward_compatible_parameters(potential_config)
@@ -69,7 +70,8 @@ def construct_bbasisconfiguration(potential_config: Dict,
         # convert to new general multispecies format
         potential_config = single_to_multispecies_converter(potential_config)
 
-    return create_multispecies_basis_config(potential_config, initial_basisconfig=initial_basisconfig)
+    return create_multispecies_basis_config(potential_config, initial_basisconfig=initial_basisconfig,
+                                            overwrite_blocks_from_initial_bbasis=overwrite_blocks_from_initial_bbasis)
 
 
 def sort_funcspecs_list(lst: List[BBasisFunctionSpecification], ladder_type: str) -> List[BBasisFunctionSpecification]:

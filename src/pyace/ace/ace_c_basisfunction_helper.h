@@ -6,8 +6,8 @@
 #define PYACE_ACE_C_BASISFUNCTION_HELPER_H
 #include <pybind11/pybind11.h>
 
-#include "ace_c_basisfunction.h"
-#include "ace_b_basisfunction.h"
+#include "ace-evaluator/ace_c_basisfunction.h"
+#include "ace/ace_b_basisfunction.h"
 
 namespace py = pybind11;
 using namespace std;
