@@ -108,7 +108,7 @@ except FileNotFoundError as e:
     print("File not found (skipping):", e)
 
 setup(
-    name='pyace',
+    name='python-ace',
     version=versioneer.get_version(),
     author='Yury Lysogorskiy, Anton Bochkarev, Sarath Menon, Ralf Drautz',
     author_email='yury.lysogorskiy@rub.de',
