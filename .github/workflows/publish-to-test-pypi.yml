@@ -22,9 +22,22 @@ jobs:
     - name: Convert dependencies
       run: >-
         sed -i 's/==/>=/g' setup.py; cat setup.py
-    - name: Build
-      run: >-
-        python setup.py sdist bdist_wheel
+    - name: Python wheels manylinux build
+      # You may pin to the exact commit or the version.      
+      uses: RalfG/python-wheels-manylinux-build@v0.5.0-manylinux2014_x86_64
+#       with:
+        # Python versions to target, space-separated
+#         python-versions: # default is cp36-cp36m cp37-cp37m cp38-cp38 cp39-cp39 cp310-cp310
+        # pip packages required at build time, space-separated
+#         build-requirements: # optional, default is 
+        # yum packages to install, space-separated
+#         system-packages: # optional, default is 
+        # command to run before build, e.g. the execution of a script to perform additional build-environment setup
+#         pre-build-command: # optional, default is 
+        # path to python package to build, relative to repository root
+#         package-path: # optional, default is 
+        # extra arguments to pass to the `pip wheel` command, passed paths are relative to `package-path`
+#         pip-wheel-args: # optional, default is -w ./dist --no-deps
 #     - name: Publish distribution 📦 to PyPI
 #       if: startsWith(github.event.ref, 'refs/tags') || github.event_name == 'release'
 #       uses: pypa/gh-action-pypi-publish@master
