@@ -25,9 +25,9 @@ jobs:
     - name: Python wheels manylinux build
       # You may pin to the exact commit or the version.      
       uses: RalfG/python-wheels-manylinux-build@v0.5.0-manylinux2014_x86_64
-#       with:
+      with:
         # Python versions to target, space-separated
-#         python-versions: # default is cp36-cp36m cp37-cp37m cp38-cp38 cp39-cp39 cp310-cp310
+         python-versions: cp39-cp39 # default is cp36-cp36m cp37-cp37m cp38-cp38 cp39-cp39 cp310-cp310
         # pip packages required at build time, space-separated
 #         build-requirements: # optional, default is 
         # yum packages to install, space-separated
