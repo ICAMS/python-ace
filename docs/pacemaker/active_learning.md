@@ -80,9 +80,13 @@ With this setup you can run LAMMPS simulations and make use of per-atom extrapol
 (i.e. in regular dump and visualization) or per-structure `c_max_pace_gamma` maximum extrapolation grade in thermo_style.
 
 Two main scenarios:
+
 1. Exploring new structures (and dump extrapolative structures with `dump pace_dump`).
 In that case extrapolative structures will be stored into `extrapolative_structures.dump` file, that could be loaded 
 (i.e. with ASE) and DFT calculations could be performed with the tools of your choice.
+New DFT data can be added to training set and potential can be re-fitted (or up-fitted).
+This scenario is called *active learning.* 
+
 2. Performing normal simulations, observing extrapolation grade (printing `c_max_pace_gamma` variable)
 and stopping at extreme_extrapolation (with `fix halt`)  
 
