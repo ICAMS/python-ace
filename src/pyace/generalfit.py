@@ -12,7 +12,7 @@ import pyace
 from pyace.basis import ACEBBasisSet, BBasisConfiguration
 from pyace.basisextension import construct_bbasisconfiguration, get_actual_ladder_step
 from pyace.multispecies_basisextension import extend_multispecies_basis, expand_trainable_parameters, \
-    compute_bbasisset_train_mask
+    compute_bbasisset_train_mask, clean_bbasisconfig, reset_bbasisconfig
 from pyace.const import *
 from pyace.fitadapter import FitBackendAdapter
 from pyace.preparedata import get_fitting_dataset, normalize_energy_forces_weights
@@ -42,27 +42,6 @@ def get_username():
     else:
         return __username
 
-
-def clean_bbasisconfig(initial_bbasisconfig):
-    for block in initial_bbasisconfig.funcspecs_blocks:
-        block.lmaxi = 0
-        block.nradmaxi = 0
-        block.nradbaseij = 0
-        block.radcoefficients = []
-        block.funcspecs = []
-
-
-def reset_bbasisconfig(bconf):
-    """set crad=delta_nk, func.coeffs=[0...]"""
-    for block in bconf.funcspecs_blocks:
-        block.set_func_coeffs(np.zeros_like(block.get_func_coeffs()))
-        radcoefficients = np.array(block.radcoefficients)
-        if len(radcoefficients.shape) == 3:
-            # C_ nlk = delta_nk
-            radcoefficients[:, :, :] = 0.0
-            for nk in range(min(radcoefficients.shape[0], radcoefficients.shape[2])):
-                radcoefficients[nk, :, nk] = 1.0
-            block.set_radial_coeffs(radcoefficients.flatten())
 
 
 def setup_inner_core_repulsion(basisconf, r_in, delta_in=0.1, rho_cut=5, drho_cut=5,
@@ -223,22 +202,14 @@ class GeneralACEFit:
                     number_of_functions_per_element = potential_config["functions"]["number_of_functions_per_element"]
                     target_bbasis = ACEBBasisSet(self.target_bbasisconfig)
                     nelements = target_bbasis.nelements
-                    ladder_step = number_of_functions_per_element * nelements // num_block
-                    expected_number_of_functions = ladder_step * num_block
+
                     log.info(
-                        """Target potential contains {total_number_of_functions} functions,"""
-                        """ but is limited to maximum {number_of_functions_per_element}"""
+                        """Number of functions in target potential"""
+                        """ is limited to maximum {number_of_functions_per_element}"""
                         """ functions per element  for {nelements} elements ({num_block} blocks)""".format(
-                            total_number_of_functions=self.target_bbasisconfig.total_number_of_functions,
                             number_of_functions_per_element=number_of_functions_per_element,
                             nelements=nelements,
                             num_block=num_block))
-
-                    initial_basisconfig = self.target_bbasisconfig.copy()
-                    clean_bbasisconfig(initial_basisconfig)
-                    current_bbasisconfig = extend_multispecies_basis(initial_basisconfig, self.target_bbasisconfig,
-                                                                     "power_order", ladder_step)
-                    self.target_bbasisconfig = current_bbasisconfig
                     log.info("Resulted potential contains {} functions".format(
                         self.target_bbasisconfig.total_number_of_functions))
 
