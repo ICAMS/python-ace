@@ -69,8 +69,7 @@ def batch_compute_projections_function_wrapper(batch_indices, potential_params):
         ace.compute(ae)
         nat = ae.n_atoms_real
         # flatten projections
-        pr = [[pp for p in pr1 for pp in p] + [pp for p in pr2 for pp in p] for pr1, pr2 in
-              zip(ace.basis_projections_rank1, ace.basis_projections)]
+        pr = ace.projections
         return pr
 
     if isinstance(batch_df, pd.Series):

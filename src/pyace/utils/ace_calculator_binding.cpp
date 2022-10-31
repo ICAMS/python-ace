@@ -5,9 +5,9 @@
 #include <vector>
 #include <string>
 
-#include "ace_atoms.h"
-#include "ace_evaluator.h"
-#include "ace_calculator.h"
+#include "ace-evaluator/ace_evaluator.h"
+#include "extra/ace_atoms.h"
+#include "extra/ace_calculator.h"
 #include "ace_pybind_common.h"
 
 namespace py = pybind11;
@@ -35,8 +35,11 @@ py::class_<ACECalculator>(m, "ACECalculator", R"mydelimiter(
         .def_readonly("energy", &ACECalculator::energy)
         .def_property_readonly("energies", [](const ACECalculator &calc) { return calc.energies.to_vector(); })
         .def_property_readonly("virial", [](const ACECalculator &calc) { return calc.virial.to_vector(); })
-    .def_readonly("basis_projections_rank1", &ACECalculator::basis_peratom_projections_rank1)
-    .def_readonly("basis_projections", &ACECalculator::basis_peratom_projections)
+        .def_readonly("projections", &ACECalculator::projections)
+        .def_readonly("rhos", &ACECalculator::rhos)
+        .def_readonly("dF_drhos", &ACECalculator::dF_drhos)
+        .def_readonly("dE_dc", &ACECalculator::dE_dc)
+        .def_readonly("gamma_grade",&ACECalculator::gamma_grade)
     ;
 
 

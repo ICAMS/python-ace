@@ -1,11 +1,12 @@
 import numpy as np
 
 from ase.calculators.calculator import Calculator, all_changes
+from ase.io import write
 
+from pyace.atomicenvironment import aseatoms_to_atomicenvironment_old, aseatoms_to_atomicenvironment
 from pyace.basis import ACEBBasisSet, ACECTildeBasisSet, BBasisConfiguration
 from pyace.calculator import ACECalculator
 from pyace.catomicenvironment import ACEAtomicEnvironment
-from pyace.atomicenvironment import aseatoms_to_atomicenvironment_old, aseatoms_to_atomicenvironment
 from pyace.evaluator import ACEBEvaluator, ACECTildeEvaluator, ACERecursiveEvaluator
 
 
@@ -32,6 +33,11 @@ PyACE ASE calculator
                   BBasisConfiguration object
 :param recursive_evaluator (default: False)
 :param recursive (default: False)
+:param keep_extrapolative_structures (default: False)
+:param dump_extrapolative_structures (default: False)
+:param gamma_lower_bound (default: 1.1)
+:param gamma_upper_bound (default: 5.0)
+:param stop_at_large_extrapolation (default: False)
 """
         if "recursive_evaluator" not in kwargs:
             kwargs["recursive_evaluator"] = False
@@ -39,6 +45,17 @@ PyACE ASE calculator
             kwargs["recursive"] = False
         if "fast_nl" not in kwargs:
             kwargs["fast_nl"] = True
+        if "gamma_lower_bound" not in kwargs:
+            kwargs["gamma_lower_bound"] = 1.1
+        if "gamma_upper_bound" not in kwargs:
+            kwargs["gamma_upper_bound"] = 5.0
+        if "stop_at_large_extrapolation" not in kwargs:
+            kwargs["stop_at_large_extrapolation"] = False
+        if "dump_extrapolative_structures" not in kwargs:
+            kwargs["dump_extrapolative_structures"] = False
+        if "keep_extrapolative_structures" not in kwargs:
+            kwargs["keep_extrapolative_structures"] = False
+
         Calculator.__init__(self, basis_set=basis_set, **kwargs)
         self.nl = None
         self.skin = 0.
@@ -55,7 +72,10 @@ PyACE ASE calculator
         self.virial = None
         self.stress = None
         self.projections = None
-
+        self.current_extrapolation_structure_index = 0
+        self.is_active_set_configured = False
+        self.extrapolative_structures_list = []
+        self.extrapolative_structures_gamma = []
         self.ace = ACECalculator()
         self.ace.set_evaluator(self.evaluator)
 
@@ -94,11 +114,25 @@ PyACE ASE calculator
                                                         elements_mapper_dict=self.elements_mapper_dict)
             else:
                 self.ae = aseatoms_to_atomicenvironment_old(atoms, cutoff=self.cutoff,
-                                                        skin=self.skin,
-                                                        elements_mapper_dict=self.elements_mapper_dict)
+                                                            skin=self.skin,
+                                                            elements_mapper_dict=self.elements_mapper_dict)
         except KeyError as e:
-            raise ValueError("Unsupported species type: " + str(e))
+            raise ValueError("Unsupported species type: " + str(e) + ". Supported elements: " + str(self.elements_name))
         return self.ae
+
+    def set_active_set(self, filename_or_list_of_active_set_inv):
+        if isinstance(self.evaluator, ACEBEvaluator):
+            if isinstance(filename_or_list_of_active_set_inv, str):
+                self.evaluator.load_active_set(filename_or_list_of_active_set_inv)
+                self.is_active_set_configured = True
+            elif isinstance(filename_or_list_of_active_set_inv, list):
+                self.evaluator.set_active_set(filename_or_list_of_active_set_inv)
+                self.is_active_set_configured = True
+            else:
+                raise ValueError("Unsopported type for `filename_or_list_of_active_set_inv`: {}".format(
+                    type(filename_or_list_of_active_set_inv)))
+        else:
+            raise ValueError("PyACECalculator.set_active_set works only with ACEBEvaluator/B-basis potential(.yaml)")
 
     def calculate(self, atoms=None, properties=['energy', 'forces', 'stress', 'energies'],
                   system_changes=all_changes):
@@ -113,9 +147,7 @@ PyACE ASE calculator
 
         self.energy, self.forces = np.array(self.ace.energy), np.array(self.ace.forces)
         nat = len(atoms)
-        proj1 = np.reshape(self.ace.basis_projections_rank1, (nat, -1))
-        proj2 = np.reshape(self.ace.basis_projections, (nat, -1))
-        self.projections = np.concatenate([proj1, proj2], axis=1)
+        self.projections = np.reshape(self.ace.projections, (nat, -1))
 
         self.energies = np.array(self.ace.energies)
 
@@ -123,7 +155,8 @@ PyACE ASE calculator
             'energy': np.float64(self.energy.reshape(-1, )),
             'free_energy': np.float64(self.energy.reshape(-1, )),
             'forces': self.forces.astype(np.float64),
-            'energies': self.energies.astype(np.float64)
+            'energies': self.energies.astype(np.float64),
+            'gamma': np.array(self.ace.gamma_grade, dtype=np.float64)
         }
         if self.atoms.number_of_lattice_vectors == 3:
             self.volume = atoms.get_volume()
@@ -131,6 +164,43 @@ PyACE ASE calculator
             # swap order of the virials to fullfill ASE Voigt stresses order:  (xx, yy, zz, yz, xz, xy)
             self.stress = self.virial[[0, 1, 2, 5, 4, 3]] / self.volume
             self.results["stress"] = self.stress
+
+        # dump to the file the structure with gamma above extrapolation limit
+        if (self.parameters.dump_extrapolative_structures
+                or self.parameters.stop_at_large_extrapolation
+                or self.parameters.keep_extrapolative_structures):
+            if not self.is_active_set_configured:
+                raise RuntimeError("Active set is not configured, please do it with `set_active_set` method")
+
+            max_gamma = max(self.ace.gamma_grade)
+            if max_gamma > self.parameters.gamma_upper_bound:
+                msg = "Upper extrapolation threshold exceed: max(gamma) = {}".format(max_gamma)
+                print(msg)
+                if self.parameters.keep_extrapolative_structures:
+                    self.extrapolative_structures_list.append(atoms.copy())
+                    self.extrapolative_structures_gamma.append(max_gamma)
+
+                if self.parameters.dump_extrapolative_structures:
+                    self.dump_current_configuration(atoms, max_gamma)
+
+                if self.parameters.stop_at_large_extrapolation:
+                    raise RuntimeError(msg)
+
+            elif max_gamma > self.parameters.gamma_lower_bound:
+                msg = "Lower extrapolation threshold exceed: max(gamma) = {}".format(max_gamma)
+                print(msg)
+                if self.parameters.keep_extrapolative_structures:
+                    self.extrapolative_structures_list.append(atoms.copy())
+                    self.extrapolative_structures_gamma.append(max_gamma)
+                if self.parameters.dump_extrapolative_structures:
+                    self.dump_current_configuration(atoms, max_gamma)
+
+    def dump_current_configuration(self, atoms, max_gamma):
+
+        fname = "extrapolation_{ind}_gamma={gamma}.cfg".format(ind=self.current_extrapolation_structure_index,
+                                                               gamma=max_gamma)
+        write(fname, atoms, format="cfg")
+        self.current_extrapolation_structure_index += 1
 
 
 class PyACEEnsembleCalculator(Calculator):
@@ -144,7 +214,8 @@ class PyACEEnsembleCalculator(Calculator):
                       BBasisConfiguration object
     """
     implemented_properties = ['energy', 'forces', 'stress', 'energies', 'free_energy',
-                              'energy_std', 'forces_std', 'stress_std', 'energies_std', 'free_energy_std'
+                              'energy_std', 'forces_std', 'stress_std', 'energies_std', 'free_energy_std',
+                              'energy_dev', 'forces_dev', 'stress_dev', 'energies_dev'
                               ]
 
     def __init__(self, basis_set, **kwargs):
@@ -172,6 +243,11 @@ PyACE ASE ensemble calculator
         self.forces_std = None
         self.stress_std = None
 
+        self.energy_dev = None
+        self.energies_dev = None
+        self.forces_dev = None
+        self.stress_dev = None
+
     def calculate(self, atoms=None, properties=('energy', 'forces', 'stress', 'energies',
                                                 'energy_std', 'forces_std', 'stress_std', 'energies_std',
                                                 ),
@@ -198,6 +274,10 @@ PyACE ASE ensemble calculator
                 cur_stress = cur_atoms.get_stress()
                 stress_lst.append(cur_stress)
 
+        energy_lst = np.array(energy_lst)
+        energies_lst = np.array(energies_lst)
+        forces_lst = np.array(forces_lst)
+
         # compute mean of energies and forces
         self.energy = np.mean(energy_lst, axis=0)
         self.energies = np.mean(energies_lst, axis=0)
@@ -207,6 +287,11 @@ PyACE ASE ensemble calculator
         self.energy_std = np.std(energy_lst, axis=0)
         self.energies_std = np.std(energies_lst, axis=0)
         self.forces_std = np.std(forces_lst, axis=0)
+
+        # compute maximum deviation of energies and forces
+        self.energy_dev = np.max(np.abs(energy_lst - self.energy), axis=0)
+        self.energies_dev = np.max(np.abs(energies_lst - self.energies), axis=0)
+        self.forces_dev = np.max(np.linalg.norm(forces_lst - self.forces, axis=2), axis=0)
 
         self.results = {
             # mean
@@ -219,14 +304,21 @@ PyACE ASE ensemble calculator
             'energy_std': np.float64(self.energy_std.reshape(-1, )),
             'free_energy_std': np.float64(self.energy_std.reshape(-1, )),
             'forces_std': self.forces_std.astype(np.float64),
-            'energies_std': self.energies_std.astype(np.float64)
+            'energies_std': self.energies_std.astype(np.float64),
+
+            # dev
+            'energy_dev': np.float64(self.energy_dev),
+            'energies_dev': np.float64(self.energies_dev),
+            'forces_dev': np.float64(self.forces_dev)
         }
 
         if self.atoms.number_of_lattice_vectors == 3:
             self.stress = np.mean(stress_lst, axis=0)
             self.stress_std = np.std(stress_lst, axis=0)
+            self.stress_dev = np.max(abs(stress_lst - self.stress), axis=0)
             self.results["stress"] = self.stress
             self.results["stress_std"] = self.stress_std
+            self.results["stress_dev"] = self.stress_dev
 
 
 if __name__ == '__main__':

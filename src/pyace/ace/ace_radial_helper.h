@@ -7,7 +7,7 @@
 
 #include <pybind11/pytypes.h>
 
-#include "ace_radial.h"
+#include "ace-evaluator/ace_radial.h"
 
 pybind11::tuple ACERadialFunctions_getstate(const AbstractRadialBasis *radial_functions);
 

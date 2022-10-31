@@ -89,7 +89,7 @@ class FitBackendAdapter:
         self.bbasisconfig = bbasisconfig
 
         if self.backend_config.evaluator_name == TENSORPOT_EVAL:
-            from tensorflow.python.framework.errors_impl import ResourceExhaustedError
+            from tensorflow.python.framework.errors_impl import ResourceExhaustedError, InternalError
             while True:
                 try:
                     self.setup_tensorpot(bbasisconfig, dataframe, loss_spec, trainable_parameters_dict)
@@ -98,8 +98,8 @@ class FitBackendAdapter:
                                                      test_dataframe=test_dataframe)
                     self.log_optimization_result()
                     return fit_res
-                except ResourceExhaustedError as e:
-                    log.error("ResourceExhaustedError errors encountered")
+                except (ResourceExhaustedError, InternalError) as e:
+                    log.error("{} errors encountered".format(e))
                     if self.backend_config.get(BACKEND_BATCH_SIZE_REDUCTION_KW, True):
                         batch_size = self.backend_config.get(BACKEND_BATCH_SIZE_KW, 10)
                         batch_size_reduction_factor = self.backend_config.get(BACKEND_BATCH_SIZE_REDUCTION_FACTOR_KW,
@@ -114,8 +114,8 @@ class FitBackendAdapter:
                         self.backend_config[BACKEND_BATCH_SIZE_KW] = new_batch_size
                     else:
                         log.error("Use `backend:batch_size_reduction` option for automatic batch size reduction")
-                        raise RuntimeError("ResourceExhaustedError errors encountered. " +
-                                           "Consider using `backend::{}=true` option for automatic batch size reduction".format(
+                        raise RuntimeError("{} errors encountered. " +
+                                           "Consider using `backend::{}=true` option for automatic batch size reduction".format(e,
                                                BACKEND_BATCH_SIZE_REDUCTION_KW))
                 except Exception as e:
                     raise e

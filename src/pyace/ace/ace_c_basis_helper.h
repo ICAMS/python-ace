@@ -10,9 +10,9 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 
-#include "ace_c_basisfunction.h"
-#include "ace_c_basis.h"
-#include "ace_b_basis.h"
+#include "ace-evaluator/ace_c_basisfunction.h"
+#include "ace-evaluator/ace_c_basis.h"
+#include "ace/ace_b_basis.h"
 
 namespace py = pybind11;
 using namespace std;

@@ -6,10 +6,10 @@
 #include <string>
 #include <cmath>
 
-#include "ace_types.h"
-#include "ace_arraynd.h"
-#include "ace_atoms.h"
-#include "ace_utils.h"
+#include "ace-evaluator/ace_types.h"
+#include "ace-evaluator/ace_arraynd.h"
+#include "ace-evaluator/ace_utils.h"
+#include "extra/ace_atoms.h"
 
 #include <pybind11/stl_bind.h>
 

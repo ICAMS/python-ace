@@ -8,8 +8,8 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 
-#include "ace_b_basis.h"
-#include "ace_utils.h"
+#include "ace/ace_b_basis.h"
+#include "ace-evaluator/ace_utils.h"
 
 namespace py = pybind11;
 using namespace std;
