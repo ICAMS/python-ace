@@ -58,7 +58,7 @@ And it contains the following entries:
 
  - Columns have the following meaning:
     - `ase_atoms`: is the instance of the [ASE](https://wiki.fysik.dtu.dk/ase/) Atoms class. This is the main form of storing structural information 
-    that `pacemkaer` relies on. It must contain information about atomic positions, corresponding atom types, pbc and lattice vectors.
+    that `pacemaker` relies on. It must contain information about atomic positions, corresponding atom types, pbc and lattice vectors.
     - `energy`: total energy of the corresponding `ase_atoms` structure (in eV).
     - `forces`: corresponding atomic forces in the form of 2D array with dimensions [NumberOfAtoms, 3] (in eV/A).
     - `energy_corrected`: total energy of a structure minus a reference energy.
