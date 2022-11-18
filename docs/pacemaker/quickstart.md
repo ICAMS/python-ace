@@ -32,8 +32,7 @@ pacemaker -t
 ```
 and enter requested information, such as dataset filename, test set size (optional), list of elements, cutoff,
 number of functions.  Doing so will produce an `input.yaml` file with the most general
-settings that can be adjusted for a particular task. Detailed overview of the input file parameters can be found in the
-[Input file](#inputfile.md) section below.
+settings that can be adjusted for a particular task. Detailed overview of the input file parameters can be found in the [Input file](inputfile.md) section below.
 
 ## Manual fitting dataset preparation
 
@@ -150,7 +149,7 @@ or to run the fitting process in the background:
 ```
 nohup pacemaker input.yaml &
 ```
-For more `pacemaker` command options see the corresponding [CLI](cli.md) https://github.com/ICAMS/python-ace/tree/master/examples.  
+For more `pacemaker` command options see the corresponding [CLI](cli.md).  
 
 Default behavior of pacemaker is to utilize a GPU accelerated fitting of ACE using `tensorpotential`. However, 
 parallelization over multiple GPU is not supported at the moment. Therefore, if your machine has a multi GPU setup one would need to select
@@ -210,7 +209,7 @@ In addition to RMSE, mean-absolute error (MAE) and maximum absolute error (MAX_A
 
 ## Using fitted potential
 
-Fitted potential can be used for calculations both within python/[ASE](https://wiki.fysik.dtu.dk/ase/) as well as [LAMMPS](https://github.com/lammps/lammps).
+Fitted potential can be used for calculations both within python/[ASE](https://wiki.fysik.dtu.dk/ase/) as well as [LAMMPS](https://docs.lammps.org/latest/pair_pace.html).
 
 ### ASE
 
@@ -256,7 +255,7 @@ that will generate `output_potential.yace` file, which you could use in LAMMPS i
 pair_style  pace 
 pair_coeff  * * output_potential.yace Al Ni
 ```
-
+See more details on [pair_style pace](https://docs.lammps.org/latest/pair_pace.html)
 
 #### LAMMPS compilation:
 
