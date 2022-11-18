@@ -30,79 +30,21 @@ This section is denoted by the key
 data:
   ...
 ```
-Fitting dataset could be queried automatically from `structdb` (if corresponding `structdborm` package is installed and 
-connection to database is configured, see `structdb.ini` file in home folder). Alternatively, dataset could be saved into
-file as a pickled `pandas` dataframe with special names for [columns](#fitting-dataset-preparation).
+Dataset could be saved into file as a pickled `pandas` dataframe with special names for [columns](#fitting-dataset-preparation).
 
-Example:
 ```YAML
-data: # dataset specification section
-  # data configuration section
-  config:
-    element: Al                    # element name
-    calculator: FHI-aims/PBE/tight # calculator type from `structdb` 
-    # ref_energy: -1.234           # single atom reference energy
-                                   # if not specified, then it will be queried from database
-
-  # seed: 42                       # random seed for shuffling the data  
-  # query_limit: 1000              # limiting number of entries to query from `structdb`
-                                   # ignored if reading from cache
-    
+data: 
+  filename: some_stored_dataset.pckl.gzip
   # cache_ref_df: False             # whether to store the queried or modified dataset into file, default - True
-  # filename: some.pckl.gzip       # force to read reference pickled dataframe from given file
   # ignore_weights: False          # whether to ignore energy and force weighting columns in dataframe
   # datapath: ../data              # path to folder with cache files with pickled dataframes 
 ```
-Alternatively, instead of `data::config` section, one can specify just the cache file 
-with pickled dataframe as `data::filename`:
-```YAML
-data: 
-  filename: small_df_tf_atoms.pckl
-  datapath: ../tests/
-```
-`data:datapath` option, if not provided, could be replaced with *environment variable* **PACEMAKERDATAPATH**
+`data:datapath` option, if not provided, could be replaced with *environment variable* **$PACEMAKERDATAPATH**
 
-Example of creating the **subselection of fitting dataframe** and saving it is given in `notebooks/data_preprocess.ipynb`
+Example of creating the **subselection of fitting dataframe** and saving it is given in `examples/data_selection/data_selection.ipynb`
 
-Example of generating **custom energy/forces weights** is given in `notebooks/data_custom_weights.ipynb`
+Example of generating **custom energy/forces weights** is given in `examples/custom-weights/data_custom_weights.ipynb`
 
-### Querying data (using structDB only)
-You can just query and preprocess data, without running potential fitting.
-Here is the minimalistic input YAML:
-
-```YAML
-# input.yaml file
-
-cutoff: 10.0  # use larger cutoff to have excess neighbour list
-data: # dataset specification section
-  config:
-    element: Al                    # element name
-    calculator: FHI-aims/PBE/tight # calculator type from `structdb`
-  seed: 42
-  datapath: ../data                # path to the directory with cache files
-  # query_limit: 100               # number of entries to query  
-```
-
-
-### Preparing the data / constructing neighbor list
-You can use existing `.pckl.gzip` dataset and generate all necessary columns for that, including neighbourlists
-Here is the minimalistic input YAML:
-
-```YAML
-# input.yaml file
-
-cutoff: 10.
-
-data:
-  filename: my_dataset.pckl.gzip
-
-backend:
-  evaluator: tensorpot  # pyace, tensorpot
-
-```
-
-Then execute `pacemaker --prepare-data input.yaml`
-Generation of the `my_dataset.pckl.gzip` from, for example, *pyiron* is shown in `notebooks/convert-pyiron-to-pacemaker.ipynb` 
 
 ### Test set
 
@@ -398,5 +340,3 @@ fit:
 ##  - float between 0 and 1 - relative ladder step size wrt. current basis step
 ##  - list of both above values - select maximum between two possibilities on each iteration  
 ```
-
-See `example/ladder_fit_pyace.yaml` and  `example/ladder_fit_tensorpot.yaml` example input files
