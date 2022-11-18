@@ -19,7 +19,7 @@ that will scan through all folders and subfolders and collect DFT free energies 
 and make a single atom corrections. Resulting dataset will be stored into `collected.pckl.gzip` file.
 
 If you need more flexibility for DFT dataset manipulation,
-please check [Manual fitting dataset preparation](#markdown-header-manual-fitting-dataset-preparation).
+please check [Manual fitting dataset preparation](#manual-fitting-dataset-preparation).
 
 ## Automatic input file generation
 
@@ -33,7 +33,7 @@ pacemaker -t
 and enter requested information, such as dataset filename, test set size (optional), list of elements, cutoff,
 number of functions.  Doing so will produce an `input.yaml` file with the most general
 settings that can be adjusted for a particular task. Detailed overview of the input file parameters can be found in the
-[section](#input-file-overview) below.
+[Input file](#inputfile.md) section below.
 
 ## Manual fitting dataset preparation
 
@@ -150,7 +150,7 @@ or to run the fitting process in the background:
 ```
 nohup pacemaker input.yaml &
 ```
-For more `pacemaker` command options see the corresponding [section](#pacemaker-commands).  
+For more `pacemaker` command options see the corresponding [CLI](cli.md) https://github.com/ICAMS/python-ace/tree/master/examples.  
 
 Default behavior of pacemaker is to utilize a GPU accelerated fitting of ACE using `tensorpotential`. However, 
 parallelization over multiple GPU is not supported at the moment. Therefore, if your machine has a multi GPU setup one would need to select
@@ -162,7 +162,7 @@ Note, that `tensorpotential` can be used without a GPU as well.
 
 During and after the fitting `pacemaker` produces several outputs, including:
 
-- `interim_potential_X.yaml`: current state of the potential at each iteration of [fit cycle](#fitting-settings) (i.g. X=0, 1, ...)
+- `interim_potential_X.yaml`: current state of the potential at each iteration of [fit cycle](inputfile.md#fitting-settings) (i.g. X=0, 1, ...)
 - `interim_potential_best_cycle.yaml`: best out of X interim potentials
 - `log.txt`: log file containing all current information including summary of the optimization steps.
 - `report`: folder containing figures displaying various error statistics and distributions. 
@@ -175,7 +175,7 @@ There are two main types of the information in the log file:
 ```text
 Iteration   #999  (1052 evals):     Loss: 0.000192 | RMSE Energy(low): 17.95 (16.79) meV/at | Forces(low): 7.89 (7.04) meV/A | Time/eval: 517.83 mcs/at
 ```
-where `Iteration` is the index of the optimization step performed by the [optimizer](#fitting-settings)
+where `Iteration` is the index of the optimization step performed by the [optimizer](inputfile.md#fitting-settings)
 (number in parentheses shows the number of function evaluation calls done by optimizaer), `Loss` 
 is the current value of the loss function, `RMSE Energy/Forces` is the current root mean-squared error 
 for energy/forces wrt. training dataset (numbers in paretheses show corresponding values for the structures which
@@ -203,8 +203,8 @@ Number of params./funcs:    232/86                                   Avg. time: 
 ```
 
 
-Every [display_step](#backend-specification) the summary of fit statistics is printed out. It displays the total 
-loss function value and contributions to it from energy, forces and other [regularizations parameters](#fitting-settings).
+Every [display_step](inputfile.md#backend-specification) the summary of fit statistics is printed out. It displays the total 
+loss function value and contributions to it from energy, forces and other [regularizations parameters](inputfile.md#fitting-settings).
 In addition to RMSE, mean-absolute error (MAE) and maximum absolute error (MAX_AE) are also printed.
 
 
@@ -245,7 +245,7 @@ forces = at1.get_forces()
 
 ### LAMMPS
 
-Using potential with [LAMMPS](https://www.lammps.org/) requires its [conversion](#potential-conversion) into **YACE** format with command
+Using potential with [LAMMPS](https://www.lammps.org/) requires its [conversion](utilities.md#potential-conversion) into **YACE** format with command
 ```asm
 pace_yaml2yace output_potential.yaml
 ```
