@@ -218,8 +218,10 @@ fit:
   options: {gtol: 5e-7}
 ```
 
-## How to create a custom weights dataframe for ExternalWeightingPolicy?
+## How to create a custom weights dataframe for ExternalWeightingPolicy? How to add more weights to certain structures ?
+Please check [this](https://github.com/ICAMS/python-ace/blob/master/examples/custom-weights/data_custom_weights.ipynb) example notebook.
 
-## How to add more weights to certain structures ?
+## How to compute B-basis projections for various structures?
+If you have  ACE potential (fitted or just constructed from scratch), then you can compute the B-basis projections for all atoms in your structure(s).
+Please check [this](https://github.com/ICAMS/python-ace/blob/master/examples/pyace/bbasis_projections.ipynb) example notebook.
 
-## How to run on-the-fly validation of the potential ?
