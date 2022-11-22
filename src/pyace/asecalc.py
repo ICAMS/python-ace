@@ -158,7 +158,7 @@ PyACE ASE calculator
             'energies': self.energies.astype(np.float64),
             'gamma': np.array(self.ace.gamma_grade, dtype=np.float64)
         }
-        if self.atoms.number_of_lattice_vectors == 3:
+        if self.atoms.cell.rank == 3:
             self.volume = atoms.get_volume()
             self.virial = np.array(self.ace.virial)  # order is: xx, yy, zz, xy, xz, yz
             # swap order of the virials to fullfill ASE Voigt stresses order:  (xx, yy, zz, yz, xz, xy)
