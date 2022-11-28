@@ -201,7 +201,7 @@ fit:
 ## I see different metrics text files during the fit, what is it ?
 
 All metrics files contain values of loss function (*loss*), its energy/forces contributions (*e_loss_contrib*, *f_loss_contrib*),
-regularization contributions (*reg_loss*) and also root mean squared error (RMSE)/ mean absolute error (MAE) (*rmse_**, *mae_**)
+regularization contributions (*reg_loss*) and also root mean squared error (RMSE)/ mean absolute error (MAE) (*rmse_*, *mae_*)
 of energies (*rmse_epa*,*mae_epa*) and forces (norm of error vector *rmse_f* and per-component *mae_f_comp*)  for whole dataset
 as well as for structures within 1eV/atom above minumum (*low_**).  
 `metrics.txt` and `test_metrics.txt` are update every train/test step, whereas `ladder_metrics.txt`/`test_ladder_metrics.txt`
