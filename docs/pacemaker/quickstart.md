@@ -19,7 +19,7 @@ that will scan through all folders and subfolders and collect DFT free energies 
 and make a single atom corrections. Resulting dataset will be stored into `collected.pckl.gzip` file.
 
 If you need more flexibility for DFT dataset manipulation,
-please check [Manual fitting dataset preparation](#manual-fitting-dataset-preparation).
+please check [Manual fitting dataset preparation](#manual_fitting_dataset_preparation).
 
 ## Automatic input file generation
 
