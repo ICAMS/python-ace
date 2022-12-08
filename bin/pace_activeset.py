@@ -1,6 +1,11 @@
 #!/usr/bin/env python
 import argparse
 import logging
+
+LOG_FMT = '%(asctime)s %(levelname).1s - %(message)s'
+logging.basicConfig(level=logging.INFO, format=LOG_FMT, datefmt="%Y/%m/%d %H:%M:%S")
+log = logging.getLogger()
+
 import os
 import psutil
 
@@ -13,14 +18,15 @@ from pyace.activelearning import compute_B_projections, compute_active_set, comp
     count_number_total_atoms_per_species_type, save_active_inverse_set
 from pyace.preparedata import sizeof_fmt
 
-log = logging.getLogger()
-
 parser = argparse.ArgumentParser(prog="pace_activeset",
                                  description="Utility to compute active set for PACE (.yaml) potential")
 
-# parser.add_argument("potential_file", help="B-basis file name (.yaml)", type=str, nargs='+', default=[])
 parser.add_argument("potential_file", help="B-basis file name (.yaml)", type=str)
-parser.add_argument("-d", "--dataset", help="Dataset file name, ex.: filename.pckl.gzip", type=str)
+
+parser.add_argument("-d", "--dataset", action='append',
+                    help="Dataset file name(s), ex.: -d filename.pckl.gzip [-d filename2.pckl.gzip]", type=str,
+                    required=True)
+
 parser.add_argument("-f", "--full", help="Compute active set on full (linearized) design matrix",
                     action='store_true')
 parser.add_argument("-b", "--batch_size", help="Batch size (number of structures) considered simultaneously."
@@ -55,18 +61,26 @@ else:
 data_path = os.environ.get("PACEMAKERDATAPATH", "")
 if data_path:
     log.info("Data path set to $PACEMAKERDATAPATH = {}".format(data_path))
-
-if os.path.isfile(dataset_filename):
-    dataset_filename = dataset_filename
-elif os.path.isfile(os.path.join(data_path, dataset_filename)):
-    dataset_filename = os.path.join(data_path, dataset_filename)
+if isinstance(dataset_filename, list):
+    df_list = []
+    for i, dsfn in enumerate(dataset_filename):
+        if os.path.isfile(dsfn):
+            dsfn = dsfn
+        elif os.path.isfile(os.path.join(data_path, dsfn)):
+            dsfn = os.path.join(data_path, dsfn)
+        else:
+            raise RuntimeError("File {} not found".format(dsfn))
+        log.info("Loading dataset #{}/{} from {}".format(i + 1, len(dataset_filename), dsfn))
+        df = pd.read_pickle(dsfn, compression="gzip")
+        log.info("Number of structures: {}".format(len(df)))
+        df_list.append(df)
+    df = pd.concat(df_list, axis=0)
+    df.reset_index(drop=True, inplace=True)
 else:
-    raise RuntimeError("File {} not found".format(dataset_filename))
+    raise ValueError("Unrecognized --dataset (-d) argument: {}".format(dataset_filename))
 
-df = pd.read_pickle(dataset_filename, compression="gzip")
-df.reset_index(drop=True, inplace=True)
-log.info("Number of structures: {}".format(len(df)))
-log.info("Potential file: ".format(potential_file))
+log.info("Total number of structures: {}".format(len(df)))
+log.info("Potential file: {}".format(potential_file))
 
 bconf = BBasisConfiguration(potential_file)
 bbasis = ACEBBasisSet(bconf)
