@@ -72,3 +72,23 @@ python setup.py install
 ```
 
 Now, `pacemaker` and other tools (`pace_yaml2yace`, `pace_info`, `pace_activeset`) should be available from the terminal, if corresponding conda environment is loaded.
+
+## Known installation issues
+
+### Segmentation fault
+If you see `Segmentation fault` error message, then check that you are using correct version of Python from corresponding conda environment,
+i.e. check that `which python` points to right location inside conda environment.
+
+### TypeError: Descriptors cannot not be created directly
+If you see this error message
+```
+TypeError: Descriptors cannot not be created directly.
+If this call came from a _pb2.py file, your generated code is out of date and must be regenerated with protoc >= 3.19.0.
+If you cannot immediately regenerate your protos, some other possible workarounds are:
+ 1. Downgrade the protobuf package to 3.20.x or lower.
+ 2. Set PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python (but this will use pure-Python parsing and will be much slower).```
+```
+then try to downgrade `protobuf` package, i.e.
+```
+pip install protobuf==3.20.*
+```

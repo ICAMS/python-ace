@@ -11,11 +11,15 @@ overview the output produced by `pacemaker`. Input parameters are detailed in th
 
 You can collect DFT calculations (currently only for VASP from `vasprun.xml` or `OUTCAR` files) by using `pace_collect`
 utility. For example, if your data is in `my_dft_calculation/` folder and subfolders, and single atoms reference energies
-are -0.123 eV for Al and  -0.456 eV for Cu, then run command 
+are -0.123 eV for Al and  -0.456 eV for Cu, then run command:
 ```
 pace_collect -wd path/to/my_dft_calculation --free-atom-energy Al:-0.123 Cu:-0.456
 ```
-that will scan through all folders and subfolders and collect DFT free energies (that are force-consistent) and forces 
+If you have free atom calculations (single atom in large volume) in subfolders, then it could be used as referenced with the following command:
+```
+pace_collect -wd path/to/my_dft_calculation --free-atom-energy auto 
+```
+Both commands will scan through all folders and subfolders and collect DFT free energies (that are force-consistent) and forces 
 and make a single atom corrections. Resulting dataset will be stored into `collected.pckl.gzip` file.
 
 If you need more flexibility for DFT dataset manipulation,
@@ -34,7 +38,7 @@ and enter requested information, such as dataset filename, test set size (option
 number of functions.  Doing so will produce an `input.yaml` file with the most general
 settings that can be adjusted for a particular task. Detailed overview of the input file parameters can be found in the [Input file](inputfile.md) section below.
 
-## Manual fitting dataset preparation
+## (optional) Manual fitting dataset preparation
 
 In order to use your data for fitting with `pacemaker` one would need to provide it in the form of `pandas` DataFrame.
 An example DataFrame can be red as:
@@ -123,7 +127,7 @@ or use the utility `pace_collect` from a top-level directory to collect VASP cal
 `collected.pckl.gzip` file.
 The resulting dataframe can be used for fitting with `pacemaker`.
 
-## Creating an input file
+### Creating an input file
  
 In this example we will use template as it is, however one would need to provide a path to the
 example dataset `exmpl_df.pckl.gzip`. This can be done by changing `filename` parameter in the `data` section of the 
@@ -209,38 +213,9 @@ In addition to RMSE, mean-absolute error (MAE) and maximum absolute error (MAX_A
 
 ## Using fitted potential
 
-Fitted potential can be used for calculations both within python/[ASE](https://wiki.fysik.dtu.dk/ase/) as well as [LAMMPS](https://docs.lammps.org/latest/pair_pace.html).
+Fitted potential can be used for calculations both in [LAMMPS](https://docs.lammps.org/latest/pair_pace.html) as well as  within [python/ASE](https://wiki.fysik.dtu.dk/ase/).
 
-### ASE
 
-Python interface of the ACE potential is realized via [ASE](https://wiki.fysik.dtu.dk/ase/) calculator:
-```python
-from ase import Atoms
-from pyace import PyACECalculator
-
-# use the example of the Atoms from the first section
-# Positions
-pos1 = [[2.04748516, 2.04748516, 0.        ],
-       [0.        , 0.        , 0.        ],
-       [2.04748516, 0.        , 1.44281847],
-       [0.        , 2.04748516, 1.44475745]]
-# Matrix of lattice vectors
-lattice1 = [[4.09497 , 0.      , 0.      ],
-       [0.      , 4.09497 , 0.      ],
-       [0.      , 0.      , 2.887576]]
-# Atomic symbols
-symbls1 = ['Al', 'Al', 'Ni', 'Ni']
-# create ASE atoms
-at1 = Atoms(symbols=symbls1, positions=pos1, cell=lattice1, pbc=True)
-
-# Create calculator
-calc = PyACECalculator('output_potential.yaml')
-# Attach it to the Atmos
-at1.set_calculator(calc)
-# Evaluate properties
-energy = at1.get_potential_energy()
-forces = at1.get_forces()
-```
 
 ### LAMMPS
 
@@ -308,6 +283,30 @@ in comparison to single-core CPU. In that case you should modify LAMMPS input sc
 
 pair_style  pace product 
 pair_coeff  * * output_potential.yace Al Ni
+```
+
+### ASE
+
+Python interface of the ACE potential is realized via [ASE](https://wiki.fysik.dtu.dk/ase/) calculator:
+```python
+from ase.build import bulk
+from pyace import PyACECalculator
+
+# Create simple ASE atoms structure
+atoms = bulk('Al', cubic=True)
+
+# Create calculator
+calc = PyACECalculator('output_potential.yaml')
+
+# Attach it to the Atmos
+atoms.set_calculator(calc)
+
+# Evaluate properties
+energy = atoms.get_potential_energy()
+forces = atoms.get_forces()
+
+# Check more properties
+calc.results
 ```
 
 ## More examples

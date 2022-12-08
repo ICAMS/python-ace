@@ -146,6 +146,7 @@ class ParseKwargs(argparse.Action):
                     val = splt[1]
             getattr(namespace, self.dest)[key] = val
 
+
 def get_free_atom_energy(df, el):
     mask = (df["n_" + el] == 1) & (df['NUMBER_OF_ATOMS'] == 1) & (df['volume_per_atom'] > 500)
     sel_df = df.loc[mask].sort_values('volume_per_atom', ascending=False)
@@ -164,6 +165,7 @@ def get_free_atom_energy(df, el):
         ref_epa = 0
     return ref_epa
 
+
 def main(args):
     ##############################################################################################
     parser = argparse.ArgumentParser()
@@ -175,8 +177,8 @@ def main(args):
                         type=str, default="collected.pckl.gzip", dest="output_dataset_filename")
 
     parser.add_argument('--free-atom-energy',
-                        help="dictionary of reference energies (i.e. Al:-0.123 Cu:-0.456 Zn:auto),"
-                             " default is zero and will be extracted from dataset",
+                        help="dictionary of reference energies (auto for extraction from dataset), i.e. `Al:-0.123 Cu:-0.456 Zn:auto`,"
+                             " default is zero. If option is `auto`, then it will be extracted from dataset",
                         nargs='*', dest="free_atom_energy", default=defaultdict(lambda: 0), action=ParseKwargs)
 
     parser.add_argument('--selection', type=str, default='last', dest='selection',
@@ -254,7 +256,7 @@ def main(args):
 
     free_atom_energy_dict.update(auto_determined_free_atom_energy)
 
-    free_atom_energy_dict = {el:free_atom_energy_dict[el] for el in elements}
+    free_atom_energy_dict = {el: free_atom_energy_dict[el] for el in elements}
     logger.info('Following atomic reference energies will be subtracted: {}'.format(
         ', '.join([str(k) + ':' + str(v) for k, v in free_atom_energy_dict.items()])))
 
@@ -265,7 +267,7 @@ def main(args):
     df['energy_corrected_per_atom'] = df['energy_corrected'] / df['NUMBER_OF_ATOMS']
 
     #######
-    df.drop(columns=n_el_cols+['comp_dict', 'volume', 'volume_per_atom','NUMBER_OF_ATOMS'], inplace=True)
+    df.drop(columns=n_el_cols + ['comp_dict', 'volume', 'volume_per_atom', 'NUMBER_OF_ATOMS'], inplace=True)
     df.to_pickle('{}'.format(output_dataset_filename), compression='gzip', protocol=4)
     logger.info('Store dataset into {}'.format(output_dataset_filename))
     ######
@@ -288,8 +290,6 @@ def main(args):
     logger.info('Std of force magnitude: {:.3f} eV/A'.format(df['magnitude_forces'].std()))
     logger.info('Minimum/maximum force magnitude: {:.3f}/{:.3f} eV/A'.format(df['magnitude_forces'].min(),
                                                                              df['magnitude_forces'].max()))
-
-
 
 
 if __name__ == "__main__":
