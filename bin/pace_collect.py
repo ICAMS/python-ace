@@ -180,7 +180,8 @@ def main(args):
                         nargs='*', dest="free_atom_energy", default=defaultdict(lambda: 0), action=ParseKwargs)
 
     parser.add_argument('--selection', type=str, default='last', dest='selection',
-                        help='Option to select from multiple configurations of single VASP calculation (default: last)')
+                        help='Option to select from multiple configurations of single VASP calculation:'
+                             ' first, last, all, first_and_last (default: last)')
 
     args_parse = parser.parse_args(args)
     working_dir = os.path.abspath(args_parse.working_dir)
