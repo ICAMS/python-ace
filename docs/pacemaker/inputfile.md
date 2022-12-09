@@ -290,17 +290,13 @@ into `interim_potential_ladder_step_{LADDER_STEP}.yaml`.
 
 ```YAML
 backend:
-  evaluator: tensorpot  # pyace, tensorpot
+  evaluator: tensorpot  
 
   ## for `tensorpot` evaluator, following options are available:
   # batch_size: 10            # batch size for loss function evaluation, default is 10
   # batch_size_reduction: True # automatic batch_size reduction if not enough memory (default - True) 
   # batch_size_reduction_factor: 1.618  # batch size reduction factor
   # display_step: 20          # frequency of detailed metric calculation and printing
-
-  ## for `pyace` evaluator, following options are available:
-  # parallel_mode: process    # process, serial  - parallelization mode for `pyace` evaluator
-  # n_workers: 4              # number of parallel workers for `process` parallelization mode
 ```
 Alternatively, backend could be selected as `pacemaker ... -b tensorpot` 
 
