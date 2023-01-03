@@ -50,6 +50,7 @@ The `pyace` (aka `python-ace`) package is located in [this repository](https://g
 It contains the `pacemaker` tools and other Python wrappers and utilities.
 
 To install `pyace`:
+
 1. Download `pyace` from [this repository](https://github.com/ICAMS/python-ace).
 * Clone with
 ```
@@ -62,7 +63,7 @@ cd python-ace
 wget https://github.com/ICAMS/python-ace/archive/refs/heads/master.zip
 cd python-ace-master
 ```
-3. Run installation script
+2. Run installation script
 ```
 pip install --upgrade .
 ```
