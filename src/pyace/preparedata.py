@@ -652,7 +652,8 @@ class StructuresDatasetSpecification:
 
 class EnergyBasedWeightingPolicy(StructuresDatasetWeightingPolicy):
 
-    def __init__(self, nfit=None,
+    def __init__(self,
+                 nfit=None,
                  cutoff=None,
                  DElow=1.0,
                  DEup=10.0,
@@ -660,6 +661,8 @@ class EnergyBasedWeightingPolicy(StructuresDatasetWeightingPolicy):
                  DF=1.0,
                  wlow=None,  # 0.75,
                  DFup=None,
+                 n_lower=None,
+                 n_upper=None,
                  reftype='all',
                  seed=None,
                  energy="convex_hull"):
@@ -702,11 +705,16 @@ class EnergyBasedWeightingPolicy(StructuresDatasetWeightingPolicy):
         self.cutoff = cutoff
 
         self.energy = energy  # cohesive or convex_hull
+        self.n_lower = n_lower
+        self.n_upper = n_upper
 
     def __str__(self):
         return (
-                "EnergyBasedWeightingPolicy(nfit={nfit}, energy={energy}, DElow={DElow}, DEup={DEup}, DFup={DFup}, DE={DE}, " + \
+                "EnergyBasedWeightingPolicy(nfit={nfit}, n_lower={n_lower}, n_upper={n_upper}, energy={energy}," + \
+                " DElow={DElow}, DEup={DEup}, DFup={DFup}, DE={DE}, " + \
                 "DF={DF}, wlow={wlow}, reftype={reftype},seed={seed})").format(nfit=self.nfit,
+                                                                               n_lower=self.n_lower,
+                                                                               n_upper=self.n_upper,
                                                                                cutoff=self.cutoff,
                                                                                DElow=self.DElow,
                                                                                DEup=self.DEup,
@@ -719,8 +727,28 @@ class EnergyBasedWeightingPolicy(StructuresDatasetWeightingPolicy):
 
     def generate_weights(self, df):
         if self.nfit is None:
-            self.nfit = len(df)
-            log.info("Set nfit to the dataset size {}".format(self.nfit))
+            if self.n_upper is None and self.n_lower is None:
+                self.nfit = len(df)
+                log.info("Set nfit to the dataset size {}".format(self.nfit))
+            elif self.n_upper is not None and self.n_lower is not None:
+                self.nfit = self.n_upper + self.n_lower
+                log.info("Set nfit ({}) = n_lower ({}) + n_upper ({})".format(self.nfit, self.n_lower, self.n_upper))
+            else:  # nfit=None, one of n_upper or n_lower not None
+                raise ValueError("nfit is None. Please provide both n_lower and n_upper")
+                # self.nfit = len(df)
+                # if self.n_upper is not None:
+                #     self.n_lower = self.nfit - self.n_upper
+                #     if self.n_lower < 0:
+                #         self.n_lower = 0
+                #         self.nfit = self.n_upper
+                # if self.n_lower is not None:
+                #     self.n_upper = self.nfit - self.n_lower
+                #     if self.n_upper < 0:
+                #         self.n_upper = 0
+                #         self.nfit = self.n_lower
+        else:  # nfit is not None
+            if self.n_upper is not None or self.n_lower is not None:
+                raise ValueError("nfit is not None. No n_lower or n_upper is expected")
 
         if self.reftype == "bulk":
             log.info("Reducing to bulk data")
@@ -780,23 +808,36 @@ class EnergyBasedWeightingPolicy(StructuresDatasetWeightingPolicy):
         log.info("{} structures between DElow={} eV/atom and DEup={} eV/atom".format(nup, self.DElow, self.DEup))
         log.info("all other structures were removed")
 
-        lowlist = df.index[elow_mask]
-        uplist = df.index[eup_mask]
+        low_candidate_list = df.index[elow_mask]
+        up_candidate_list = df.index[eup_mask]
 
         np.random.seed(self.seed)
+        # lower tier
+        if self.n_lower is not None:
+            if nlow <= self.n_lower:
+                low_selected_list = low_candidate_list
+            else:  # nlow>self.n_lower
+                low_selected_list = np.random.choice(low_candidate_list, self.n_lower, replace=False)
+        else:  # no n_lower provided
+            if nlow <= self.nfit:
+                low_selected_list = low_candidate_list
+            else:  # nlow >nfit
+                low_selected_list = np.random.choice(low_candidate_list, self.nfit, replace=False)
 
-        if nlow <= self.nfit:
-            takelist = lowlist
-        else:  # nlow >nfit
-            takelist = np.random.choice(lowlist, self.nfit, replace=False)
-
-        nremain = self.nfit - len(takelist)
-
-        if nremain <= nup:
-            takelist = np.hstack([takelist, np.random.choice(uplist, nremain, replace=False)])
+        # upper tier
+        if self.n_upper is not None:
+            if self.n_upper < nup:
+                up_selected_list = np.random.choice(up_candidate_list, self.n_upper, replace=False)
+            else:
+                up_selected_list = up_candidate_list
         else:
-            takelist = np.hstack([takelist, uplist])
+            nremain = self.nfit - len(low_selected_list)
+            if nremain <= nup:
+                up_selected_list = np.random.choice(up_candidate_list, nremain, replace=False)
+            else:
+                up_selected_list = up_candidate_list
 
+        takelist = np.hstack([low_selected_list, up_selected_list])
         np.random.shuffle(takelist)
 
         df = df.loc[takelist]  # .reset_index(drop=True)
@@ -808,7 +849,7 @@ class EnergyBasedWeightingPolicy(StructuresDatasetWeightingPolicy):
         log.info("{} structures were selected".format(len(df)))
 
         assert elow_mask.sum() + eup_mask.sum() == len(df)
-        if nremain == 0 and self.wlow is not None and self.wlow != 1.0:
+        if len(up_selected_list) == 0 and self.wlow is not None and self.wlow != 1.0:
             log.warning(("All structures were taken from low-tier, but relative weight of low-tier (wlow={}) " +
                          "is less than one. It will be adjusted to one").format(self.wlow))
             self.wlow = 1.0

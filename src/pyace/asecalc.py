@@ -147,7 +147,11 @@ PyACE ASE calculator
 
         self.energy, self.forces = np.array(self.ace.energy), np.array(self.ace.forces)
         nat = len(atoms)
-        self.projections = np.reshape(self.ace.projections, (nat, -1))
+        try:
+            self.projections = np.reshape(self.ace.projections, (nat, -1))
+        except ValueError:
+            # if projections has different shapes
+            self.projections = self.ace.projections
 
         self.energies = np.array(self.ace.energies)
 

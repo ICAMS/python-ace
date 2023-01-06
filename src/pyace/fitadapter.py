@@ -222,7 +222,7 @@ class FitBackendAdapter:
             if np.all(jacobian_factor):
                 jacobian_factor = None  # default value - train all
             else:
-                jacobian_factor = jacobian_factor.astype(np.float)
+                jacobian_factor = jacobian_factor.astype(float)
             batch_size = self.backend_config.get(BACKEND_BATCH_SIZE_KW, 10)
             fit_options = fit_config.get(FIT_OPTIONS_KW, None)
             self.fitter.fit(dataframe, test_df=test_dataframe, niter=fit_config[FIT_NITER_KW],
@@ -323,7 +323,7 @@ class FitBackendAdapter:
         datadf['w_forces'] = datadf['w_forces'].apply(np.reshape, newshape=[-1, 1])
         de = prediction['energy_pred'] - datadf[energy_col]
         df = prediction['forces_pred'] - datadf[force_col]
-        e_loss = np.float(np.sum(datadf['w_energy'] * de ** 2))
+        e_loss = float(np.sum(datadf['w_energy'] * de ** 2))
         f_loss = np.sum((datadf['w_forces'] * df ** 2).map(np.sum))
 
         mae_pae = np.mean(np.abs(de / datadf[nat_column]))

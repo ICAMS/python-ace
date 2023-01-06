@@ -28,6 +28,13 @@ def save_active_inverse_set(filename, A_active_inverse_set, elements_name=None):
         np.savez(f, **{elements_name[st]: v for st, v in A_active_inverse_set.items()})
 
 
+def load_active_inverse_set(filename):
+    asi_data = np.load(filename)
+    elements = sorted(asi_data.keys())
+    asi_dict = {i: asi_data[el] for i, el in enumerate(elements)}
+    return asi_dict
+
+
 def count_number_total_atoms_per_species_type(atomic_env_list: List[ACEAtomicEnvironment]) -> Dict[int, int]:
     """
     Helper function to count total number of atoms of each type in dataset
@@ -121,7 +128,7 @@ def compute_B_projections(bconf: Union[BBasisConfiguration, ACEBBasisSet, PyACEC
                                          n_projections[st]
                                          ), dtype=np.float64) for _, st in elements_mapper_dict.items()}
 
-    structure_ind_dict = {st: np.zeros(n_total_atoms_per_species_type[st], dtype=np.int)
+    structure_ind_dict = {st: np.zeros(n_total_atoms_per_species_type[st], dtype=int)
                           for _, st in elements_mapper_dict.items()}
 
     cur_inds = [0] * len(elements_mapper_dict)

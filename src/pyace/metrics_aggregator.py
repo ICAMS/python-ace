@@ -139,7 +139,7 @@ class FitMetrics:
         self.mae_f = np.mean(np.linalg.norm(df, axis=1))
         self.mae_f_comp = np.mean(np.abs(df).flatten())  # per component
 
-        self.e_loss = np.float(np.sum(self.w_e * de_pa ** 2))
+        self.e_loss = float(np.sum(self.w_e * de_pa ** 2))
         self.f_loss = np.sum(self.w_f * df ** 2)
         self.max_abs_e = np.max(np.abs(de))
         self.max_abs_epa = np.max(np.abs(de_pa))
