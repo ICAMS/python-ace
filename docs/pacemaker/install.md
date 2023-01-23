@@ -18,9 +18,9 @@ However, it is recommended to use it even if you don't have a GPU available.
 
 Install it using the following commands:
 
-1. Install Tensorflow
+1. Install Tensorflow (newer version should be also compatible)
 ```
-pip install tensorflow==2.8.0 # newer version should be also compatible
+pip install tensorflow==2.8.0 
 ```
 
 2. Download the `tensorpotential` from [this repository](https://github.com/ICAMS/TensorPotential).
