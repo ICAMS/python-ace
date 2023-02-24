@@ -190,7 +190,7 @@ void ACEDAG::insert_node(TDAGMAP &DAGmap, vector<int> a, vector<DOUBLE_TYPE> c) 
 
     // TODO: first try to find partitions into nodes that are already parents
     //       that way we will get more leaf nodes!
-    for (TPARTITION const &p : partitions) {
+    for (TPARTITION const &p: partitions) {
         /* this is the good case; the parent nodes are both already in the 
          * graph; add the new node and return. This is also the only place in the 
          * code where an actual insert happens. */
@@ -222,7 +222,7 @@ void ACEDAG::insert_node(TDAGMAP &DAGmap, vector<int> a, vector<DOUBLE_TYPE> c) 
      */
     TPARTITION longest;
     int longest_length = 0;
-    for (auto const &p : partitions) {
+    for (auto const &p: partitions) {
         int len = 0;
         if (DAGmap.count(p.first)) {
             len = p.first.size();
@@ -247,22 +247,22 @@ void ACEDAG::insert_node(TDAGMAP &DAGmap, vector<int> a, vector<DOUBLE_TYPE> c) 
 //        return;
     }
 
-    /* If there is a partition with one component already in the graph, 
-     * then we only need to add in the other component. Note that there will 
-     * always be at least one such partition, namely all those containing 
-     * a one-element node e.g. (1,2,3,4) -> (1,) (2,3,4)  then (1,) is 
-     * a one-particle basis function and hence always in the graph. 
+    /* If there is a partition with one component already in the graph,
+     * then we only need to add in the other component. Note that there will
+     * always be at least one such partition, namely all those containing
+     * a one-element node e.g. (1,2,3,4) -> (1,) (2,3,4)  then (1,) is
+     * a one-particle basis function and hence always in the graph.
      * If heuristic == 0, then we just take one of those partitionas and move on.
-     * 
+     *
      * We also accept the found partition if longest_length > 1.
-     * And we also accept it if we have a 2- or 3-correlation. 
+     * And we also accept it if we have a 2- or 3-correlation.
      */
 
     if ((heuristic == 0)
         || (longest_length > 1)
         || (a.size() <= 3)) {
-        /* insert the other node that isn't in the DAG yet 
-        * this is an artificial node so it gets zero-coefficients 
+        /* insert the other node that isn't in the DAG yet
+        * this is an artificial node so it gets zero-coefficients
         * This step is recursive, so more than one node might be inserted here */
         vector<DOUBLE_TYPE> cz(ndensity);
         for (int i = 0; i < ndensity; i++) cz[i] = 0.0;
@@ -297,9 +297,9 @@ void ACEDAG::insert_node(TDAGMAP &DAGmap, vector<int> a, vector<DOUBLE_TYPE> c) 
 
 
 
-    /* now we should be ready to insert the entire tuple `a` since there is now 
-     * an eligible parent pair. Here we recompute the partition of `a`, but 
-     * that's a small price to pay for a clearer code. Maybe this can be 
+    /* now we should be ready to insert the entire tuple `a` since there is now
+     * an eligible parent pair. Here we recompute the partition of `a`, but
+     * that's a small price to pay for a clearer code. Maybe this can be
      * optimized a bit by wrapping it all into a while loop or having a second
      * version of `insert_node` ... */
     insert_node(DAGmap, a, c);
@@ -310,8 +310,8 @@ TPARTITIONS ACEDAG::find_2partitions(vector<int> v) {
     int zo;
     TPARTITIONS partitions;
     TPARTITION part;
-    /* This is a fun little hack to extract all subsets of the indices 1:N 
-     * the number i will have binary representation with each digit indicating 
+    /* This is a fun little hack to extract all subsets of the indices 1:N
+     * the number i will have binary representation with each digit indicating
      * whether or not that index belongs to the selected subset */
     for (int i = 1; i < (1 << N) / 2; i++) {
         int N1 = 0, N2 = 0;
@@ -400,7 +400,7 @@ void ACERecursiveEvaluator::init(ACECTildeBasisSet *basis_set, int heuristic) {
     Y_cache.fill({0, 0});
 
     DY_cache.init(1, basis_set->lmax + 1, "dY_dense_cache");
-    DY_cache.fill({0.});
+    DY_cache.fill({0., 0.});
 
     //hard-core repulsion
     DCR_cache.init(1, "DCR_cache");
@@ -432,17 +432,16 @@ void ACERecursiveEvaluator::init(ACECTildeBasisSet *basis_set, int heuristic) {
     }  // end for-loop over mu0
 
     // finally empty the temporary arrays to clear up the memory...
-    // TODO 
+    // TODO
 }
 
 
 void ACERecursiveEvaluator::acejlformat(SPECIES_TYPE mu0) {
 
     int func_ms_ind = 0;
-    int func_ms_t_ind = 0;// index for dB
-    int j, jj, func_ind, ms_ind;
+    int func_ind, ms_ind;
 
-    const SHORT_INT_TYPE total_basis_size = basis_set->total_basis_size[mu0];
+    int total_basis_size = basis_set->total_basis_size[mu0];
     ACECTildeBasisFunction *basis = basis_set->basis[mu0];
 
     int AAidx = 0;
@@ -452,7 +451,7 @@ void ACERecursiveEvaluator::acejlformat(SPECIES_TYPE mu0) {
     LS_TYPE *ls;
     MS_TYPE *ms;
 
-    /* transform basis into new format: 
+    /* transform basis into new format:
        [A1 ... A_num1]
        [(i1,i2)(i1,i2)(...)(i1,i2,i3)(...)]
        where each ia represents an A_{ia}
@@ -468,7 +467,7 @@ void ACERecursiveEvaluator::acejlformat(SPECIES_TYPE mu0) {
     int num1 = 0;
 
 
-    /* create a 4D lookup table for the 1-p basis 
+    /* create a 4D lookup table for the 1-p basis
      * TODO: replace with a map??
      */
     Array4D<int> A_lookup(int(maxmu + 1), int(maxn), int(maxl + 1), int(2 * maxl + 1));
@@ -535,9 +534,9 @@ void ACERecursiveEvaluator::acejlformat(SPECIES_TYPE mu0) {
                 if (ms[t] > 0) pos_idx = t;
                 else if (ms[t] < 0) neg_idx = t;
 
-            // if neg_idx < pos_idx then this means that ms is non-zero 
-            // and that the first non-zero index is negative, hence this is 
-            // a negative-sign tuple which we want to combine into 
+            // if neg_idx < pos_idx then this means that ms is non-zero
+            // and that the first non-zero index is negative, hence this is
+            // a negative-sign tuple which we want to combine into
             // its opposite.
             if (neg_idx < pos_idx) {
                 // find the opposite tuple
@@ -586,7 +585,7 @@ void ACERecursiveEvaluator::acejlformat(SPECIES_TYPE mu0) {
     for (func_ind = 0; func_ind < total_basis_size; ++func_ind) {
         ACECTildeBasisFunction *func = &basis[func_ind];
         for (ms_ind = 0; ms_ind < (&basis[func_ind])->num_ms_combs; ++ms_ind, ++func_ms_ind) {
-            // check that the coefficients are actually non-zero 
+            // check that the coefficients are actually non-zero
             bool isnonzero = false;
             for (DENSITY_TYPE p = 0; p < ndensity; ++p)
                 if (func->ctildes[ms_ind * ndensity + p] != 0.0)
@@ -606,7 +605,7 @@ void ACERecursiveEvaluator::acejlformat(SPECIES_TYPE mu0) {
     Array2D<int> &AAspec = jl_AAspec[mu0];  // TODO: get from vector[mu0]
     AAspec.resize(num2, maxorder);
     jl_coeffs[mu0].resize(num2, ndensity); // TODO: get from vector[mu0]
-    AAidx = 0;                          // linear index into AA basis function 
+    AAidx = 0;                          // linear index into AA basis function
     int len_flat = 0;
     for (func_ind = 0; func_ind < total_basis_size; ++func_ind) {
         ACECTildeBasisFunction *func = &basis[func_ind];
@@ -620,7 +619,7 @@ void ACERecursiveEvaluator::acejlformat(SPECIES_TYPE mu0) {
         for (ms_ind = 0; ms_ind < func->num_ms_combs; ++ms_ind, ++func_ms_ind) {
             ms = &func->ms_combs[ms_ind * order];
 
-            // check that the coefficients are actually non-zero 
+            // check that the coefficients are actually non-zero
             bool iszero = true;
             for (DENSITY_TYPE p = 0; p < ndensity; ++p)
                 if (func->ctildes[ms_ind * ndensity + p] != 0.0)
@@ -641,7 +640,7 @@ void ACERecursiveEvaluator::acejlformat(SPECIES_TYPE mu0) {
         }
     }
 
-    // flatten the AAspec array 
+    // flatten the AAspec array
     jl_AAspec_flat[mu0].resize(len_flat);  // TODO: get from vector[mu0]
     int idx_spec = 0;
     for (int AAidx = 0; AAidx < jl_AAspec[mu0].get_dim(0); AAidx++)   // TODO: get from vector[mu0]
@@ -657,11 +656,10 @@ void ACERecursiveEvaluator::test_acejlformat(SPECIES_TYPE mu0) {
     Array1D<int> AAorders = jl_orders[mu0];
     cout << "num2 = " << AAorders.get_dim(0) << "\n";
     int func_ms_ind = 0;
-    int func_ms_t_ind = 0;// index for dB
-    int j, jj, func_ind, ms_ind;
+    int func_ind, ms_ind;
 
     SPECIES_TYPE mu_i = 0;
-    const SHORT_INT_TYPE total_basis_size = basis_set->total_basis_size[mu_i];
+    const int total_basis_size = basis_set->total_basis_size[mu_i];
     ACECTildeBasisFunction *basis = basis_set->basis[mu_i];
 
     RANK_TYPE order, t;
@@ -733,7 +731,7 @@ void ACERecursiveEvaluator::resize_neighbours_cache(int max_jnum) {
         Y_cache.fill({0, 0});
 
         DY_cache.resize(max_jnum, basis_set->lmax + 1);
-        DY_cache.fill({0});
+        DY_cache.fill({0, 0});
 
         //hard-core repulsion
         DCR_cache.init(max_jnum, "DCR_cache");
@@ -766,40 +764,38 @@ ACERecursiveEvaluator::compute_atom(int i, DOUBLE_TYPE **x, const SPECIES_TYPE *
     DOUBLE_TYPE *r_hat;
 
     SPECIES_TYPE mu_j;
-    RANK_TYPE r, rank, t;
+//    RANK_TYPE r, rank, t;
     NS_TYPE n;
     LS_TYPE l;
-    MS_TYPE m, m_t;
+    MS_TYPE m;
 
-    SPECIES_TYPE *mus;
-    NS_TYPE *ns;
-    LS_TYPE *ls;
-    MS_TYPE *ms;
+//    SPECIES_TYPE *mus;
+//    NS_TYPE *ns;
+//    LS_TYPE *ls;
+//    MS_TYPE *ms;
 
-    int j, jj, func_ind, ms_ind;
+    int j, jj;
     SHORT_INT_TYPE factor;
 
-    ACEComplex Y{0}, Y_DR{0.};
-    ACEComplex B{0.};
-    ACEComplex dB{0};
-    ACEComplex A_cache[basis_set->rankmax];
+    ACEComplex Y{0, 0}, Y_DR{0., 0.};
+    Array1D<ACEComplex> A_cache(basis_set->rankmax, "A_cache");
 
-    ACEComplex dA[basis_set->rankmax];
-    int spec[basis_set->rankmax];
+    Array1D<ACEComplex> dA(basis_set->rankmax, "dA");
+    Array1D<int> spec(basis_set->rankmax, "spec");
 
-    dB_flatten.fill({0.});
+    dB_flatten.fill({0., 0.});
 
-    ACEDYcomponent grad_phi_nlm{0}, DY{0.};
+    ACEDYcomponent grad_phi_nlm{0, 0}, DY{0., 0};
 
     //size is +1 of max to avoid out-of-boundary array access in double-triangular scheme
-    ACEComplex A_forward_prod[basis_set->rankmax + 1];
-    ACEComplex A_backward_prod[basis_set->rankmax + 1];
+//    Array1D<ACEComplex> A_forward_prod(basis_set->rankmax + 1, "A_forward_prod");
+//    Array1D<ACEComplex> A_backward_prod(basis_set->rankmax + 1, "A_backward_prod");
 
     DOUBLE_TYPE inv_r_norm;
-    DOUBLE_TYPE r_norms[jnum];
-    DOUBLE_TYPE inv_r_norms[jnum];
-    DOUBLE_TYPE rhats[jnum][3];//normalized vector
-    SPECIES_TYPE elements[jnum];
+    Array1D<DOUBLE_TYPE> r_norms(jnum);
+    Array1D<DOUBLE_TYPE> inv_r_norms(jnum);
+    Array2D<DOUBLE_TYPE> rhats(jnum, 3);//normalized vector
+    Array1D<SPECIES_TYPE> elements(jnum);
     const DOUBLE_TYPE xtmp = x[i][0];
     const DOUBLE_TYPE ytmp = x[i][1];
     const DOUBLE_TYPE ztmp = x[i][2];
@@ -813,10 +809,10 @@ ACERecursiveEvaluator::compute_atom(int i, DOUBLE_TYPE **x, const SPECIES_TYPE *
         mu_i = type[i];
 
     const SHORT_INT_TYPE total_basis_size_rank1 = basis_set->total_basis_size_rank1[mu_i];
-    const SHORT_INT_TYPE total_basis_size = basis_set->total_basis_size[mu_i];
+//    const SHORT_INT_TYPE total_basis_size = basis_set->total_basis_size[mu_i];
 
     ACECTildeBasisFunction *basis_rank1 = basis_set->basis_rank1[mu_i];
-    ACECTildeBasisFunction *basis = basis_set->basis[mu_i];
+//    ACECTildeBasisFunction *basis = basis_set->basis[mu_i];
 
     DOUBLE_TYPE rho_cut, drho_cut, fcut, dfcut;
     DOUBLE_TYPE dF_drho_core;
@@ -836,9 +832,9 @@ ACERecursiveEvaluator::compute_atom(int i, DOUBLE_TYPE **x, const SPECIES_TYPE *
     neighbours_forces.fill(0);
 
     //TODO: shift nullifications to place where arrays are used
-    weights.fill({0});
+    weights.fill({0, 0});
     weights_rank1.fill(0);
-    A.fill({0});
+    A.fill({0, 0});
     A_rank1.fill(0);
     rhos.fill(0);
     dF_drho.fill(0);
@@ -862,7 +858,7 @@ ACERecursiveEvaluator::compute_atom(int i, DOUBLE_TYPE **x, const SPECIES_TYPE *
 
     int jj_actual = 0;
     SPECIES_TYPE type_j = 0;
-    int neighbour_index_mapping[jnum]; // jj_actual -> jj
+    Array1D<int> neighbour_index_mapping(jnum); // jj_actual -> jj
     //loop over neighbours, compute distance, consider only atoms within with r<cutoff(mu_i, mu_j)
     for (jj = 0; jj < jnum; ++jj) {
 
@@ -884,13 +880,13 @@ ACERecursiveEvaluator::compute_atom(int i, DOUBLE_TYPE **x, const SPECIES_TYPE *
 
         inv_r_norm = 1 / r_xyz;
 
-        r_norms[jj_actual] = r_xyz;
-        inv_r_norms[jj_actual] = inv_r_norm;
-        rhats[jj_actual][0] = xn * inv_r_norm;
-        rhats[jj_actual][1] = yn * inv_r_norm;
-        rhats[jj_actual][2] = zn * inv_r_norm;
-        elements[jj_actual] = mu_j;
-        neighbour_index_mapping[jj_actual] = jj;
+        r_norms(jj_actual) = r_xyz;
+        inv_r_norms(jj_actual) = inv_r_norm;
+        rhats(jj_actual, 0) = xn * inv_r_norm;
+        rhats(jj_actual, 1) = yn * inv_r_norm;
+        rhats(jj_actual, 2) = zn * inv_r_norm;
+        elements(jj_actual) = mu_j;
+        neighbour_index_mapping(jj_actual) = jj;
         jj_actual++;
     }
 
@@ -898,9 +894,9 @@ ACERecursiveEvaluator::compute_atom(int i, DOUBLE_TYPE **x, const SPECIES_TYPE *
 
     //ALGORITHM 1: Atomic base A
     for (jj = 0; jj < jnum_actual; ++jj) {
-        r_norm = r_norms[jj];
-        mu_j = elements[jj];
-        r_hat = rhats[jj];
+        r_norm = r_norms(jj);
+        mu_j = elements(jj);
+        r_hat = &rhats(jj, 0);
 
         //proxies
         Array2DLM<ACEComplex> &Y_jj = Y_cache(jj);
@@ -1002,9 +998,9 @@ ACERecursiveEvaluator::compute_atom(int i, DOUBLE_TYPE **x, const SPECIES_TYPE *
     // ================ START RECURSIVE EVALUATOR ====================
     // (rank > 1 only)
 
-    /* STAGE 1: 
-     * 1-particle basis is already evaluated, so we only need to 
-     * copy it into the AA value buffer 
+    /* STAGE 1:
+     * 1-particle basis is already evaluated, so we only need to
+     * copy it into the AA value buffer
      */
     //TODO:
     ACEDAG &dag = species_dags[mu_i];
@@ -1025,7 +1021,7 @@ ACERecursiveEvaluator::compute_atom(int i, DOUBLE_TYPE **x, const SPECIES_TYPE *
         */
 
         // rhos.fill(0); note the rhos are already reset and started filling above!
-        ACEComplex AAcur{0.0};
+        ACEComplex AAcur{0., 0.};
         int i1, i2;
 
         int *dag_nodes = dag.nodes.get_data();
@@ -1072,13 +1068,13 @@ ACERecursiveEvaluator::compute_atom(int i, DOUBLE_TYPE **x, const SPECIES_TYPE *
 #endif
         /* non-recursive Julia-style evaluator implementation */
         // TODO: fix array access to enable bounds checking again???
-        ACEComplex AAcur{1.0};
+        ACEComplex AAcur{1.0, 0.};
         int *AAspec = jl_AAspec_flat[mu_i].get_data();  // TODO: get from vector[mu0]
         DOUBLE_TYPE *coeffs = jl_coeffs[mu_i].get_data(); // TODO: get from vector[mu0]
         int idx_spec = 0;
         int idx_coefs = 0;
         int order = 0;
-        int max_order = jl_AAspec[mu_i].get_dim(1);  // TODO: get from vector[mu0]
+//        int max_order = jl_AAspec[mu_i].get_dim(1);  // TODO: get from vector[mu0]
         for (int iAA = 0; iAA < jl_AAspec[mu_i].get_dim(0); iAA++) {  // TODO: get from vector[mu0]
             AAcur = 1.0;
             order = jl_orders[mu_i](iAA); // TODO: get from vector[mu0]
@@ -1092,7 +1088,7 @@ ACERecursiveEvaluator::compute_atom(int i, DOUBLE_TYPE **x, const SPECIES_TYPE *
         }
     }
 
-    /* we now have rho and can evaluate lots of things. 
+    /* we now have rho and can evaluate lots of things.
        -------- this is back to the original PACE code --------- */
 
 #ifdef DEBUG_FORCES_CALCULATIONS
@@ -1114,14 +1110,14 @@ ACERecursiveEvaluator::compute_atom(int i, DOUBLE_TYPE **x, const SPECIES_TYPE *
         dF_drho(p) *= fcut;
     evdwl_cut = evdwl * fcut + rho_core;
 
-    // E0 shift 
+    // E0 shift
     evdwl_cut += basis_set->E0vals(mu_i);
 
     /* I've moved this from below the weight calculation
-          since I believe it only times the energy? the weights 
+          since I believe it only times the energy? the weights
           are only needed for the forces?
-          But I believe we could add a third timer for computing just 
-          the weights; this will allow us to check better where the 
+          But I believe we could add a third timer for computing just
+          the weights; this will allow us to check better where the
           bottleneck is.
     */
     energy_calc_timer.stop();
@@ -1150,13 +1146,13 @@ ACERecursiveEvaluator::compute_atom(int i, DOUBLE_TYPE **x, const SPECIES_TYPE *
     if (recursive) {
         /* STAGE 2:  BACKWARD PASS */
         int i1, i2;
-        ACEComplex AA1{0.0};
-        ACEComplex AA2{0.0};
-        ACEComplex wcur{0.0};
+        ACEComplex AA1{0.0, 0};
+        ACEComplex AA2{0.0, 0};
+        ACEComplex wcur{0.0, 0};
         int num2_int = dag.get_num2_int();
         int num2_leaf = dag.get_num2_leaf();
         /* to prepare for the backward we first need to zero the weights */
-        dag.w.fill({0.0});
+        dag.w.fill({0.0, 0});
 
         int *dag_nodes = dag.nodes.get_data();
         int idx_nodes = 2 * (num2_int + num2_leaf) - 1;
@@ -1174,57 +1170,57 @@ ACERecursiveEvaluator::compute_atom(int i, DOUBLE_TYPE **x, const SPECIES_TYPE *
             wcur = dag.w(idx);   // [***]
             for (int p = ndensity - 1; p >= 0; p--, idx_coefs--)
                 wcur += dF_drho(p) * dag_coefs[idx_coefs];
-            dag.w(i1) += wcur * AA2;   // TODO: replace with explicit muladd? 
+            dag.w(i1) += wcur * AA2;   // TODO: replace with explicit muladd?
             dag.w(i2) += wcur * AA1;
         }
 
         /*  [***]
-         * Note that these weights don't really need to be stored for the 
-         * leaf nodes. We tested splitting this for loop into two where 
+         * Note that these weights don't really need to be stored for the
+         * leaf nodes. We tested splitting this for loop into two where
          * for the leaf nodes the weight would just be initialized to 0.0
-         * instead of reading from an array. The improvement was barely 
+         * instead of reading from an array. The improvement was barely
          * measurable, ca 3%, so we reverted to this simpler algorithm
          */
 
 
     } else {
 
-        // non-recursive ACE.jl style implemenation of gradients, but with 
-        // a backward differentiation approach to the prod-A 
+        // non-recursive ACE.jl style implemenation of gradients, but with
+        // a backward differentiation approach to the prod-A
         // (cf. Algorithm 3 in the manuscript)
 
-        dag.w.fill({0.0});
-        ACEComplex AAf{1.0}, AAb{1.0}, theta{0.0};
+        dag.w.fill({0.0, 0.0});
+        ACEComplex AAf{1.0, 0.0}, AAb{1.0, 0.0}, theta{0.0, 0.0};
 
         int *AAspec = jl_AAspec_flat[mu_i].get_data();  // TODO: get from vector[mu0]
         DOUBLE_TYPE *coeffs = jl_coeffs[mu_i].get_data(); // TODO: get from vector[mu0]
         int idx_spec = 0;
         int idx_coefs = 0;
         int order = 0;
-        int max_order = jl_AAspec[mu_i].get_dim(1);  // TODO: get from vector[mu0]
+//        int max_order = jl_AAspec[mu_i].get_dim(1);  // TODO: get from vector[mu0]
         for (int iAA = 0; iAA < jl_AAspec[mu_i].get_dim(0); iAA++) {  // TODO: get from vector[mu0]
             order = jl_orders[mu_i](iAA); // TODO: get from vector[mu0]
             theta = 0.0;
             for (int p = 0; p < ndensity; p++, idx_coefs++)
                 theta += dF_drho(p) * coeffs[idx_coefs];
-            dA[0] = 1.0;
+            dA(0) = 1.0;
             AAf = 1.0;
             for (int t = 0; t < order - 1; t++, idx_spec++) {
-                spec[t] = AAspec[idx_spec];
-                A_cache[t] = dag.AAbuf(spec[t]);
-                AAf *= A_cache[t];
-                dA[t + 1] = AAf;
+                spec(t) = AAspec[idx_spec];
+                A_cache(t) = dag.AAbuf(spec(t));
+                AAf *= A_cache(t);
+                dA(t + 1) = AAf;
             }
-            spec[order - 1] = AAspec[idx_spec];
+            spec(order - 1) = AAspec[idx_spec];
             idx_spec++;
-            A_cache[order - 1] = dag.AAbuf(spec[order - 1]);
+            A_cache(order - 1) = dag.AAbuf(spec(order - 1));
             AAb = 1.0;
             for (int t = order - 1; t >= 1; t--) {
-                AAb *= A_cache[t];
-                dA[t - 1] *= AAb;
-                dag.w(spec[t]) += theta * dA[t];
+                AAb *= A_cache(t);
+                dA(t - 1) *= AAb;
+                dag.w(spec(t)) += theta * dA(t);
             }
-            dag.w(spec[0]) += theta * dA[0];
+            dag.w(spec(0)) += theta * dA(0);
         }
 
     }
@@ -1263,9 +1259,9 @@ ACERecursiveEvaluator::compute_atom(int i, DOUBLE_TYPE **x, const SPECIES_TYPE *
 
 // loop over neighbour atoms for force calculations
     for (jj = 0; jj < jnum_actual; ++jj) {
-        mu_j = elements[jj];
-        r_hat = rhats[jj];
-        inv_r_norm = inv_r_norms[jj];
+        mu_j = elements(jj);
+        r_hat = &rhats(jj, 0);
+        inv_r_norm = inv_r_norms(jj);
 
         Array2DLM<ACEComplex> &Y_cache_jj = Y_cache(jj);
         Array2DLM<ACEDYcomponent> &DY_cache_jj = DY_cache(jj);
@@ -1359,12 +1355,12 @@ ACERecursiveEvaluator::compute_atom(int i, DOUBLE_TYPE **x, const SPECIES_TYPE *
         printf("f_ji(jj=%d, i=%d)=(%f, %f, %f)\n", jj, i,
                f_ji[0], f_ji[1], f_ji[2]
         );
-        printf("neighbour_index_mapping[jj=%d]=%d\n",jj,neighbour_index_mapping[jj]);
+        printf("neighbour_index_mapping[jj=%d]=%d\n",jj,neighbour_index_mapping(jj));
 #endif
 
-        neighbours_forces(neighbour_index_mapping[jj], 0) = f_ji[0];
-        neighbours_forces(neighbour_index_mapping[jj], 1) = f_ji[1];
-        neighbours_forces(neighbour_index_mapping[jj], 2) = f_ji[2];
+        neighbours_forces(neighbour_index_mapping(jj), 0) = f_ji[0];
+        neighbours_forces(neighbour_index_mapping(jj), 1) = f_ji[1];
+        neighbours_forces(neighbour_index_mapping(jj), 2) = f_ji[2];
 
         forces_calc_neighbour_timer.stop();
     }// end loop over neighbour atoms for forces

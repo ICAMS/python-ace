@@ -14,7 +14,7 @@
 
 void group_basis_functions_by_index(const vector<ACEBBasisFunction> &basis,
                                     Basis_functions_map &basis_functions_map) {
-    for (const auto &cur_basfunc : basis) {
+    for (const auto &cur_basfunc: basis) {
         auto *current_basis_function = const_cast<ACEBBasisFunction *>(&cur_basfunc);
         SPECIES_TYPE X0 = current_basis_function->mu0;
         RANK_TYPE r = cur_basfunc.rank;
@@ -184,8 +184,8 @@ void ACEBBasisSet::flatten_basis() {
     if (total_basis_size_rank1 != nullptr) delete[] total_basis_size_rank1;
     if (total_basis_size != nullptr) delete[] total_basis_size;
 
-    total_basis_size_rank1 = new SHORT_INT_TYPE[nelements];
-    total_basis_size = new SHORT_INT_TYPE[nelements];
+    total_basis_size_rank1 = new int[nelements];
+    total_basis_size = new int[nelements];
 
 
     basis_rank1 = new ACEBBasisFunction *[nelements];
@@ -1057,7 +1057,7 @@ void ACEBBasisSet::initialize_basis(BBasisConfiguration &basisSetup) {
 
     //invert "elements_to_index_map" to index->element array "elements_name"
     elements_name = new string[nelements];
-    for (auto const &elem_ind : elements_to_index_map) {
+    for (auto const &elem_ind: elements_to_index_map) {
         elements_name[elem_ind.second] = elem_ind.first;
     }
 
@@ -1528,7 +1528,7 @@ void BBasisFunctionsSpecificationBlock::validate_individual_functions() {
     NS_TYPE block_nradmax = 0;
     NS_TYPE block_nradbasemax = 0;
 
-    if (funcspecs.size() > 0) {
+    if (!funcspecs.empty()) {
         func_n_density = funcspecs.at(0).coeffs.size();
     }
     for (auto &funcSpec: funcspecs) {
@@ -1551,7 +1551,7 @@ void BBasisFunctionsSpecificationBlock::validate_individual_functions() {
                 block_nradmax = ns_max;
         }
 
-        LS_TYPE ls_max = *max_element(funcSpec.ls.begin(), funcSpec.ls.end());
+//        LS_TYPE ls_max = *max_element(funcSpec.ls.begin(), funcSpec.ls.end()); //TODO: check this
     }
 
     //check for consitency only for 1-, 2-species blocks (for pair interaction only!)
@@ -1852,21 +1852,21 @@ YAML_PACE::Node AuxiliaryData::to_YAML() const {
 
     node["_int"] = int_data;
     node["_int"].SetStyle(YAML_PACE::EmitterStyle::Flow);
-    for (auto const &pair : int_arr_data) {
+    for (auto const &pair: int_arr_data) {
         node["_int_arr"][pair.first] = pair.second;
         node["_int_arr"][pair.first].SetStyle(YAML_PACE::EmitterStyle::Flow);
     }
 
     node["_double"] = double_data;
     node["_double"].SetStyle(YAML_PACE::EmitterStyle::Flow);
-    for (auto const &pair : double_arr_data) {
+    for (auto const &pair: double_arr_data) {
         node["_double_arr"][pair.first] = pair.second;
         node["_double_arr"][pair.first].SetStyle(YAML_PACE::EmitterStyle::Flow);
     }
 
     node["_string"] = string_data;
     node["_string"].SetStyle(YAML_PACE::EmitterStyle::Flow);
-    for (auto const &pair : string_arr_data) {
+    for (auto const &pair: string_arr_data) {
         node["_string_arr"][pair.first] = pair.second;
         node["_string_arr"][pair.first].SetStyle(YAML_PACE::EmitterStyle::Flow);
     }

@@ -117,7 +117,7 @@ ACECTildeBasisSet ACECTildeBasisSet_setstate(const py::tuple &t) {
     new_cbasis.ndensitymax = t[5].cast<DENSITY_TYPE>(); //5
     new_cbasis.cutoffmax = t[6].cast<DOUBLE_TYPE>(); //6
     new_cbasis.deltaSplineBins = t[7].cast<DOUBLE_TYPE>(); //7
-    new_cbasis.map_embedding_specifications = t[8].cast<map<SPECIES_TYPE, ACEEmbeddingSpecification>>();//8
+    new_cbasis.map_embedding_specifications = t[8].cast < map < SPECIES_TYPE, ACEEmbeddingSpecification >> ();//8
     new_cbasis.spherical_harmonics.init(new_cbasis.lmax);
     new_cbasis.radial_functions = ACERadialFunctions_setstate(t[9].cast<py::tuple>()); //9
     auto elements_name = t[10].cast<vector<string>>(); //10
@@ -125,14 +125,15 @@ ACECTildeBasisSet ACECTildeBasisSet_setstate(const py::tuple &t) {
     auto basis = t[12].cast<vector<vector<ACECTildeBasisFunction>>>(); //12
     new_cbasis.E0vals = t[13].cast<vector<DOUBLE_TYPE>>();//13
 
-    new_cbasis.map_bond_specifications = t[14].cast<map<pair<SPECIES_TYPE, SPECIES_TYPE>, ACEBondSpecification> >();//14
+    new_cbasis.map_bond_specifications = t[14].cast < map < pair < SPECIES_TYPE, SPECIES_TYPE >, ACEBondSpecification >
+                                                                                                 > ();//14
 
     new_cbasis.elements_name = new string[elements_name.size()];
     for (int i = 0; i < elements_name.size(); i++) {
         new_cbasis.elements_name[i] = elements_name[i];
     }
 
-    new_cbasis.total_basis_size_rank1 = new SHORT_INT_TYPE[new_cbasis.nelements];
+    new_cbasis.total_basis_size_rank1 = new int[new_cbasis.nelements];
     new_cbasis.basis_rank1 = new ACECTildeBasisFunction *[new_cbasis.nelements];
     for (SPECIES_TYPE mu = 0; mu < new_cbasis.nelements; ++mu) {
         SHORT_INT_TYPE size = basis_rank1[mu].size();
@@ -144,7 +145,7 @@ ACECTildeBasisSet ACECTildeBasisSet_setstate(const py::tuple &t) {
             new_cbasis.basis_rank1[mu][func_ind] = basis_rank1[mu][func_ind];
         }
 
-    new_cbasis.total_basis_size = new SHORT_INT_TYPE[new_cbasis.nelements];
+    new_cbasis.total_basis_size = new int[new_cbasis.nelements];
     new_cbasis.basis = new ACECTildeBasisFunction *[new_cbasis.nelements];
     for (SPECIES_TYPE mu = 0; mu < new_cbasis.nelements; ++mu) {
         SHORT_INT_TYPE size = basis[mu].size();

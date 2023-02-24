@@ -30,7 +30,7 @@
 
 #include "ace-evaluator/ace_flatten_basis.h"
 
-ACEFlattenBasisSet::ACEFlattenBasisSet(const ACEFlattenBasisSet &other) {
+ACEFlattenBasisSet::ACEFlattenBasisSet(const ACEFlattenBasisSet &other) : ACEAbstractBasisSet(other) {
     _copy_scalar_memory(other);
     _copy_dynamic_memory(other);
 }
@@ -117,9 +117,9 @@ void ACEFlattenBasisSet::_copy_dynamic_memory(const ACEFlattenBasisSet &src) { /
         throw runtime_error("Could not copy ACEFlattenBasisSet::total_basis_size - array not initialized");
 
     delete[] total_basis_size_rank1;
-    total_basis_size_rank1 = new SHORT_INT_TYPE[nelements];
+    total_basis_size_rank1 = new int[nelements];
     delete[] total_basis_size;
-    total_basis_size = new SHORT_INT_TYPE[nelements];
+    total_basis_size = new int[nelements];
 
     //copy
     for (SPECIES_TYPE mu = 0; mu < nelements; ++mu) {

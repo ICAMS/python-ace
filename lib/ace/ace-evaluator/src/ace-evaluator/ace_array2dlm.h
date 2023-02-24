@@ -122,17 +122,18 @@ public:
     }
 
 #ifdef MULTIARRAY_INDICES_CHECK
+
 /**
  * Check if indices (l,m) are within array
  */
     void check_indices(LS_TYPE l, MS_TYPE m) const {
 
-        if ((l < 0) | (l > lmax)) {
+        if ((l > lmax)) { //(l < 0) |
             fprintf(stderr, "%s: Index l = %d out of range (0, %d)\n", array_name.c_str(), l, lmax);
             exit(EXIT_FAILURE);
         }
 
-        if ((m < -l) | (m > l)) {
+        if ((m < -l) || (m > l)) {
             fprintf(stderr, "%s: Index m = %d out of range (%d, %d)\n", array_name.c_str(), m, -l, l);
             exit(EXIT_FAILURE);
         }
@@ -142,6 +143,7 @@ public:
             exit(EXIT_FAILURE);
         }
     }
+
 #endif
 
     /**
@@ -301,21 +303,22 @@ public:
     }
 
 #ifdef MULTIARRAY_INDICES_CHECK
+
     /**
      * Check if indices (i0, l,m) are within array
      */
     void check_indices(size_t i0, LS_TYPE l, MS_TYPE m) const {
-        if ((l < 0) | (l > lmax)) {
+        if ((l < 0) || (l > lmax)) {
             fprintf(stderr, "%s: Index l = %d out of range (0, %d)\n", array_name.c_str(), l, lmax);
             exit(EXIT_FAILURE);
         }
 
-        if ((m < -l) | (m > l)) {
+        if ((m < -l) || (m > l)) {
             fprintf(stderr, "%s: Index m = %d out of range (%d, %d)\n", array_name.c_str(), m, -l, l);
             exit(EXIT_FAILURE);
         }
 
-        if ((i0 < 0) | (i0 >= dim[0])) {
+        if ((i0 < 0) || (i0 >= dim[0])) {
             fprintf(stderr, "%s: index i0 = %ld out of range (0, %ld)\n", array_name.c_str(), i0, dim[0] - 1);
             exit(EXIT_FAILURE);
         }
@@ -326,6 +329,7 @@ public:
             exit(EXIT_FAILURE);
         }
     }
+
 #endif
 
     /**
@@ -497,30 +501,31 @@ public:
      * Check if indices (i0, l,m) are within array
      */
     void check_indices(size_t i0, size_t i1, LS_TYPE l, MS_TYPE m) const {
-        if ((l < 0) | (l > lmax)) {
+        if ((l > lmax)) { //(l < 0) ||
             fprintf(stderr, "%s: Index l = %d out of range (0, %d)\n", array_name.c_str(), l, lmax);
             exit(EXIT_FAILURE);
         }
 
-        if ((m < -l) | (m > l)) {
+        if ((m < -l) || (m > l)) {
             fprintf(stderr, "%s: Index m = %d out of range (%d, %d)\n", array_name.c_str(), m, -l, l);
             exit(EXIT_FAILURE);
         }
 
-        if ((i0 < 0) | (i0 >= dim[0])) {
+        if ((i0 >= dim[0])) { //(i0 < 0) ||
             fprintf(stderr, "%s: index i0 = %ld out of range (0, %ld)\n", array_name.c_str(), i0, dim[0] - 1);
             exit(EXIT_FAILURE);
         }
 
 
-        if ((i1 < 0) | (i1 >= dim[1])) {
+        if ((i1 >= dim[1])) {//(i1 < 0) ||
             fprintf(stderr, "%s: index i1 = %ld out of range (0, %ld)\n", array_name.c_str(), i1, dim[1] - 1);
             exit(EXIT_FAILURE);
         }
 
         size_t ii = i0 * s[0] + i1 * s[1] + l * (l + 1) + m;
         if (ii >= size) {
-            fprintf(stderr, "%s: index = %ld (i0=%ld, i1=%ld, l=%d, m=%d) out of range %ld\n", array_name.c_str(), ii, i0,
+            fprintf(stderr, "%s: index = %ld (i0=%ld, i1=%ld, l=%d, m=%d) out of range %ld\n", array_name.c_str(), ii,
+                    i0,
                     i1, l, m, size);
             exit(EXIT_FAILURE);
         }

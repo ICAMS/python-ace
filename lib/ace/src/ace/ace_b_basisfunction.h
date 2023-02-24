@@ -79,20 +79,20 @@ public:
     }
 
     bool specification_equal_to(const BBasisFunctionSpecification &another) const {
-        return (elements == another.elements) and (rank == another.rank) and (ns == another.ns) and
-               (ls == another.ls) and (LS == another.LS);
+        return (elements == another.elements) && (rank == another.rank) && (ns == another.ns) &&
+               (ls == another.ls) && (LS == another.LS);
     }
 
     bool operator<(const BBasisFunctionSpecification &another) const {
-        return less_specification_than(another) and coeffs < another.coeffs;
+        return less_specification_than(another) && coeffs < another.coeffs;
     }
 
     bool operator>(const BBasisFunctionSpecification &another) const {
-        return great_specification_than(another) and coeffs > another.coeffs;
+        return great_specification_than(another) && coeffs > another.coeffs;
     }
 
     bool operator==(const BBasisFunctionSpecification &another) const {
-        return specification_equal_to(another) and (coeffs == another.coeffs);
+        return specification_equal_to(another) && (coeffs == another.coeffs);
     }
 
 

@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import argparse
 import logging
+import sys
 
 LOG_FMT = '%(asctime)s %(levelname).1s - %(message)s'
 logging.basicConfig(level=logging.INFO, format=LOG_FMT, datefmt="%Y/%m/%d %H:%M:%S")
@@ -15,7 +16,7 @@ import pandas as pd
 from pyace import BBasisConfiguration, ACEBBasisSet, aseatoms_to_atomicenvironment
 from pyace.activelearning import compute_B_projections, compute_active_set, compute_active_set_by_batches, \
     compute_A_active_inverse, compute_extrapolation_grade, compute_number_of_functions, \
-    count_number_total_atoms_per_species_type, save_active_inverse_set
+    count_number_total_atoms_per_species_type, save_active_inverse_set, extract_reference_forces_dict
 from pyace.preparedata import sizeof_fmt
 
 parser = argparse.ArgumentParser(prog="pace_activeset",
@@ -42,6 +43,13 @@ parser.add_argument("-r", "--maxvol_refinement", help="Number of refinements (ep
 
 parser.add_argument("-m", "--memory-limit", help="Memory limit (i.e. 1GB, 500MB or 'auto')", default="auto", type=str)
 
+parser.add_argument("-e", "--error-force-threshold [max RMSE(F) (eV/A)]", default=0, type=float,
+                    help="Include into active set only atoms with force RMSE error lower than provided. "
+                         "If zero, then Q3+1.5*IQR upper range will be used", dest="error_based_threshold")
+
+parser.add_argument("-a", "--all-atoms", help="Consider all atoms for construction of active set",
+                    dest="all_atoms", default=False, action="store_true")
+
 args_parse = parser.parse_args()
 potential_file = args_parse.potential_file
 dataset_filename = args_parse.dataset
@@ -51,6 +59,9 @@ maxvol_iters = args_parse.maxvol_iters
 maxvol_refinement = args_parse.maxvol_refinement
 mem_lim = args_parse.memory_limit
 is_full = args_parse.full
+error_based_threshold = args_parse.error_based_threshold
+all_atoms = args_parse.all_atoms
+
 if mem_lim == "auto":
     # determine 80% of available memory
     mem_lim = int(0.8 * psutil.virtual_memory().available)
@@ -122,7 +133,7 @@ else:
         log.info("Could not extract cutoff metadata "
                  "for column '{}' (error: {}). Please ensure the valid cutoff for "
                  "precomputed neighbourlists".format(ATOMIC_ENV_COLUMN, e))
-        rebuild_atomic_env = False
+        rebuild_atomic_env = True
 
 if rebuild_atomic_env:
     log.info("Constructing {} column, cutoffmax={}, elements_to_index_map={}".format(ATOMIC_ENV_COLUMN, cutoffmax,
@@ -174,10 +185,50 @@ if batch_size is None:
     # single shot MaxVol
     log.info("Single-run (no batch_size is provided)")
     log.info("Compute B-projections")
-    A0_proj_dict = compute_B_projections(bbasis, atomic_env_list, is_full=is_full)
+    A0_proj_dict, forces_dict = compute_B_projections(bbasis, atomic_env_list, is_full=is_full,
+                                                      compute_forces_dict=True)
     log.info("B-projections computed:")
     for st, A0_proj in A0_proj_dict.items():
         log.info("\tElement: {}, B-projections shape: {}".format(elements_name[st], A0_proj.shape))
+
+    if not all_atoms:
+        log.info("Select atomic environments with force error below threshold")
+        if error_based_threshold == 0:
+            log.info("Automatic force error threshold determination(Q3+1.5*IQR)")
+        else:
+            log.info("Force error threshold: {:.3f} eV/A".format(error_based_threshold))
+        ref_forces_dict = extract_reference_forces_dict(df["ase_atoms"], df["forces"], elements_to_index_map)
+
+        A0_projections_cropped_dict = {}
+        outlier_struct_ind_dict = {}
+        sel_mask_dict = {}
+        for symb, st in elements_to_index_map.items():
+            dforces = ref_forces_dict[st] - forces_dict[st]
+            dforces_norm = np.linalg.norm(dforces, axis=1)
+
+            if error_based_threshold < 0:
+                q1, q2, q3 = np.quantile(dforces_norm, q=[0.25, 0.5, 0.75], )
+                iqr = q3 - q1
+                upper_bound = q3 + 1.5 * iqr
+            else:
+                upper_bound = error_based_threshold
+
+            sel_mask = dforces_norm <= upper_bound
+            sel_mask_dict[st] = sel_mask
+
+            f_rmse_before = np.sqrt(np.mean(dforces_norm ** 2))
+
+            f_rmse_after = np.sqrt(np.mean(dforces_norm[sel_mask] ** 2))
+
+            log.info("\tElement: {}, specie type: {}".format(symb, st))
+            log.info("\t\tForce error upper bound: {:.3f} meV/A".format(1e3 * upper_bound))
+            log.info("\t\tFraction/number of selected structures: {} ({:.1f}%)".format(np.sum(sel_mask),
+                                                                                       1e2 * np.mean(sel_mask)))
+            log.info("\t\tForce RMSE (before): {:.3f} meV/A".format(1e3 * f_rmse_before))
+            log.info("\t\tForce RMSE (after) : {:.3f} meV/A".format(1e3 * f_rmse_after))
+            A0_projections_cropped_dict[st] = A0_proj_dict[st][sel_mask]
+
+        A0_proj_dict = A0_projections_cropped_dict
 
     log.info("Compute active set (using MaxVol algorithm)")
     A_active_set_dict = compute_active_set(A0_proj_dict, tol=gamma_tolerance, max_iters=maxvol_iters, verbose=True)
@@ -198,19 +249,19 @@ else:
     # multiple round maxvol
     log.info("Approximated MaxVol by batches")
     log.info("Batch size: {}".format(batch_size))
+    if not all_atoms:
+        log.error('WARNING! Error-based selection of atoms in batch mode is not implemented. Please use --all-atoms option')
+        sys.exit(1)
     nsplits = len(atomic_env_list) // batch_size
-    atomic_env_batches = np.array_split(atomic_env_list, nsplits)
-    atomic_env_batches = [b.values for b in atomic_env_batches]
-    structure_env_batches = np.array_split(structure_ind_list, nsplits)
-    structure_env_batches = [b.values for b in structure_env_batches]
-    log.info("Number of batches: {}".format(len(atomic_env_batches)))
+    log.info("Number of batches: {}".format(nsplits))
 
     log.info("Compute approximate active set (using batched MaxVol algorithm)")
     (best_gamma, best_active_sets_dict, _) = \
         compute_active_set_by_batches(
             bbasis,
-            atomic_env_batches=atomic_env_batches,
-            structure_ind_batches=structure_env_batches,
+            atomic_env_list=atomic_env_list,
+            structure_ind_list=structure_ind_list,
+            n_batches = nsplits,
             gamma_tolerance=gamma_tolerance,
             maxvol_iters=maxvol_iters,
             n_refinement_iter=maxvol_refinement,

@@ -109,20 +109,6 @@ if sys.version_info < (3, 7):
 with open('README.md') as readme_file:
     readme = readme_file.read()
 
-if not os.path.exists('bin'):
-    os.makedirs('bin')
-try:
-    shutil.copyfile('bin/pacemaker.py', 'bin/pacemaker')
-    shutil.copyfile('bin/pace_yaml2yace.py', 'bin/pace_yaml2yace')
-    shutil.copyfile('bin/pace_update_ace.py', 'bin/pace_update_ace')
-    shutil.copyfile('bin/pace_update_yaml_potential.py', 'bin/pace_update_yaml_potential')
-    shutil.copyfile('bin/pace_timing.py', 'bin/pace_timing')
-    shutil.copyfile('bin/pace_info.py', 'bin/pace_info')
-    shutil.copyfile('bin/pace_activeset.py', 'bin/pace_activeset')
-    shutil.copyfile('bin/pace_collect.py', 'bin/pace_collect')
-except FileNotFoundError as e:
-    print("File not found (skipping):", e)
-
 setup(
     name='pyace',
     version=versioneer.get_version(),

@@ -21,7 +21,7 @@ struct ms_cg_pair {
 
 vector<SHORT_INT_TYPE> generate_coupling_tree(RANK_TYPE r);
 
-int get_ms_sign(const RANK_TYPE rank, const MS_TYPE *ms);
+int get_ms_sign(const RANK_TYPE rank, const vector<MS_TYPE> &ms);
 
 int generate_basis_function_n_body(RANK_TYPE rank, const NS_TYPE *ns_rad, const LS_TYPE *ls, const LS_TYPE *LS,
                                    ACEBBasisFunction &b_basis_function, const ACEClebschGordan &cs,

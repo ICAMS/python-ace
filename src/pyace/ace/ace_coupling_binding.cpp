@@ -75,7 +75,7 @@ vector<ms_cg_pair> generate_ms_cg_list_wrapper(const vector<LS_TYPE> &ls,
     if (cs.lmax < Lmax)
         cs.init(Lmax);
 
-    int res = generate_equivariant_ms_cg_list(rank, ls.data(), newLS.data(),
+    generate_equivariant_ms_cg_list(rank, ls.data(), newLS.data(),
                                   L,M,
                                   half_basis,
                                   check_is_even,

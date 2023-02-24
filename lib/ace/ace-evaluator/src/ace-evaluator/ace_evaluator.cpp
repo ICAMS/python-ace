@@ -36,8 +36,8 @@ void ACEEvaluator::init(ACEAbstractBasisSet *basis_set) {
     A.init(basis_set->nelements, basis_set->nradmax + 1, basis_set->lmax + 1, "A");
     A_rank1.init(basis_set->nelements, basis_set->nradbase, "A_rank1");
 
-    rhos.init(basis_set->ndensitymax , "rhos");
-    dF_drho.init(basis_set->ndensitymax , "dF_drho");
+    rhos.init(basis_set->ndensitymax, "rhos");
+    dF_drho.init(basis_set->ndensitymax, "dF_drho");
 }
 
 void ACEEvaluator::init_timers() {
@@ -80,7 +80,7 @@ void ACECTildeEvaluator::init(ACECTildeBasisSet *basis_set) {
     Y_cache.fill({0, 0});
 
     DY_cache.init(1, basis_set->lmax + 1, "dY_dense_cache");
-    DY_cache.fill({0.});
+    DY_cache.fill({0., 0.});
 
     //hard-core repulsion
     DCR_cache.init(1, "DCR_cache");
@@ -91,7 +91,7 @@ void ACECTildeEvaluator::init(ACECTildeBasisSet *basis_set) {
 }
 
 void ACECTildeEvaluator::resize_neighbours_cache(int max_jnum) {
-    if(basis_set== nullptr) {
+    if (basis_set == nullptr) {
         throw std::invalid_argument("ACECTildeEvaluator: basis set is not assigned");
     }
     if (R_cache.get_dim(0) < max_jnum) {
@@ -110,7 +110,7 @@ void ACECTildeEvaluator::resize_neighbours_cache(int max_jnum) {
         Y_cache.fill({0, 0});
 
         DY_cache.resize(max_jnum, basis_set->lmax + 1);
-        DY_cache.fill({0});
+        DY_cache.fill({0, 0});
 
         //hard-core repulsion
         DCR_cache.init(max_jnum, "DCR_cache");
@@ -127,8 +127,9 @@ void ACECTildeEvaluator::resize_neighbours_cache(int max_jnum) {
 // jnum - number of J neighbors for each I atom.  jnum = numneigh[i];
 
 void
-ACECTildeEvaluator::compute_atom(int i, DOUBLE_TYPE **x, const SPECIES_TYPE *type, const int jnum, const int *jlist) {
-    if(basis_set== nullptr) {
+ACECTildeEvaluator::compute_atom(int i, DOUBLE_TYPE **x, const SPECIES_TYPE *type, const int jnum,
+                                 const int *jlist) {
+    if (basis_set == nullptr) {
         throw std::invalid_argument("ACECTildeEvaluator: basis set is not assigned");
     }
     per_atom_calc_timer.start();
@@ -152,27 +153,28 @@ ACECTildeEvaluator::compute_atom(int i, DOUBLE_TYPE **x, const SPECIES_TYPE *typ
     LS_TYPE *ls;
     MS_TYPE *ms;
 
-    int j, jj, func_ind, ms_ind;
+    int j, jj;
+    int func_ind, ms_ind;
     SHORT_INT_TYPE factor;
 
-    ACEComplex Y{0}, Y_DR{0.};
-    ACEComplex B{0.};
-    ACEComplex dB{0};
-    ACEComplex A_cache[basis_set->rankmax];
+    ACEComplex Y{0, 0.}, Y_DR{0., 0.};
+    ACEComplex B{0., 0.};
+    ACEComplex dB{0., 0.};
+    Array1D<ACEComplex> A_cache(basis_set->rankmax, "A_cache");
 
-    dB_flatten.fill({0.});
+    dB_flatten.fill({0., 0.});
 
-    ACEDYcomponent grad_phi_nlm{0}, DY{0.};
+    ACEDYcomponent grad_phi_nlm{0, 0}, DY{0., 0};
 
     //size is +1 of max to avoid out-of-boundary array access in double-triangular scheme
-    ACEComplex A_forward_prod[basis_set->rankmax + 1];
-    ACEComplex A_backward_prod[basis_set->rankmax + 1];
+    Array1D<ACEComplex> A_forward_prod(basis_set->rankmax + 1, "A_forward_prod");
+    Array1D<ACEComplex> A_backward_prod(basis_set->rankmax + 1, "A_backward_prod");
 
     DOUBLE_TYPE inv_r_norm;
-    DOUBLE_TYPE r_norms[jnum];
-    DOUBLE_TYPE inv_r_norms[jnum];
-    DOUBLE_TYPE rhats[jnum][3];//normalized vector
-    SPECIES_TYPE elements[jnum];
+    Array1D<DOUBLE_TYPE> r_norms(jnum, "r_norms");
+    Array1D<DOUBLE_TYPE> inv_r_norms(jnum, "inv_r_norms");
+    Array2D<DOUBLE_TYPE> rhats(jnum, 3, "rhats");//normalized vector
+    Array1D<SPECIES_TYPE> elements(jnum, "elements");
     const DOUBLE_TYPE xtmp = x[i][0];
     const DOUBLE_TYPE ytmp = x[i][1];
     const DOUBLE_TYPE ztmp = x[i][2];
@@ -186,7 +188,7 @@ ACECTildeEvaluator::compute_atom(int i, DOUBLE_TYPE **x, const SPECIES_TYPE *typ
         mu_i = type[i];
 
     const SHORT_INT_TYPE total_basis_size_rank1 = basis_set->total_basis_size_rank1[mu_i];
-    const SHORT_INT_TYPE total_basis_size = basis_set->total_basis_size[mu_i];
+    const int total_basis_size = basis_set->total_basis_size[mu_i];
 
     ACECTildeBasisFunction *basis_rank1 = basis_set->basis_rank1[mu_i];
     ACECTildeBasisFunction *basis = basis_set->basis[mu_i];
@@ -209,9 +211,9 @@ ACECTildeEvaluator::compute_atom(int i, DOUBLE_TYPE **x, const SPECIES_TYPE *typ
     neighbours_forces.fill(0);
 
     //TODO: shift nullifications to place where arrays are used
-    weights.fill({0});
+    weights.fill({0, 0});
     weights_rank1.fill(0);
-    A.fill({0});
+    A.fill({0, 0});
     A_rank1.fill(0);
     rhos.fill(0);
     dF_drho.fill(0);
@@ -237,7 +239,7 @@ ACECTildeEvaluator::compute_atom(int i, DOUBLE_TYPE **x, const SPECIES_TYPE *typ
 
     int jj_actual = 0;
     SPECIES_TYPE type_j = 0;
-    int neighbour_index_mapping[jnum]; // jj_actual -> jj
+    Array1D<int> neighbour_index_mapping(jnum); // jj_actual -> jj
     //loop over neighbours, compute distance, consider only atoms within with r<cutoff(mu_i, mu_j)
     for (jj = 0; jj < jnum; ++jj) {
 
@@ -259,13 +261,13 @@ ACECTildeEvaluator::compute_atom(int i, DOUBLE_TYPE **x, const SPECIES_TYPE *typ
 
         inv_r_norm = 1 / r_xyz;
 
-        r_norms[jj_actual] = r_xyz;
-        inv_r_norms[jj_actual] = inv_r_norm;
-        rhats[jj_actual][0] = xn * inv_r_norm;
-        rhats[jj_actual][1] = yn * inv_r_norm;
-        rhats[jj_actual][2] = zn * inv_r_norm;
-        elements[jj_actual] = mu_j;
-        neighbour_index_mapping[jj_actual] = jj;
+        r_norms(jj_actual) = r_xyz;
+        inv_r_norms(jj_actual) = inv_r_norm;
+        rhats(jj_actual, 0) = xn * inv_r_norm;
+        rhats(jj_actual, 1) = yn * inv_r_norm;
+        rhats(jj_actual, 2) = zn * inv_r_norm;
+        elements(jj_actual) = mu_j;
+        neighbour_index_mapping(jj_actual) = jj;
         jj_actual++;
     }
 
@@ -273,9 +275,9 @@ ACECTildeEvaluator::compute_atom(int i, DOUBLE_TYPE **x, const SPECIES_TYPE *typ
 
     //ALGORITHM 1: Atomic base A
     for (jj = 0; jj < jnum_actual; ++jj) {
-        r_norm = r_norms[jj];
-        mu_j = elements[jj];
-        r_hat = rhats[jj];
+        r_norm = r_norms(jj);
+        mu_j = elements(jj);
+        r_hat = &rhats(jj, 0);
 
         //proxies
         Array2DLM<ACEComplex> &Y_jj = Y_cache(jj);
@@ -398,33 +400,33 @@ ACECTildeEvaluator::compute_atom(int i, DOUBLE_TYPE **x, const SPECIES_TYPE *typ
             ms = &func->ms_combs[ms_ind * rank]; // current ms-combination (of length = rank)
 
             //loop over m, collect B  = product of A with given ms
-            A_forward_prod[0] = 1;
-            A_backward_prod[r] = 1;
+            A_forward_prod(0) = 1;
+            A_backward_prod(r) = 1;
 
             //fill forward A-product triangle
             for (t = 0; t < rank; t++) {
                 //TODO: optimize ns[t]-1 -> ns[t] during functions construction
-                A_cache[t] = A(mus[t], ns[t] - 1, ls[t], ms[t]);
+                A_cache(t) = A(mus[t], ns[t] - 1, ls[t], ms[t]);
 #ifdef DEBUG_ENERGY_CALCULATIONS
                 printf("A(x=%d, n=%d, l=%d, m=%d)=(%f,%f)\n", mus[t], ns[t], ls[t], ms[t], A_cache[t].real,
                        A_cache[t].img);
 #endif
-                A_forward_prod[t + 1] = A_forward_prod[t] * A_cache[t];
+                A_forward_prod(t + 1) = A_forward_prod(t) * A_cache(t);
             }
 
-            B = A_forward_prod[t];
-            
+            B = A_forward_prod(t);
+
 #ifdef DEBUG_FORCES_CALCULATIONS
             printf("B = (%f, %f)\n", (B).real, (B).img);
 #endif
             //fill backward A-product triangle
             for (t = r; t >= 1; t--) {
-                A_backward_prod[t - 1] =
-                        A_backward_prod[t] * A_cache[t];
+                A_backward_prod(t - 1) =
+                        A_backward_prod(t) * A_cache(t);
             }
 
             for (t = 0; t < rank; ++t, ++func_ms_t_ind) {
-                dB = A_forward_prod[t] * A_backward_prod[t]; //dB - product of all A's except t-th
+                dB = A_forward_prod(t) * A_backward_prod(t); //dB - product of all A's except t-th
                 dB_flatten(func_ms_t_ind) = dB;
 #ifdef DEBUG_FORCES_CALCULATIONS
                 m_t = ms[t];
@@ -548,9 +550,9 @@ ACECTildeEvaluator::compute_atom(int i, DOUBLE_TYPE **x, const SPECIES_TYPE *typ
     forces_calc_loop_timer.start();
 // loop over neighbour atoms for force calculations
     for (jj = 0; jj < jnum_actual; ++jj) {
-        mu_j = elements[jj];
-        r_hat = rhats[jj];
-        inv_r_norm = inv_r_norms[jj];
+        mu_j = elements(jj);
+        r_hat = &rhats(jj, 0);
+        inv_r_norm = inv_r_norms(jj);
 
         Array2DLM<ACEComplex> &Y_cache_jj = Y_cache(jj);
         Array2DLM<ACEDYcomponent> &DY_cache_jj = DY_cache(jj);
@@ -644,12 +646,12 @@ ACECTildeEvaluator::compute_atom(int i, DOUBLE_TYPE **x, const SPECIES_TYPE *typ
         printf("f_ji(jj=%d, i=%d)=(%f, %f, %f)\n", jj, i,
                f_ji[0], f_ji[1], f_ji[2]
         );
-        printf("neighbour_index_mapping[jj=%d]=%d\n",jj,neighbour_index_mapping[jj]);
+        printf("neighbour_index_mapping[jj=%d]=%d\n",jj,neighbour_index_mapping(jj));
 #endif
 
-        neighbours_forces(neighbour_index_mapping[jj], 0) = f_ji[0];
-        neighbours_forces(neighbour_index_mapping[jj], 1) = f_ji[1];
-        neighbours_forces(neighbour_index_mapping[jj], 2) = f_ji[2];
+        neighbours_forces(neighbour_index_mapping(jj), 0) = f_ji[0];
+        neighbours_forces(neighbour_index_mapping(jj), 1) = f_ji[1];
+        neighbours_forces(neighbour_index_mapping(jj), 2) = f_ji[2];
 
         forces_calc_neighbour_timer.stop();
     }// end loop over neighbour atoms for forces

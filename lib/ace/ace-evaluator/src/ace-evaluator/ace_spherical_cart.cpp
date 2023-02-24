@@ -129,9 +129,6 @@ void ACECartesianSphericalHarmonics::compute_barplm(DOUBLE_TYPE rz, LS_TYPE lmax
 void ACECartesianSphericalHarmonics::compute_ylm(DOUBLE_TYPE rx, DOUBLE_TYPE ry, DOUBLE_TYPE rz, LS_TYPE lmaxi) {
 
     // requires rx^2 + ry^2 + rz^2 = 1 , NO CHECKING IS PERFORMED !!!!!!!!!
-
-    DOUBLE_TYPE real;
-    DOUBLE_TYPE img;
     MS_TYPE m;
     ACEComplex phase;
     ACEComplex phasem, mphasem1;

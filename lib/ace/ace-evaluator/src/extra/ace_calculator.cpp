@@ -30,7 +30,7 @@ void ACECalculator::compute(ACEAtomicEnvironment &atomic_environment, bool verbo
     printf("=====LOOP OVER ATOMS=====\n");
 #endif
     //determine the maximum number of neighbours
-    int max_jnum = -1;
+    int max_jnum = 0;
     for (i = 0; i < atomic_environment.n_atoms_real; ++i)
         if (atomic_environment.num_neighbours[i] > max_jnum)
             max_jnum = atomic_environment.num_neighbours[i];

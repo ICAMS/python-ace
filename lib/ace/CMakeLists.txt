@@ -33,6 +33,9 @@ add_subdirectory(${CNPY_PATH})
 ##### test_extend #####
 add_executable(test_extended ${EVALUATOR_SOURCE_FILES} ${EVALUATOR_EXTRA_FILES} ${EVALUATOR_EXTRA_UTILS_FILES}
         ${TEST_FITTING} ${TEST_UTILS} ${FITTING_SOURCE_FILES} ${UTILS_SOURCE_FILES})
+if (CMAKE_COMPILER_IS_GNUCC)
+    target_compile_options(test_extended PRIVATE -Wunused-variable -Wvla -Wno-effc++ -Werror=vla)
+endif ()
 target_include_directories(test_extended PUBLIC ${TEST_DIR})
 target_include_directories(test_extended PUBLIC ${EVALUATOR_INCLUDE_DIR} ${EVALUATOR_EXTRA_INCLUDE_DIR} ${EVALUATOR_EXTRA_UTILS_INCLUDE_DIR})
 target_include_directories(test_extended PUBLIC ${FITTING_INCLUDE_DIR})
@@ -49,7 +52,7 @@ target_link_libraries(test_extended yaml-cpp-pace)
 target_include_directories(test_extended PUBLIC ${GOOGLE_TEST_INCLUDE_DIR})
 target_link_libraries(test_extended gtest_main gtest)
 #pthread
-target_link_libraries(test_extended pthread)
+# target_link_libraries(test_extended pthread)
 #compiler options
 target_compile_definitions(test_extended PUBLIC EXTRA_C_PROJECTIONS)
 target_compile_definitions(test_extended PUBLIC MULTIARRAY_INDICES_CHECK) #
