@@ -206,7 +206,7 @@ if batch_size is None:
             dforces = ref_forces_dict[st] - forces_dict[st]
             dforces_norm = np.linalg.norm(dforces, axis=1)
 
-            if error_based_threshold < 0:
+            if error_based_threshold <= 0:
                 q1, q2, q3 = np.quantile(dforces_norm, q=[0.25, 0.5, 0.75], )
                 iqr = q3 - q1
                 upper_bound = q3 + 1.5 * iqr
