@@ -71,7 +71,10 @@ class CMakeBuild(build_ext):
 
         # Pile all .so in one place and use $ORIGIN as RPATH
         cmake_args += ["-DCMAKE_BUILD_WITH_INSTALL_RPATH=TRUE"]
-        cmake_args += ["-DCMAKE_INSTALL_RPATH={}".format("$ORIGIN")]
+        if platform.system() == "Darwin":  # MacOS
+            cmake_args += ["-DCMAKE_INSTALL_RPATH={}".format("@loader_path")]
+        else:
+            cmake_args += ["-DCMAKE_INSTALL_RPATH={}".format("$ORIGIN")]
         cmake_args += ["-DBUILD_SHARED_LIBS=ON"]
         cmake_args += ["-DYAML_BUILD_SHARED_LIBS=ON"]
 
