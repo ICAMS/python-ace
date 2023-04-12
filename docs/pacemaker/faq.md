@@ -134,8 +134,8 @@ Alternatively, you can provide train and test datasets separately:
 
 ```yaml
 data:
-  filename: /path/to/train_data.pckl.gzip    
-  test_filename: /path/to/test_data.pckl.gzip 
+  filename: /path/to/train_data.pkl.gz
+  test_filename: /path/to/test_data.pkl.gz
 ``` 
 
 ## I want to change the cutoff, what should I do ?
@@ -147,7 +147,7 @@ If you change cutoff, i.e. from `rcut: 7` to `rcut: 6.5`, then potential should 
 
 ## How better to organize my dataset files ?
 
-It is recommended to store all dataset files (i.e. `df*.pckl.gzip`) in one folder and
+It is recommended to store all dataset files (i.e. `df*.pkl.gz`) in one folder and
 specify the environment variable `$PACEMAKERDATAPATH` (exectue it in terminal or add to for example `.bashrc`) 
 
 ```

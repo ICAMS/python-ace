@@ -24,7 +24,7 @@ parser = argparse.ArgumentParser(prog="pace_activeset",
 parser.add_argument("potential_file", help="B-basis file name (.yaml)", type=str)
 
 parser.add_argument("-d", "--dataset", action='append',
-                    help="Dataset file name(s), ex.: -d filename.pckl.gzip [-d filename2.pckl.gzip]", type=str,
+                    help="Dataset file name(s), ex.: -d filename.pkl.gz [-d filename2.pkl.gz]", type=str,
                     required=True)
 
 parser.add_argument("-f", "--full", help="Compute active set on full (linearized) design matrix",
@@ -71,7 +71,7 @@ if isinstance(dataset_filename, list):
         else:
             raise RuntimeError("File {} not found".format(dsfn))
         log.info("Loading dataset #{}/{} from {}".format(i + 1, len(dataset_filename), dsfn))
-        df = pd.read_pickle(dsfn, compression="gzip")
+        df = pd.read_pickle(dsfn)
         log.info("Number of structures: {}".format(len(df)))
         df_list.append(df)
     df = pd.concat(df_list, axis=0)

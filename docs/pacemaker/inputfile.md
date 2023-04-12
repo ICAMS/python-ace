@@ -34,7 +34,7 @@ Dataset could be saved into file as a pickled `pandas` dataframe with special na
 
 ```YAML
 data: 
-  filename: some_stored_dataset.pckl.gzip
+  filename: some_stored_dataset.pkl.gz
   # cache_ref_df: False             # whether to store the queried or modified dataset into file, default - True
   # ignore_weights: False          # whether to ignore energy and force weighting columns in dataframe
   # datapath: ../data              # path to folder with cache files with pickled dataframes 
@@ -49,11 +49,11 @@ Example of generating **custom energy/forces weights** is given in `examples/cus
 ### Test set
 
 You could provide test set either as a fraction or certain number of samples from the train set (option `test_size`) or
-as a separate pckl.gzip file (option `test_filename`)
+as a separate pkl.gz file (option `test_filename`)
 
 ```yaml
 data:
-  test_filename: my_test_dataset.pckl.gzip
+  test_filename: my_test_dataset.pkl.gz
 ```
 
 or
@@ -231,8 +231,8 @@ fit:
     }
     
     ## Custom weights:  corresponding to main dataset index and `w_energy` and `w_forces` columns should
-    ## be provided in pckl.gzip file
-    #weighting: {type: ExternalWeightingPolicy, filename: custom_weights_only.pckl.gzip}
+    ## be provided in pkl.gz file
+    #weighting: {type: ExternalWeightingPolicy, filename: custom_weights_only.pkl.gz}
     
     ## OPTIMIZATION OPTIONS ##
     optimizer: BFGS # BFGS, L-BFGS-B, Nelder-Mead, etc. : scipy minimization algorithm

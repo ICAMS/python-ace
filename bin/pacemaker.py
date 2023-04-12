@@ -29,11 +29,11 @@ from pyace import __version__, get_ace_evaluator_version
 from pyace.atomicenvironment import calculate_minimal_nn_atomic_env, calculate_minimal_nn_tp_atoms
 from pyace.validate import plot_analyse_error_distributions
 
-files_to_remove = ["fitting_data_info.csv", "fitting_data_info.pckl.gzip", "log.txt", "nohup.out",
+files_to_remove = ["fitting_data_info.csv", "fitting_data_info.pkl.gz", "log.txt", "nohup.out",
                    "target_potential.yaml", "current_extended_potential.yaml", "output_potential.yaml",
                    "ladder_metrics.txt", "cycle_metrics.txt", "metrics.txt",
                    "test_ladder_metrics.txt", "test_cycle_metrics.txt", "test_metrics.txt",
-                   "train_pred.pckl.gzip", "test_pred.pckl.gzip",
+                   "train_pred.pkl.gz", "test_pred.pkl.gz",
                    "test_ef-distributions.png", "train_ef-distributions.png", "report"
                    ]
 
@@ -297,7 +297,7 @@ def main(args):
         if general_fit.fitting_data is not None:
             log.info("For train data")
             pred_data = predict_and_save(general_fit, target_bbasisconfig, general_fit.fitting_data,
-                                         fname="train_pred.pckl.gzip")
+                                         fname="train_pred.pkl.gz")
             log.info("Ploting validation graphs")
             plot_analyse_error_distributions(pred_data, fig_prefix="train_", fig_path="report",
                                              imagetype=backend_config.get("imagetype", "png"))
@@ -305,7 +305,7 @@ def main(args):
         if general_fit.test_data is not None:
             log.info("For test data")
             pred_data = predict_and_save(general_fit, target_bbasisconfig, general_fit.test_data,
-                                         fname="test_pred.pckl.gzip")
+                                         fname="test_pred.pkl.gz")
             log.info("Ploting validation graphs")
             plot_analyse_error_distributions(pred_data, fig_prefix="test_", fig_path="report",
                                              imagetype=backend_config.get("imagetype", "png"))
@@ -316,7 +316,7 @@ def generate_template_input():
     readline.parse_and_bind("tab: complete")
 
     # 1. Training set size
-    train_filename = input("Enter training dataset filename (ex.: data.pckl.gzip, [TAB] - autocompletion): ")
+    train_filename = input("Enter training dataset filename (ex.: data.pkl.gz, [TAB] - autocompletion): ")
     testset_size_inp = float(input("Enter test set fraction or size (ex.: 0.05 or [ENTER] - no test set): ") or 0)
 
     # 2. Elements
@@ -333,7 +333,7 @@ def generate_template_input():
 
     # checking dataset
     print("Trying to load {}".format(train_filename))
-    df = pd.read_pickle(train_filename, compression="gzip")
+    df = pd.read_pickle(train_filename)
     if determine_elements_from_dataset:
         if 'ase_atoms' in df.columns:
             print("Determining available elements...")
@@ -350,7 +350,7 @@ def generate_template_input():
         if resp == "yes":
             df["energy_corrected"] = df["energy"]
             print("Saving upgraded dataset into {}...".format(train_filename), end="")
-            df.to_pickle(train_filename, compression="gzip")
+            df.to_pickle(train_filename)
             print("done")
 
 
@@ -429,7 +429,7 @@ def predict_and_save(general_fit, target_bbasisconfig, structures_dataframe, fna
     columns_to_drop = [column for column in columns_to_drop if column in structures_dataframe]
     pred_data = pd.merge(structures_dataframe.drop(columns=columns_to_drop), pred_data,
                          left_index=True, right_index=True)
-    pred_data.to_pickle(fname, compression="gzip", protocol=4)
+    pred_data.to_pickle(fname, protocol=4)
     log.info("Predictions are saved into {} ({})".format(fname, sizeof_fmt(fname)))
     return pred_data
 

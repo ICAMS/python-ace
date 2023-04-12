@@ -49,7 +49,7 @@ potential:
 ## Dataset specification section
 #################################################################
 data:
-  filename: ethanol.pckl.gzip       # force to read reference pickled dataframe from given file
+  filename: ethanol.pkl.gz       # force to read reference pickled dataframe from given file
 
 
 #################################################################
@@ -76,6 +76,6 @@ fit:
 backend:
   evaluator: tensorpot  # tensorpot backend (recommended)
   batch_size: 1000
-  
+
   ## frequency of detailed metric calculation and printing
   display_step: 50

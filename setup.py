@@ -161,7 +161,7 @@ setup(
         'Programming Language :: Python :: 3',
     ],
     package_data={"pyace.data": [
-        "mus_ns_uni_to_rawlsLS_np_rank.pckl",
+        "mus_ns_uni_to_rawlsLS_np_rank.pkl",
         "input_template.yaml"
     ]},
     scripts=["bin/pacemaker", "bin/pace_yaml2yace", "bin/pace_update_ace",

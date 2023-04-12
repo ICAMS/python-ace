@@ -45,7 +45,7 @@ PERIODIC_ELEMENTS = chemical_symbols = [
     'Lv', 'Ts', 'Og']
 
 default_mus_ns_uni_to_rawlsLS_np_rank_filename = pkg_resources.resource_filename('pyace.data',
-                                                                                 'mus_ns_uni_to_rawlsLS_np_rank.pckl')
+                                                                                 'mus_ns_uni_to_rawlsLS_np_rank.pkl')
 
 def clean_bbasisconfig(initial_bbasisconfig):
     for block in initial_bbasisconfig.funcspecs_blocks:

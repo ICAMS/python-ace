@@ -42,7 +42,7 @@ potential:
       NameOfCutoffFunction: cos,
     }
 
-    
+
 
   ## possible keywords: ALL, UNARY, BINARY, TERNARY, QUATERNARY, QUINARY,
   ## element combinations as (Al,Al), (Al, Ni), (Al, Ni, Zn), etc...
@@ -58,8 +58,8 @@ potential:
 ## Dataset specification section
 #################################################################
 data:
-### Option 1: pandas dataframe in pckl.gzip
-  filename: Cu_df1_A1_A2_A3_EV_elast_phon.pckl.gzip  # force to read reference pickled dataframe from given file
+### Option 1: pandas dataframe in pkl.gz
+  filename: Cu_df1_A1_A2_A3_EV_elast_phon.pkl.gz  # force to read reference pickled dataframe from given file
 
 
 #################################################################

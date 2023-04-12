@@ -20,7 +20,7 @@ If you have free atom calculations (single atom in large volume) in subfolders, 
 pace_collect -wd path/to/my_dft_calculation --free-atom-energy auto 
 ```
 Both commands will scan through all folders and subfolders and collect DFT free energies (that are force-consistent) and forces 
-and make a single atom corrections. Resulting dataset will be stored into `collected.pckl.gzip` file.
+and make a single atom corrections. Resulting dataset will be stored into `collected.pkl.gz` file.
 
 If you need more flexibility for DFT dataset manipulation,
 please check [Manual fitting dataset preparation](#manual_fitting_dataset_preparation).
@@ -45,7 +45,7 @@ An example DataFrame can be red as:
 
 ```python
 import pandas as pd
-df = pd.read_pickle("../data/exmpl_df.pckl.gzip", compression="gzip")
+df = pd.read_pickle("../data/exmpl_df.pkl.gz")
 ```
 And it contains the following entries:
 
@@ -120,24 +120,22 @@ data = {'energy': [e1, e2],
 # create a DataFrame
 df = pd.DataFrame(data)
 # and save it 
-df.to_pickle('my_data.pckl.gzip', compression='gzip', protocol=4)
+df.to_pickle('my_data.pkl.gz', protocol=4)
 ```
 
 or use the utility `pace_collect` from a top-level directory to collect VASP calculations and store them in a 
-`collected.pckl.gzip` file.
+`collected.pkl.gz` file.
 The resulting dataframe can be used for fitting with `pacemaker`.
 
 ### Creating an input file
  
 In this example we will use template as it is, however one would need to provide a path to the
-example dataset `exmpl_df.pckl.gzip`. This can be done by changing `filename` parameter in the `data` section of the 
+example dataset `exmpl_df.pkl.gz`. This can be done by changing `filename` parameter in the `data` section of the 
 `input.yaml`:
 
 ```yaml
-
 data:
-   filename: /path/to/the/pyace/data/exmpl_df.pckl.gzip
-
+   filename: /path/to/the/pyace/data/exmpl_df.pkl.gz
 ```
 
 Please check [examples folder](https://github.com/ICAMS/python-ace/tree/master/examples) for more examples of input file.
