@@ -45,7 +45,7 @@ An example DataFrame can be red as:
 
 ```python
 import pandas as pd
-df = pd.read_pickle("../data/exmpl_df.pckl.gzip", compression="gzip", protocol=4)
+df = pd.read_pickle("../data/exmpl_df.pckl.gzip", compression="gzip")
 ```
 And it contains the following entries:
 
