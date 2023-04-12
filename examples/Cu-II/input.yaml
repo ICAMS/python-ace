@@ -55,8 +55,8 @@ potential:
 ## Dataset specification section
 #################################################################
 data:
-### Option 1: pandas dataframe in pckl.gzip
-  filename: Cu_df2_1k.pkl.gzip  # force to read reference pickled dataframe from given file
+### Option 1: pandas dataframe in pkl.gz
+  filename: Cu_df2_1k.pkl.gz  # force to read reference pickled dataframe from given file
 
 
 

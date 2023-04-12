@@ -1,7 +1,7 @@
 # Extrapolation grade and active learning 
 
 For any fitted ACE potential and corresponding training set 
-(usually stored by `pacemaker` into `fitting_data_info.pckl.gzip` file in working directory)
+(usually stored by `pacemaker` into `fitting_data_info.pkl.gz` file in working directory)
 one can generate corresponding active set for linear B-projections (default) of full non-linear embedding.
 Practice shows that linear active set is enough for extrapolation grade estimation.
 However, if you want more sensitive (and "over-secure") extrapolation grade, then full active set could be used.
@@ -23,7 +23,7 @@ potential_file        B-basis file name (.yaml)
 optional arguments:
    -h, --help            show this help message and exit
    -d DATASET, --dataset DATASET
-   Dataset file name, ex.: filename.pckl.gzip
+   Dataset file name, ex.: filename.pkl.gz
    -f, --full            Compute active set on full (linearized) design matrix
    -b BATCH_SIZE, --batch_size BATCH_SIZE
    Batch size (number of structures) considered simultaneously.If not provided - all dataset at once is considered
@@ -40,14 +40,14 @@ optional arguments:
 Example of usage:
 
 ```
-pace_activeset -d fitting_data_info.pckl.gzip output_potential.yaml
+pace_activeset -d fitting_data_info.pkl.gz output_potential.yaml
 ```
 that will generate **linear** active set and store it into `output_potential.asi` file.
 
 or
 
 ```
-pace_activeset -d fitting_data_info.pckl.gzip output_potential.yaml -f
+pace_activeset -d fitting_data_info.pkl.gz output_potential.yaml -f
 ```
 that will generate **full** active set (including linearized part of non-linear embedding function)
 and store it into `output_potential.asi.nonlinear` file.

@@ -46,7 +46,7 @@ pace_info [-h] potential_file
 
 ## Collect and store VASP data in pickle file
 
-Utility to collect VASP calculations from a top-level directory and store them in a `*.pckl.gzip` file that can be used for fitting with `pacemaker`. 
+Utility to collect VASP calculations from a top-level directory and store them in a `*.pkl.gz` file that can be used for fitting with `pacemaker`. 
 The reference energies could be provided for each element (default value is zero) 
 or extracted automatically from the calculation with single atom and large enough (>500 Ang^3/atom) volume. Usage: 
 
@@ -59,7 +59,7 @@ optional arguments:
   -wd WORKING_DIR, --working-dir WORKING_DIR
                         top directory where keep calculations
   --output-dataset-filename OUTPUT_DATASET_FILENAME
-                        pickle filename, default is collected.pckl.gzip
+                        pickle filename, default is collected.pkl.gz
   --free-atom-energy [FREE_ATOM_ENERGY [FREE_ATOM_ENERGY ...]]
                         dictionary of reference energies (auto for extraction from dataset), i.e. `Al:-0.123 Cu:-0.456 Zn:auto`, default is zero. If option is `auto`, then it will be extracted from dataset
   --selection SELECTION
@@ -81,7 +81,7 @@ potential_file        B-basis file name (.yaml)
 optional arguments:
    -h, --help            show this help message and exit
    -d DATASET, --dataset DATASET
-   Dataset file name, ex.: filename.pckl.gzip
+   Dataset file name, ex.: filename.pkl.gz
    -f, --full            Compute active set on full (linearized) design matrix
    -b BATCH_SIZE, --batch_size BATCH_SIZE
    Batch size (number of structures) considered simultaneously.If not provided - all dataset at once is considered
@@ -98,14 +98,14 @@ optional arguments:
 Example of usage:
 
 ```
-pace_activeset -d fitting_data_info.pckl.gzip output_potential.yaml
+pace_activeset -d fitting_data_info.pkl.gz output_potential.yaml
 ```
 that will generate **linear** active set and store it into `output_potential.asi` file.
 
 or
 
 ```
-pace_activeset -d fitting_data_info.pckl.gzip output_potential.yaml -f
+pace_activeset -d fitting_data_info.pkl.gz output_potential.yaml -f
 ```
 that will generate **full** active set (including linearized part of non-linear embedding function)
 and store it into `output_potential.asi.nonlinear` file.

@@ -230,25 +230,19 @@ class StructuresDatasetWeightingPolicy:
 def save_dataframe(df: pd.DataFrame, filename: str, protocol: int = 4):
     filename = os.path.abspath(filename)
     log.info("Writing fit pickle file: {}".format(filename))
-    if filename.endswith("gzip"):
-        compression = "gzip"
-    else:
-        compression = "infer"
     dirname = os.path.dirname(filename)
     os.makedirs(dirname, exist_ok=True)
     if not isinstance(df, DataFrameWithMetadata):
         log.info("Transforming to DataFrameWithMetadata")
         df = DataFrameWithMetadata(df)
-    df.to_pickle(filename, protocol=protocol, compression=compression)
+    df.to_pickle(filename, protocol=protocol)
     log.info("Saved to file {} ({})".format(filename, sizeof_fmt(filename)))
 
 
-def load_dataframe(filename: str, compression: str = "infer") -> pd.DataFrame:
+def load_dataframe(filename: str) -> pd.DataFrame:
     filesize = os.path.getsize(filename)
     log.info("Loading dataframe from pickle file {} ({})".format(filename, sizeof_fmt(filesize)))
-    if filename.endswith(".gzip"):
-        compression = "gzip"
-    df = pd.read_pickle(filename, compression=compression)
+    df = pd.read_pickle(filename)
     return df
 
 
@@ -346,7 +340,7 @@ class StructuresDatasetSpecification:
 
     def get_default_ref_filename(self):
         try:
-            return "df-{calculator}-{element}-{suffix}.pckl.gzip".format(
+            return "df-{calculator}-{element}-{suffix}.pkl.gz".format(
                 calculator=self.config["calculator"],
                 element=self.config["element"],
                 suffix="ref").replace("/", "_")
@@ -562,7 +556,7 @@ class StructuresDatasetSpecification:
             self.df = self.raw_df
         elif file_to_load is not None and os.path.isfile(file_to_load) and not force_query:
             log.info(file_to_load + " found, try to load")
-            self.df = load_dataframe(file_to_load, compression="infer")
+            self.df = load_dataframe(file_to_load)
         else:  # if ref_df is still not loaded, try to query from DB
             if not force_query:
                 log.info("Cache not found, querying database")
@@ -610,7 +604,7 @@ class StructuresDatasetSpecification:
         if cache_ref_df or self.cache_ref_df:
             if self.ref_df_changed:
                 # generate filename to save df: if name is provided - try to put it into datapath
-                filename = self.get_actual_filename() or "df_ref.pckl.gzip"
+                filename = self.get_actual_filename() or "df_ref.pkl.gz"
                 log.info("Saving processed raw dataframe into " + filename)
                 save_dataframe(self.df, filename=filename)
             else:
@@ -1051,7 +1045,7 @@ class ExternalWeightingPolicy(StructuresDatasetWeightingPolicy):
 
     def __init__(self, filename: str):
         """
-        :param filename: .pckl.gzip filename of dataframe with index and  `w_energy` and `w_forces` columns
+        :param filename: .pkl.gz filename of dataframe with index and  `w_energy` and `w_forces` columns
         """
         self.filename = filename
 
@@ -1060,7 +1054,7 @@ class ExternalWeightingPolicy(StructuresDatasetWeightingPolicy):
 
     def generate_weights(self, df):
         log.info("Loading external weights dataframe {}".format(self.filename))
-        self.weights_df = pd.read_pickle(self.filename, compression="gzip")
+        self.weights_df = pd.read_pickle(self.filename)
         log.info("External weights dataframe loaded, it contains {} entries".format(len(self.weights_df)))
 
         # check that columns are presented

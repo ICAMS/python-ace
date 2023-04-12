@@ -58,8 +58,8 @@ potential:
 ## Dataset specification section
 #################################################################
 data:
-  ### Option 1: pandas dataframe in pckl.gzip
-  filename: HEA_randII_example.pckl.gzip
+  ### Option 1: pandas dataframe in pkl.gz
+  filename: HEA_randII_example.pkl.gz
 
 #################################################################
 ## Fit settings section

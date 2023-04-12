@@ -173,8 +173,8 @@ def main(args):
     parser.add_argument("-wd", "--working-dir", help="top directory where keep calculations",
                         type=str, default='.', dest="working_dir")
 
-    parser.add_argument("--output-dataset-filename", help="pickle filename, default is collected.pckl.gzip",
-                        type=str, default="collected.pckl.gzip", dest="output_dataset_filename")
+    parser.add_argument("--output-dataset-filename", help="pickle filename, default is collected.pkl.gz",
+                        type=str, default="collected.pkl.gz", dest="output_dataset_filename")
 
     parser.add_argument('--free-atom-energy',
                         help="dictionary of reference energies (auto for extraction from dataset), i.e. `Al:-0.123 Cu:-0.456 Zn:auto`,"
@@ -268,7 +268,7 @@ def main(args):
 
     #######
     df.drop(columns=n_el_cols + ['comp_dict', 'volume', 'volume_per_atom', 'NUMBER_OF_ATOMS'], inplace=True)
-    df.to_pickle('{}'.format(output_dataset_filename), compression='gzip', protocol=4)
+    df.to_pickle('{}'.format(output_dataset_filename), protocol=4)
     logger.info('Store dataset into {}'.format(output_dataset_filename))
     ######
     df['absolute_energy_collected_per_atom'] = df['energy_corrected_per_atom'].abs()

@@ -26,7 +26,7 @@ log.setLevel(logging.DEBUG)
 
 __username = None
 
-FITTING_DATA_INFO_FILENAME = "fitting_data_info.pckl.gzip"
+FITTING_DATA_INFO_FILENAME = "fitting_data_info.pkl.gz"
 
 
 def get_username():
@@ -382,7 +382,6 @@ class GeneralACEFit:
         columns_to_save = [col for col in fitting_data_columns if col not in columns_to_drop]
 
         self.fitting_data[columns_to_save].to_pickle(FITTING_DATA_INFO_FILENAME,
-                                                     compression="gzip",
                                                      protocol=4)
         log.info("Fitting dataset info saved into {}".format(FITTING_DATA_INFO_FILENAME))
 
