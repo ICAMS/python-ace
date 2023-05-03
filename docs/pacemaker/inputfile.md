@@ -105,18 +105,20 @@ potential:
     ALL: {
         radbase: ChebExpCos,
         radparameters: [5.25],
-
-        ## outer cutoff, applied in a range [rcut - dcut, rcut]
+        
+        ## outer cutoff
         rcut: 5,
         dcut: 0.01,
 
-        ## inner cutoff, applied in a range [r_in, r_in + delta_in]
+        ## inner cutoff  [r_in - delta_in, r_in] - transition region from ACE to core-repulsion
+        # at r < r_in-delta_in - no ACE interaction, only core-repulsion
         r_in: 1.0,
         delta_in: 0.5,
         
+        
         ## core-repulsion parameters `prefactor` and `lambda` in
-        ## prefactor*exp(-lambda*r^2)/r, >0 only r<r_in+delta_in
-        core-repulsion: [0.0, 5.0],
+        ## prefactor*exp(-lambda*r^2)/r, > 0 only if r < r_in - delta_in
+        core-repulsion: [100.0, 5.0],
     }
 
     ## BINARY overwrites ALL settings when they are repeated
@@ -128,13 +130,13 @@ potential:
         rcut: 5.5,
         dcut: 0.01,
 
-        ## inner cutoff, applied in a range [r_in, r_in + delta_in]
+        ## inner cutoff, applied in a range [r_in - delta_in, r_in]
         r_in: 1.0,
         delta_in: 0.5,
 
         ## core-repulsion parameters `prefactor` and `lambda` in
-        ## prefactor*exp(-lambda*r^2)/r, >0 only r<r_in+delta_in
-        core-repulsion: [0.0, 5.0],
+        ## prefactor*exp(-lambda*r^2)/r,> 0 only if r < r_in - delta_in
+        core-repulsion: [10.0, 5.0],
     }
 
   ## possible keywords: ALL, UNARY, BINARY, TERNARY, QUATERNARY, QUINARY,
