@@ -109,6 +109,7 @@ class ActiveExploration:
                            initial_moving_atom_index=None,
                            movable_atoms_indices=None,
                            n_atom_shake_max_attempts=20,
+                           shake_amplitude=0.1,
                            seed=42):
         """
         Perform Active Exploration (AE):
@@ -124,6 +125,7 @@ class ActiveExploration:
         :param gamma_lo: low limit of extrapolation grad
         :param initial_moving_atom_index: index of first moving atom
         :param n_atom_shake_max_attempts: number of random displacement attempts to restart optimization
+        :param shake_amplitude: default = 0.1, amplitude of random atom shake
         :param seed: random seed
 
         :return: list of ASE atoms, original structure  + one structure for each AE iteration
@@ -192,10 +194,10 @@ class ActiveExploration:
                 if (self.max_gamma - self.gamma_hi) ** 2 < self.gamma_tol ** 2:
                     break
                 att += 1
-                if att > n_atom_shake_max_attempts:
-                    raise RuntimeError("Could not find extrapolative strucrtures, too many attempts")
+                if att >= n_atom_shake_max_attempts:
+                    raise RuntimeError("Could not find extrapolative structures, too many attempts")
                 print("Attempting to shake x0 position")
-                x0 = x0 + np.random.randn(3) * 0.1
+                x0 = x0 + np.random.randn(3) * shake_amplitude
 
             new_atoms = move_atom(self.max_dpos, initial_moving_atom_index, cur_atoms)
 
