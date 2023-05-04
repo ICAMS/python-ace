@@ -29,6 +29,7 @@ jobs:
         python -m pip install --upgrade pip
         python -m pip install pytest
     - name: Checkout tensorpotential
+      uses: actions/checkout@v2
       with:
         repository: ICAMS/TensorPotential
         path: tensorpotential
