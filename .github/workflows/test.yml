@@ -4,8 +4,6 @@
 name: Python package
 
 on:
-  push:
-    branches: [ "master", "feature/*" ]
   pull_request:
     branches: [ "master" ]
 
@@ -42,6 +40,10 @@ jobs:
       run: |    
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
         python setup.py install
-    - name: Test with pytest
+    - name: Test with python-ace with tensorpotential
       run: |
         python -m pytest tests/ --runtensorpot
+    - name: Integration test of CLI
+      run: |
+        cd tests/test-CLI/Cu-I && sh integration_test.sh
+        cd ../Ethanol && sh integration_test.sh
