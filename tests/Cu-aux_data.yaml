@@ -1,0 +1,30 @@
+global:
+  DeltaSplineBins: 0.001
+auxdata:
+  _int: {i1: 1, i2: 2}
+  _int_arr: {ia1: [1,2,3], ia2: [100, -100, 0]}
+
+  _double: { d1: 1.5, d2: 2.0 }
+  _double_arr: { da1: [ 1.1, 2.2, 3.3], da2: [ 100.5, -100.1, 0.0 ] }
+
+  _string: { s1: "Some string", s2: "Some another string" }
+  _string_arr: { sa1: [ "1.1", "2.2", "3.3" ], sa2: [ "100.5", "-100.1", "0.0" ] }
+
+species:
+  - speciesblock: Cu
+    nradmaxi: 1
+    lmaxi: 0
+
+    ndensityi: 1 #number of densities, i.e. index of density rho_p: p = 1..ndensityi
+    npoti: FinnisSinclair
+    parameters: [ 1.0, 1.0 ] #not implemented yet, parameters in cluster functional, see. Eq.(53)
+    rcutij: 8.7
+    dcutij: 0.01
+    NameOfCutoffFunctionij: cos
+    nradbaseij: 1 #number of polynomials function in R_nl = sum_k=1..nradbaseij c_nlk*g_k(r) for n>0, see Eq.(27)
+    radbase: ChebExpCos
+    radparameters: [ 3.0 ]
+    radcoefficients: [ [ [ 1. ] ] ]
+
+    nbody:
+      - { type: Cu Cu Cu, nr: [ 1,1 ], nl: [ 0,0 ], c: 1.0 } #nl=0 always for 2 body

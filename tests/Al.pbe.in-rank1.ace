@@ -1,0 +1,87 @@
+nelements=1
+elements: Al
+
+lmax=0
+embedding-function: FinnisSinclairShiftedScaled
+4 FS parameters:  1.000000 1.000000 1.000000 0.500000
+core energy-cutoff parameters: 100000.000000000000000000 250.000000000000000000
+
+radbasename=ChebExpCos
+nradbase=12
+nradmax=0
+cutoffmax=8.700000
+deltaSplineBins=0.001
+core repulsion parameters: 0.000000000000000000 0.000000000000000000
+radparameter= 5.250000000000000000
+cutoff= 8.699999999999999289
+dcut= 0.010000000000000000
+crad=
+
+rankmax=1
+ndensitymax=2
+
+
+num_c_tilde_max=12
+num_ms_combinations_max=1
+total_basis_size_rank1: 12 
+ctilde_basis_func: rank=1 ndens=2 mu0=0 mu=( 0 )
+n=( 1 )
+l=( 0 )
+num_ms=1
+< 0 >:  0.372812438659619771  -1.179053218555629945 
+ctilde_basis_func: rank=1 ndens=2 mu0=0 mu=( 0 )
+n=( 2 )
+l=( 0 )
+num_ms=1
+< 0 >:  1527.528470746425455218  -13408.315757728185417363 
+ctilde_basis_func: rank=1 ndens=2 mu0=0 mu=( 0 )
+n=( 3 )
+l=( 0 )
+num_ms=1
+< 0 >:  -165.622721978095569284  6694.716760764875289169 
+ctilde_basis_func: rank=1 ndens=2 mu0=0 mu=( 0 )
+n=( 4 )
+l=( 0 )
+num_ms=1
+< 0 >:  -997.482084245124269728  67.560693967657030612 
+ctilde_basis_func: rank=1 ndens=2 mu0=0 mu=( 0 )
+n=( 5 )
+l=( 0 )
+num_ms=1
+< 0 >:  1422.315452683949388302  -3870.597328727687454375 
+ctilde_basis_func: rank=1 ndens=2 mu0=0 mu=( 0 )
+n=( 6 )
+l=( 0 )
+num_ms=1
+< 0 >:  -1210.617048356096802308  4227.430047642064891988 
+ctilde_basis_func: rank=1 ndens=2 mu0=0 mu=( 0 )
+n=( 7 )
+l=( 0 )
+num_ms=1
+< 0 >:  752.239816515444772449  -2707.039587894532360224 
+ctilde_basis_func: rank=1 ndens=2 mu0=0 mu=( 0 )
+n=( 8 )
+l=( 0 )
+num_ms=1
+< 0 >:  -355.754862954710119993  1111.213341542383886917 
+ctilde_basis_func: rank=1 ndens=2 mu0=0 mu=( 0 )
+n=( 9 )
+l=( 0 )
+num_ms=1
+< 0 >:  125.103962032079579103  -234.508671481719972007 
+ctilde_basis_func: rank=1 ndens=2 mu0=0 mu=( 0 )
+n=( 10 )
+l=( 0 )
+num_ms=1
+< 0 >:  -30.042768870265248893  -19.557847735831277447 
+ctilde_basis_func: rank=1 ndens=2 mu0=0 mu=( 0 )
+n=( 11 )
+l=( 0 )
+num_ms=1
+< 0 >:  3.820760904141914605  22.654371715550976063 
+ctilde_basis_func: rank=1 ndens=2 mu0=0 mu=( 0 )
+n=( 12 )
+l=( 0 )
+num_ms=1
+< 0 >:  0.000000000000173644  -2.808363682801331862 
+total_basis_size: 0 
