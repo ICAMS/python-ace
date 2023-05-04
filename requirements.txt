@@ -1,0 +1,5 @@
+numpy
+ase
+pandas
+ruamel.yaml
+psutil
