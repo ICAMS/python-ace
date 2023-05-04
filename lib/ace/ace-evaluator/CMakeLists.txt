@@ -41,7 +41,7 @@ add_subdirectory(${YAML_PATH})
 
 add_executable(test_evaluator ${TEST_EVALUATOR} ${EVALUATOR_SOURCE_FILES} ${EVALUATOR_EXTRA_FILES} ${EVALUATOR_EXTRA_UTILS_FILES})
 if (CMAKE_COMPILER_IS_GNUCC)
-    target_compile_options(test_evaluator PRIVATE -Wunused-variable -Wvla -Wsign-compare -Werror=vla) # -Wall -Wextra
+    target_compile_options(test_evaluator PRIVATE -Wunused-variable -Wvla  -Werror=vla) # -Wall -Wextra -Wsign-compare
 endif ()
 target_include_directories(test_evaluator PUBLIC ${TEST_DIR})
 target_include_directories(test_evaluator PUBLIC ${EVALUATOR_INCLUDE_DIR} ${EVALUATOR_EXTRA_INCLUDE_DIR})

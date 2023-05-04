@@ -47,7 +47,20 @@ void ACEBEvaluator::init(ACEBBasisSet *basis_set) {
     DCR_cache.fill(0);
     dB_flatten.init(basis_set->max_dB_array_size, "dB_flatten");
 
+#ifdef COMPUTE_B_GRAD
+    //initialization of arrays for B-derivatives
+    int max_rank1_basis_size = 0;
+    int max_basis_size = 0;
+    for (int mu = 0; mu < basis_set->nelements; mu++) {
+        if (max_rank1_basis_size < basis_set->total_basis_size_rank1[mu])
+            max_rank1_basis_size = basis_set->total_basis_size_rank1[mu];
+        if (max_basis_size < basis_set->total_basis_size[mu])
+            max_basis_size = basis_set->total_basis_size[mu];
+    }
 
+    weights_rank1_dB.init(max_rank1_basis_size, basis_set->nelements, basis_set->nradbase, "weights_rank1_dB");
+    weights_dB.init(max_basis_size, basis_set->nelements, basis_set->nradmax + 1, basis_set->lmax + 1, "weights_dB");
+#endif
 }
 
 void ACEBEvaluator::resize_neighbours_cache(int max_jnum) {
@@ -161,7 +174,6 @@ ACEBEvaluator::compute_atom(int i, DOUBLE_TYPE **x, const SPECIES_TYPE *type, co
     //TODO: nradbase -> nradbasei (get per-species type)
     const NS_TYPE nradbasei = basis_set->nradbase;
 
-    //TODO: get per-species type number of densities
     const DENSITY_TYPE ndensity = basis_set->map_embedding_specifications[mu_i].ndensity;
 
     neighbours_forces.resize(jnum, 3);
@@ -182,6 +194,14 @@ ACEBEvaluator::compute_atom(int i, DOUBLE_TYPE **x, const SPECIES_TYPE *type, co
 
     dE_dc.init((total_basis_size_rank1 + total_basis_size) * ndensity, "dE_dc");
     dE_dc.fill(0);
+#endif
+#ifdef COMPUTE_B_GRAD
+    if (this->compute_b_grad) {
+        weights_dB.fill({0});
+        weights_rank1_dB.fill(0);
+        neighbours_dB.resize(total_basis_size_rank1 + total_basis_size, jnum, 3);
+        neighbours_dB.fill(0);
+    }
 #endif
 
     //proxy references to spherical harmonics and radial functions arrays
@@ -441,17 +461,22 @@ ACEBEvaluator::compute_atom(int i, DOUBLE_TYPE **x, const SPECIES_TYPE *type, co
     // rank = 1
     for (int f_ind = 0; f_ind < total_basis_size_rank1; ++f_ind) {
         auto func = &basis_rank1[f_ind];
-//        ndensity = func->ndensity;
         for (DENSITY_TYPE p = 0; p < ndensity; ++p) {
             //for rank=1 (r=0) only 1 ms-combination exists (ms_ind=0), so index of func.ctildes is 0..ndensity-1
             weights_rank1(func->mus[0], func->ns[0] - 1) += dF_drho(p) * func->coeff[p];
         }
+#ifdef COMPUTE_B_GRAD
+        if (this->compute_b_grad) {
+            //actually, it is always += 1, due to CG for r=1
+            weights_rank1_dB(f_ind, func->mus[0], func->ns[0] - 1) += 1;
+        }
+#endif
     }
 
     // rank>1
     func_ms_ind = 0;
     func_ms_t_ind = 0;// index for dB
-    DOUBLE_TYPE theta = 0;
+    DOUBLE_TYPE theta = 0, theta_dB = 0;
     for (func_ind = 0; func_ind < total_basis_size; ++func_ind) {
         auto func = &basis[func_ind];
 //        ndensity = func->ndensity;
@@ -462,6 +487,7 @@ ACEBEvaluator::compute_atom(int i, DOUBLE_TYPE **x, const SPECIES_TYPE *type, co
         for (ms_ind = 0; ms_ind < func->num_ms_combs; ++ms_ind, ++func_ms_ind) {
             ms = &func->ms_combs[ms_ind * rank];
             theta = 0;
+            theta_dB = func->gen_cgs[ms_ind];
             for (DENSITY_TYPE p = 0; p < ndensity; ++p) {
                 theta += dF_drho(p) * func->gen_cgs[ms_ind] * func->coeff[p];
 #ifdef DEBUG_FORCES_CALCULATIONS
@@ -471,6 +497,7 @@ ACEBEvaluator::compute_atom(int i, DOUBLE_TYPE **x, const SPECIES_TYPE *type, co
             }
 
             theta *= 0.5; // 0.5 factor due to possible double counting ???
+            theta_dB *= 0.5;
             for (t = 0; t < rank; ++t, ++func_ms_t_ind) {
                 m_t = ms[t];
                 factor = (m_t % 2 == 0 ? 1 : -1);
@@ -487,6 +514,12 @@ ACEBEvaluator::compute_atom(int i, DOUBLE_TYPE **x, const SPECIES_TYPE *type, co
                 printf("weights(n,l,-m)(%d,%d,%d) += (%f, %f)\n", ns[t], ls[t], -m_t,
                        ( theta * (dB).conjugated() * factor * 0.5).real,
                        ( theta * (dB).conjugated() * factor * 0.5).img);
+#endif
+#ifdef COMPUTE_B_GRAD
+                if (this->compute_b_grad) {
+                    weights_dB(func_ind, mus[t], ns[t] - 1, ls[t], m_t) += theta_dB * dB;
+                    weights_dB(func_ind, mus[t], ns[t] - 1, ls[t], -m_t) += theta_dB * (dB).conjugated() * factor;
+                }
 #endif
             }
         }
@@ -535,7 +568,22 @@ ACEBEvaluator::compute_atom(int i, DOUBLE_TYPE **x, const SPECIES_TYPE *type, co
             f_ji[1] += DGR * r_hat[1];
             f_ji[2] += DGR * r_hat[2];
         }
+#ifdef COMPUTE_B_GRAD
+        if (this->compute_b_grad) {
+            for (func_ind = 0; func_ind < total_basis_size_rank1; func_ind++) {
 
+                n = basis_rank1[func_ind].ns[0] - 1;
+                auto &DG = DG_cache(jj, n);
+
+                DGR = DG * Y00;
+                DGR *= weights_rank1_dB(func_ind, mu_j, n); // actually always = 0,1
+                neighbours_dB(func_ind, neighbour_index_mapping(jj), 0) += DGR * r_hat[0];
+                neighbours_dB(func_ind, neighbour_index_mapping(jj), 1) += DGR * r_hat[1];
+                neighbours_dB(func_ind, neighbour_index_mapping(jj), 2) += DGR * r_hat[2];
+
+            }
+        }
+#endif
 //for rank > 1
         for (n = 0; n < nradiali; n++) {
             for (l = 0; l <= lmaxi; l++) {
@@ -577,6 +625,43 @@ ACEBEvaluator::compute_atom(int i, DOUBLE_TYPE **x, const SPECIES_TYPE *type, co
             }
         }
 
+#ifdef COMPUTE_B_GRAD
+        //TODO: merge with loop above
+        //for rank > 1 dB A matrix contributions
+        //total basis size needs to include chemical index offset
+        if (this->compute_b_grad) {
+            for (n = 0; n < nradiali; n++) {
+                for (l = 0; l <= lmaxi; l++) {
+                    R_over_r = R_cache(jj, n, l) * inv_r_norm;
+                    DR = DR_cache(jj, n, l);
+                    // for m>=0
+                    for (m = 0; m <= l; m++) {
+                        DY = DY_cache_jj(l, m);
+                        Y_DR = Y_cache_jj(l, m) * DR;
+
+                        grad_phi_nlm.a[0] = Y_DR * r_hat[0] + DY.a[0] * R_over_r;
+                        grad_phi_nlm.a[1] = Y_DR * r_hat[1] + DY.a[1] * R_over_r;
+                        grad_phi_nlm.a[2] = Y_DR * r_hat[2] + DY.a[2] * R_over_r;
+
+                        for (func_ind = 0; func_ind < total_basis_size; func_ind++) {
+                            //mu_j -> func_ind -- need to handle mu_j implicitly with func_ind chemical index offsets
+                            ACEComplex w_dB = weights_dB(func_ind, mu_j, n, l, m);
+                            if (w_dB == 0)
+                                continue;
+                            //counting for -m cases if m>0
+                            if (m > 0) w_dB *= 2;
+                            neighbours_dB(total_basis_size_rank1 + func_ind, neighbour_index_mapping(jj), 0) +=
+                                    w_dB.real_part_product(grad_phi_nlm.a[0]);
+                            neighbours_dB(total_basis_size_rank1 + func_ind, neighbour_index_mapping(jj), 1) +=
+                                    w_dB.real_part_product(grad_phi_nlm.a[1]);
+                            neighbours_dB(total_basis_size_rank1 + func_ind, neighbour_index_mapping(jj), 2) +=
+                                    w_dB.real_part_product(grad_phi_nlm.a[2]);
+                        }
+                    }
+                }
+            }
+        }
+#endif
 
 #ifdef PRINT_INTERMEDIATE_VALUES
         printf("f_ji(jj=%d, i=%d)=(%f, %f, %f)\n", jj, i,
@@ -771,4 +856,29 @@ void ACEBEvaluator::resize_projections() {
     }
 
     this->projections.resize(max_basis_size);
+}
+
+vector<int> ACEBEvaluator::get_func_ind_shift() {
+    vector<int> func_ind_shift(basis_set->nelements, 0);
+    for (SPECIES_TYPE mu = 1; mu < basis_set->nelements; mu++) {
+        func_ind_shift.at(mu) =
+                func_ind_shift.at(mu - 1) + basis_set->total_basis_size_rank1[mu] + basis_set->total_basis_size[mu];
+    }
+    return func_ind_shift;
+}
+
+int ACEBEvaluator::get_total_number_of_functions() {
+    int tot_num = 0;
+    for (SPECIES_TYPE mu = 0; mu < basis_set->nelements; mu++) {
+        tot_num += basis_set->total_basis_size_rank1[mu] + basis_set->total_basis_size[mu];
+    }
+    return tot_num;
+}
+
+vector<int> ACEBEvaluator::get_number_of_functions() {
+    vector<int> func_num_vec(basis_set->nelements, 0);
+    for (SPECIES_TYPE mu = 0; mu < basis_set->nelements; mu++) {
+        func_num_vec.at(mu) = basis_set->total_basis_size_rank1[mu] + basis_set->total_basis_size[mu];
+    }
+    return func_num_vec;
 }

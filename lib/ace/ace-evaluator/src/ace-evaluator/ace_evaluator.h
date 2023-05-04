@@ -117,13 +117,26 @@ public:
 
 #ifdef EXTRA_C_PROJECTIONS
     /* 1D array to store projections of basis function (all ranks), shape: [func_ind] */
-    Array1D<DOUBLE_TYPE> projections  = Array1D<DOUBLE_TYPE>("projections");
+    Array1D<DOUBLE_TYPE> projections = Array1D<DOUBLE_TYPE>("projections");
 
-    Array1D<DOUBLE_TYPE> dE_dc  = Array1D<DOUBLE_TYPE>("dE_dc");
+    Array1D<DOUBLE_TYPE> dE_dc = Array1D<DOUBLE_TYPE>("dE_dc");
 
 
     DOUBLE_TYPE max_gamma_grade = 0;
 #endif
+
+#ifdef COMPUTE_B_GRAD
+    bool compute_b_grad = false;
+    // Array to hold the descriptor decomposed force contributions per neighbour
+    //shape: [total_basis_size_rank1 + total_basis_size, jnum, 3]
+    Array3D<DOUBLE_TYPE> neighbours_dB = Array3D<DOUBLE_TYPE>("neighbours_dB");
+#endif
+
+    virtual vector<int> get_func_ind_shift() = 0;
+
+    virtual vector<int> get_number_of_functions() = 0;
+
+    virtual int get_total_number_of_functions() = 0;
 };
 
 //TODO: split into separate file
@@ -226,6 +239,12 @@ public:
      * @param max_jnum  maximum number of neighbours
      */
     void resize_neighbours_cache(int max_jnum) override;
+
+    vector<int> get_func_ind_shift() override;
+
+    int get_total_number_of_functions() override;
+
+    vector<int> get_number_of_functions() override;
 };
 
 

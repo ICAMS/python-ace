@@ -112,10 +112,18 @@ class FitBackendAdapter:
                             raise RuntimeError("No further batch size reduction is possible, stopping")
 
                         self.backend_config[BACKEND_BATCH_SIZE_KW] = new_batch_size
+                        # check the latest version of potential, update bbasisconfig to restart
+                        try:
+                            log.info("Attempt to get last version of potential")
+                            bbasisconfig = self.fitter.tensorpot.potential.get_updated_config()
+                            log.info("Last version of potential is extracted")
+                        except Exception as e:
+                            log.error("Can not get last version of potential: {}".format(e))
                     else:
                         log.error("Use `backend:batch_size_reduction` option for automatic batch size reduction")
                         raise RuntimeError("{} errors encountered. " +
-                                           "Consider using `backend::{}=true` option for automatic batch size reduction".format(e,
+                                           "Consider using `backend::{}=true` option for automatic batch size reduction".format(
+                                               e,
                                                BACKEND_BATCH_SIZE_REDUCTION_KW))
                 except Exception as e:
                     raise e

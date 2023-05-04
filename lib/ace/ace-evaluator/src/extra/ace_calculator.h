@@ -33,13 +33,17 @@ public:
 
     //compute the energies and forces for each atoms in atomic_environment
     //results are stored in forces and energies arrays
-    void compute(ACEAtomicEnvironment &atomic_environment, bool verbose = false);
+    void compute(ACEAtomicEnvironment &atomic_environment, bool compute_b_grad = false, bool verbose = false);
 #ifdef EXTRA_C_PROJECTIONS
     vector<vector<DOUBLE_TYPE>> projections;
     vector<vector<DOUBLE_TYPE>> rhos;
     vector<vector<DOUBLE_TYPE>> dF_drhos;
     vector<vector<DOUBLE_TYPE>> dE_dc;
     vector<DOUBLE_TYPE> gamma_grade;
+#endif
+#ifdef COMPUTE_B_GRAD
+    vector<vector<vector<DOUBLE_TYPE>>> forces_bfuncs;
+    //shape [natoms; ntotal_funcs (over all species types); 3]
 #endif
 };
 

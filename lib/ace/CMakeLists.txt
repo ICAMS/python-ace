@@ -55,6 +55,7 @@ target_link_libraries(test_extended gtest_main gtest)
 # target_link_libraries(test_extended pthread)
 #compiler options
 target_compile_definitions(test_extended PUBLIC EXTRA_C_PROJECTIONS)
+target_compile_definitions(test_extended PUBLIC COMPUTE_B_GRAD)
 target_compile_definitions(test_extended PUBLIC MULTIARRAY_INDICES_CHECK) #
 #target_compile_definitions(test_extended PUBLIC FINE_TIMING) # enforce to check the indices range of multiarrays
 #target_compile_definitions(test_extended PUBLIC PRINT_BASIS_FUNCTION) # print B and C-tilde basis functions
