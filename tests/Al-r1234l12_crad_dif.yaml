@@ -1,0 +1,55 @@
+#--------------------------------------------------------------
+# ACE Input file
+#--------------------------------------------------------------
+
+#comments and empty lines are possible
+
+#The following are global options
+global:
+  #distance between points for spline evaluation in Angstrom
+  DeltaSplineBins: 0.001
+
+#for all atoms, pairs, triplets, ... individually
+species:
+  - speciesblock: Al # X0 = Al, equivalent to only Al-Al
+    #NumberOfRadialFunctionsi = nradmaxi, max value of n in Eq.(27), R_nl
+    nradmaxi: 2
+    #NumberOfAngularMomentai = lmaxi
+    lmaxi: 2
+
+    #cluster functional form block
+    #functional form
+    ndensityi: 1 #number of densities, i.e. index of density rho_p: p = 1..ndensityi
+    npoti: FinnisSinclairShiftedScaled
+    #general parameters for potential, number depends on potential
+    parameters: [ 1.0, 1.0 ] #not implemented yet, parameters in cluster functional, see. Eq.(53)
+
+    # all i-j parameters
+    #pairwise contributions: Al-Al only
+
+    rcutij: 8.7
+    dcutij: 0.01 # Al-Al only
+    NameOfCutoffFunctionij: cos # Al-Al only
+    #NameOfRadialBasisij NumberOfRadialBasisFunctions = nradbaseij, ListOfParametersOfRadialBasisij
+    nradbaseij: 2 #number of polynomials function in R_nl = sum_k=1..nradbaseij c_nlk*g_k(r) for n>0, see Eq.(27)
+
+
+    radbase: ChebExpCos #type of "g" functions in Eq.(27)
+    #parameters for radial basis function, depends on radbase
+    radparameters: [3.0]
+    #number of basis functions to be evaluated
+
+
+    #Dimension is [nradbase][nradmax][(lmax+1)]
+    #radcoefficients: # c_(xi,xj,n,l,k): xi = X0(Al); xj=Al only, n = 1..nradmaxi, l = 0..lmaxi, k = 1..nradbaseij
+    radcoefficients: [1, 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12.]
+
+
+
+    #cluster basis functions on atom elei
+
+    nbody:
+      - {type: Al Al, nr: [1], nl: [0], c: 1.0} #nl=0 always for 2 body
+      - {type: Al Al Al, nr: [1,1], nl: [1,1], c: 2.0} #nl=0 always for 2 body
+      - {type: Al Al Al Al, nr: [1,1,1], nl: [1,1,0], lint: [0],c: 3.0} #nl=0 always for 2 body
+      - {type: Al Al Al Al Al, nr: [1,1,1,1], nl: [1,1,1,1], lint: [2,2],c: 4.0} #nl=0 always for 2 body

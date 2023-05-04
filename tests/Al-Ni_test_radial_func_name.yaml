@@ -1,0 +1,78 @@
+global:
+  DeltaSplineBins: 0.001
+species:
+  - speciesblock: Al
+    ndensityi: 1
+    npoti: FinnisSinclair
+    parameters: [ 1, 1 ]
+    rho_core_cut: 100000
+    drho_core_cut: 250
+    nradmaxi: 1
+    lmaxi: 2
+    rcutij: 8.6999999999999993
+    dcutij: 0.01
+    NameOfCutoffFunctionij: cos
+    nradbaseij: 2
+    radbase: TEST_BesselFirst
+    radparameters: [ 3 ]
+    radcoefficients: [ [ [ -8.8479017763561387, 0.27487267997914877 ], [ 0.12471127636992364, -0.063566742118984887 ], [ 1, 2 ] ] ]
+    core-repulsion: [ 400, 7 ]
+    nbody:
+      - { type: Al Al, nr: [ 1 ], nl: [ 0 ], c: [ -1.5158666430168033 ] }
+      - { type: Al Al, nr: [ 2 ], nl: [ 0 ], c: [ 7.8678535658440847 ] }
+      - { type: Al Al Al, nr: [ 1, 1 ], nl: [ 1, 1 ], c: [ -29.049514584280232 ] }
+      - { type: Al Al Al Al, nr: [ 1, 1, 1 ], nl: [ 1, 1, 0 ], lint: [ 0 ], c: [ 0.98259238491514977 ] }
+      - { type: Al Al Al Al Al, nr: [ 1, 1, 1, 1 ], nl: [ 1, 1, 1, 1 ], lint: [ 2, 2 ], c: [ -0.23589734436144791 ] }
+  - speciesblock: Al Ni
+    nradmaxi: 2
+    lmaxi: 1
+    rcutij: 8.7100000000000009
+    dcutij: 0.01
+    NameOfCutoffFunctionij: cos
+    nradbaseij: 1
+    radbase: TEST_BesselFirst
+    radparameters: [ 3.2000000000000002 ]
+    radcoefficients: [ [ [ -6.2399276210067107 ], [ 0.021090326146293255 ] ], [ [ 2 ], [ 2.5167897981916529 ] ] ]
+    core-repulsion: [ 550, 10 ]
+    nbody:
+      - { type: Al Ni, nr: [ 1 ], nl: [ 0 ], c: [ -1.0702319082226257 ] }
+      - { type: Al Al Ni, nr: [ 1, 2 ], nl: [ 1, 1 ], c: [ 0.012889131103248184 ] }
+      - { type: Al Al Ni Ni, nr: [ 1, 1, 1 ], nl: [ 1, 1, 0 ], lint: [ 0 ], c: [ -6.2506195645779261 ] }
+      - { type: Al Al Ni Ni Ni, nr: [ 1, 1, 1, 1 ], nl: [ 1, 1, 1, 1 ], lint: [ 2, 2 ], c: [ -0.3739546143252942 ] }
+  - speciesblock: Ni
+    ndensityi: 2
+    npoti: FinnisSinclairShiftedScaled
+    parameters: [ 1, 1, 1, 0.5 ]
+    rho_core_cut: 200000
+    drho_core_cut: 150
+    nradmaxi: 1
+    lmaxi: 2
+    rcutij: 8.75
+    dcutij: 0.01
+    NameOfCutoffFunctionij: cos
+    nradbaseij: 1
+    radbase: TEST_BesselSecond
+    radparameters: [ 2.5 ]
+    radcoefficients: [ [ [ -0.77716334134592324 ], [ -0.026088921934914664 ], [ 3 ] ] ]
+    core-repulsion: [ 500, 8 ]
+    nbody:
+      - { type: Ni Ni, nr: [ 1 ], nl: [ 0 ], c: [ -0.097066816654601484, -0.84171612831245157 ] }
+      - { type: Ni Ni Ni, nr: [ 1, 1 ], nl: [ 1, 1 ], c: [ 3.812849915827393, 6.2865842707870971 ] }
+      - { type: Ni Ni Ni Ni, nr: [ 1, 1, 1 ], nl: [ 1, 1, 0 ], lint: [ 0 ], c: [ 1.3744741100247433, 1.7974337754464373 ] }
+      - { type: Ni Ni Ni Ni Ni, nr: [ 1, 1, 1, 1 ], nl: [ 1, 1, 1, 1 ], lint: [ 2, 2 ], c: [ -0.23583840590526534, 0.89330887903540368 ] }
+  - speciesblock: Ni Al
+    nradmaxi: 2
+    lmaxi: 1
+    rcutij: 8.7100000000000009
+    dcutij: 0.01
+    NameOfCutoffFunctionij: cos
+    nradbaseij: 1
+    radbase: TEST_BesselFirst
+    radparameters: [ 3.2000000000000002 ]
+    radcoefficients: [ [ [ -6.2399276210067107 ], [ 0.021090326146293255 ] ], [ [ 2 ], [ 2.5167897981916529 ] ] ]
+    core-repulsion: [ 550, 10 ]
+    nbody:
+      - { type: Ni Al, nr: [ 1 ], nl: [ 0 ], c: [ 13.606944217197242, 4.001595094910801 ] }
+      - { type: Ni Al Ni, nr: [ 1, 1 ], nl: [ 1, 1 ], c: [ 9.6302535905367197, 2.6243815438231093 ] }
+      - { type: Ni Al Al Ni, nr: [ 1, 1, 1 ], nl: [ 1, 1, 0 ], lint: [ 0 ], c: [ 3.5391638808565076, 2.0652406973524062 ] }
+      - { type: Ni Al Al Ni Ni, nr: [ 1, 1, 1, 1 ], nl: [ 1, 1, 1, 1 ], lint: [ 2, 2 ], c: [ 1.0411799597925315, 2.0030525126333805 ] }
