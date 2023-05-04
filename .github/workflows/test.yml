@@ -24,12 +24,23 @@ jobs:
       uses: actions/setup-python@v3
       with:
         python-version: ${{ matrix.python-version }}
-    - name: Install dependencies
+    - name: Install general dependencies
       run: |
         python -m pip install --upgrade pip
         python -m pip install pytest
+    - name: Checkout tensorpotential
+      uses: actions/checkout@v3
+      with:
+        repository: ICAMS/TensorPotential
+        path: tensorpotential
+      run: |
+        cd tensorpotential
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-        python setup.py install        
+        python setup.py install
+    - name: Install python-ace
+      run: |    
+        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+        python setup.py install
     - name: Test with pytest
       run: |
-        python -m pytest tests/
+        python -m pytest tests/ --runtensorpot
