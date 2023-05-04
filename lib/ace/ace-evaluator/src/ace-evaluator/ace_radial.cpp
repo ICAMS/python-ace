@@ -50,7 +50,8 @@ void ACERadialFunctions::init(NS_TYPE nradb, LS_TYPE lmax, NS_TYPE nradial, DOUB
     this->nelements = nelements;
     this->radbasenameij = radbasename;
     auto shape = this->radbasenameij.get_shape();
-    if (shape.size() != 2 || shape.at(0) != nelements || shape.at(1) != nelements) {
+
+    if (shape.size() != 2 || shape.at(0) != (unsigned)nelements || shape.at(1) != (unsigned)nelements) {
         throw std::invalid_argument("`radbasename` array has wrong shape. It must be of shape (nelements, nelements)");
     }
 
@@ -148,10 +149,10 @@ void ACERadialFunctions::calcCheb(NS_TYPE n, DOUBLE_TYPE x) {
  * @param dfc
  */
 void cutoff_func_poly(DOUBLE_TYPE r, DOUBLE_TYPE r_in, DOUBLE_TYPE delta_in, DOUBLE_TYPE &fc, DOUBLE_TYPE &dfc) {
-    if (r <= r_in-delta_in) {
+    if (r <= r_in - delta_in) {
         fc = 1;
         dfc = 0;
-    } else if (r >= r_in ) {
+    } else if (r >= r_in) {
         fc = 0;
         dfc = 0;
     } else {
@@ -172,7 +173,7 @@ void
 ACERadialFunctions::radbase(DOUBLE_TYPE lam, DOUBLE_TYPE cut, DOUBLE_TYPE dcut, string radbasename, DOUBLE_TYPE r,
                             DOUBLE_TYPE cut_in, DOUBLE_TYPE dcut_in) {
     /*lam is given by the formula (24), that contains cut */
-    if (r <= cut_in-dcut_in || r >= cut) {
+    if (r <= cut_in - dcut_in || r >= cut) {
         gr.fill(0);
         dgr.fill(0);
     } else { // cut_in < r < cut
@@ -195,9 +196,9 @@ ACERadialFunctions::radbase(DOUBLE_TYPE lam, DOUBLE_TYPE cut, DOUBLE_TYPE dcut, 
             //multiply by cutoff poly gr and dgr
             DOUBLE_TYPE fc, dfc;
             cutoff_func_poly(r, cut_in, dcut_in, fc, dfc); // ascending inner cutoff
-            fc=1-fc;
-            dfc=-dfc;
-            for (int i = 0; i < gr.get_dim(0); i++) {
+            fc = 1 - fc;
+            dfc = -dfc;
+            for (unsigned int i = 0; i < gr.get_dim(0); i++) {
                 DOUBLE_TYPE new_gr = gr(i) * fc;
                 DOUBLE_TYPE new_dgr = dgr(i) * fc + gr(i) * dfc;
                 gr(i) = new_gr;
@@ -408,8 +409,8 @@ void ACERadialFunctions::all_radfunc(SPECIES_TYPE mu_i, SPECIES_TYPE mu_j, DOUBL
     DOUBLE_TYPE r_cut = cut(mu_i, mu_j);
     DOUBLE_TYPE dr_cut = dcut(mu_i, mu_j);
 
-    DOUBLE_TYPE r_in = cut_in(mu_i,mu_j);
-    DOUBLE_TYPE dr_in = dcut_in(mu_i,mu_j);
+    DOUBLE_TYPE r_in = cut_in(mu_i, mu_j);
+    DOUBLE_TYPE dr_in = dcut_in(mu_i, mu_j);
 
     // set up radial functions
     radbase(lam, r_cut, dr_cut, radbasenameij(mu_i, mu_j), r, r_in, dr_in); //update gr, dgr
@@ -602,7 +603,7 @@ void SplineInterpolator::setupSplines(int num_of_functions, RadialFunctions func
                                       DOUBLE_TYPE *dvalues, DOUBLE_TYPE deltaSplineBins, DOUBLE_TYPE cutoff) {
 
     this->deltaSplineBins = deltaSplineBins;
-    if (!deltaSplineBins > 0) {
+    if (deltaSplineBins <= 0) {
         throw invalid_argument("deltaSplineBins should be positive");
     }
     this->cutoff = cutoff;
@@ -628,9 +629,9 @@ void SplineInterpolator::setupSplines(int num_of_functions, RadialFunctions func
     invrscalelookup = 1.0 / rscalelookup;
 
     lookupTable.init(ntot + 1, num_of_functions, 4);
-    if (values == nullptr & num_of_functions > 0)
+    if ((values == nullptr) && (num_of_functions > 0))
         throw invalid_argument("SplineInterpolator::setupSplines: values could not be null");
-    if (dvalues == nullptr & num_of_functions > 0)
+    if ((dvalues == nullptr) && (num_of_functions > 0))
         throw invalid_argument("SplineInterpolator::setupSplines: dvalues could not be null");
 
     if (num_of_functions == 0)

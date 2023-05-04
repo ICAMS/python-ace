@@ -212,7 +212,7 @@ void rec_luscombe_luban(ArgT nmin_, ArgT nmax_, Iterator dest, const FuncXYZ fn)
     //
     // For the convenience, we set f'[n1] = 1.
     //
-    auto i1         = decltype(siz)();
+    auto i1         = 0;
     auto n1         = nmin;
     const auto ymin = fn.Y(nmin);
     if (abs(ymin) < tiny)

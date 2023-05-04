@@ -125,7 +125,6 @@ void ACESHarmonics::compute_plm(DOUBLE_TYPE costheta, DOUBLE_TYPE sintheta) {
     DOUBLE_TYPE t0s = 0.0;
     DOUBLE_TYPE t, td, ts;
     DOUBLE_TYPE invst;  //  sintheta^-1
-    DOUBLE_TYPE plmlm1lm1;
 
     /*----------------------------------------------------
     calculate l=0, m=0
@@ -210,7 +209,7 @@ void ACESHarmonics::compute_plm_2(DOUBLE_TYPE costheta, DOUBLE_TYPE sintheta) {
     //these could be redefined to improve the performance slightly
     double t0 = temp; //this is sqrt(0.5/pi)
     double t0d = 0.00;
-    double t, td, ts, tt;
+    double t, td, ts;
     DOUBLE_TYPE t0s = 0.0;
 
     /*----------------------------------------------------
@@ -342,10 +341,6 @@ void ACESHarmonics::compute_ylm(DOUBLE_TYPE costheta, DOUBLE_TYPE sintheta, DOUB
         compute_plm(costheta, sintheta);
     else
         compute_plm_2(costheta, sintheta);
-
-    DOUBLE_TYPE real;
-    DOUBLE_TYPE img;
-
 
     const DOUBLE_TYPE norm_factor = 1.0 / sqrt(2.0);
     DOUBLE_TYPE c, s;

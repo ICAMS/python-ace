@@ -96,13 +96,13 @@ void ACECTildeBasisSet::_copy_dynamic_memory(const ACECTildeBasisSet &src) {//al
     for (SPECIES_TYPE mu = 0; mu < src.nelements; ++mu) {
         basis_rank1[mu] = new ACECTildeBasisFunction[src.total_basis_size_rank1[mu]];
 
-        for (size_t i = 0; i < src.total_basis_size_rank1[mu]; i++) {
+        for (int i = 0; i < src.total_basis_size_rank1[mu]; i++) {
             basis_rank1[mu][i] = src.basis_rank1[mu][i];
         }
 
 
         basis[mu] = new ACECTildeBasisFunction[src.total_basis_size[mu]];
-        for (size_t i = 0; i < src.total_basis_size[mu]; i++) {
+        for (int i = 0; i < src.total_basis_size[mu]; i++) {
             basis[mu][i] = src.basis[mu][i];
         }
     }
@@ -157,9 +157,9 @@ void ACECTildeBasisSet::pack_flatten_basis() {
     //5. reassign private array pointers
 
     //r = 0, rank = 1
-    size_t rank_array_ind_rank1 = 0;
-    size_t coeff_array_ind_rank1 = 0;
-    size_t ms_array_ind_rank1 = 0;
+    int rank_array_ind_rank1 = 0;
+    int coeff_array_ind_rank1 = 0;
+    int ms_array_ind_rank1 = 0;
 
     for (SPECIES_TYPE mu = 0; mu < nelements; ++mu) {
         for (int func_ind_r1 = 0; func_ind_r1 < total_basis_size_rank1[mu]; ++func_ind_r1) {
@@ -204,9 +204,9 @@ void ACECTildeBasisSet::pack_flatten_basis() {
 
 
     //rank>1, r>0
-    size_t rank_array_ind = 0;
-    size_t coeff_array_ind = 0;
-    size_t ms_array_ind = 0;
+    int rank_array_ind = 0;
+    int coeff_array_ind = 0;
+    int ms_array_ind = 0;
 
     for (SPECIES_TYPE mu = 0; mu < nelements; ++mu) {
         for (int func_ind = 0; func_ind < total_basis_size[mu]; ++func_ind) {
@@ -320,7 +320,7 @@ void ACECTildeBasisSet::save(const string &filename) {
                 map_embedding_specifications.at(mu_i).drho_core_cutoff);
     }
 
-    // save E0 values 
+    // save E0 values
     fprintf(fptr, "E0:");
     for (SPECIES_TYPE mu_i = 0; mu_i < nelements; ++mu_i)
         fprintf(fptr, " %.18f", E0vals(mu_i));
@@ -401,7 +401,7 @@ void ACECTildeBasisSet::save(const string &filename) {
     fprintf(fptr, "\n");
 
     for (SPECIES_TYPE mu = 0; mu < nelements; mu++)
-        for (SHORT_INT_TYPE func_ind = 0; func_ind < total_basis_size_rank1[mu]; ++func_ind)
+        for (int func_ind = 0; func_ind < total_basis_size_rank1[mu]; ++func_ind)
             fwrite_c_tilde_b_basis_func(fptr, basis_rank1[mu][func_ind]);
 
     fprintf(fptr, "total_basis_size: ");
@@ -411,7 +411,7 @@ void ACECTildeBasisSet::save(const string &filename) {
     fprintf(fptr, "\n");
 
     for (SPECIES_TYPE mu = 0; mu < nelements; mu++)
-        for (SHORT_INT_TYPE func_ind = 0; func_ind < total_basis_size[mu]; ++func_ind)
+        for (int func_ind = 0; func_ind < total_basis_size[mu]; ++func_ind)
             fwrite_c_tilde_b_basis_func(fptr, basis[mu][func_ind]);
 
 
@@ -568,7 +568,7 @@ void ACECTildeBasisSet::load(const string filename) {
     for (SPECIES_TYPE mu_i = 0; mu_i < nelements; ++mu_i) {
         map_embedding_specifications[mu_i] = ACEEmbeddingSpecification();
     }
-    // load angular basis - only need spherical harmonics parameter 
+    // load angular basis - only need spherical harmonics parameter
     res = fscanf(fptr, " lmax=%s\n", buffer);
     if (res != 1)
         throw_error(filename, "lmax", "lmax=[number]");
@@ -667,7 +667,7 @@ void ACECTildeBasisSet::load(const string filename) {
             printf("file %s : format seems broken near E0; trying to continue...\n", filename.c_str());
     }
 
-    // check which radial basis we need to load 
+    // check which radial basis we need to load
     res = fscanf(fptr, " radbasename=%s\n", buffer);
     if (res != 1) {
         throw_error(filename, "radbasename", "rabbasename=ChebExpCos|ChebPow|ACE.jl.Basic");
@@ -676,7 +676,7 @@ void ACECTildeBasisSet::load(const string filename) {
     }
 
 //    printf("radbasename = `%s`\n", radbasename.c_str());
-    if (radbasename == "ChebExpCos" | radbasename == "ChebPow") {
+    if ((radbasename == "ChebExpCos") || (radbasename == "ChebPow")) {
         _load_radial_ACERadial(fptr, filename, radbasename);
     } else if (radbasename == "ACE.jl.Basic") {
         _load_radial_SHIPsBasic(fptr, filename, radbasename);
@@ -715,7 +715,7 @@ void ACECTildeBasisSet::load(const string filename) {
     num_ms_combinations_max = stol_err(buffer, filename, "num_ms_combinations_max", "num_ms_combinations_max=[number]");
 
     //read total_basis_size_rank1
-    total_basis_size_rank1 = new SHORT_INT_TYPE[nelements];
+    total_basis_size_rank1 = new int[nelements];
     basis_rank1 = new ACECTildeBasisFunction *[nelements];
     res = fscanf(fptr, " total_basis_size_rank1: ");
 
@@ -730,13 +730,13 @@ void ACECTildeBasisSet::load(const string filename) {
         basis_rank1[mu] = new ACECTildeBasisFunction[total_basis_size_rank1[mu]];
     }
     for (SPECIES_TYPE mu = 0; mu < nelements; mu++)
-        for (SHORT_INT_TYPE func_ind = 0; func_ind < total_basis_size_rank1[mu]; ++func_ind) {
+        for (int func_ind = 0; func_ind < total_basis_size_rank1[mu]; ++func_ind) {
             fread_c_tilde_b_basis_func(fptr, basis_rank1[mu][func_ind]);
         }
 
     //read total_basis_size
     res = fscanf(fptr, " total_basis_size: ");
-    total_basis_size = new SHORT_INT_TYPE[nelements];
+    total_basis_size = new int[nelements];
     basis = new ACECTildeBasisFunction *[nelements];
 
     for (SPECIES_TYPE mu = 0; mu < nelements; ++mu) {
@@ -748,7 +748,7 @@ void ACECTildeBasisSet::load(const string filename) {
         basis[mu] = new ACECTildeBasisFunction[total_basis_size[mu]];
     }
     for (SPECIES_TYPE mu = 0; mu < nelements; mu++)
-        for (SHORT_INT_TYPE func_ind = 0; func_ind < total_basis_size[mu]; ++func_ind) {
+        for (int func_ind = 0; func_ind < total_basis_size[mu]; ++func_ind) {
             fread_c_tilde_b_basis_func(fptr, basis[mu][func_ind]);
         }
 
@@ -783,8 +783,8 @@ void ACECTildeBasisSet::compute_array_sizes(ACECTildeBasisFunction **basis_rank1
 
     max_B_array_size = 0;
 
-    size_t cur_ms_size = 0;
-    size_t cur_ms_rank_size = 0;
+    int cur_ms_size = 0;
+    int cur_ms_rank_size = 0;
 
     for (SPECIES_TYPE mu = 0; mu < nelements; ++mu) {
 
@@ -836,12 +836,12 @@ void ACECTildeBasisSet::flatten_basis(C_tilde_full_basis_vector2d &mu0_ctilde_ba
 
     delete[] total_basis_size_rank1;
     delete[] total_basis_size;
-    total_basis_size_rank1 = new SHORT_INT_TYPE[nelements];
-    total_basis_size = new SHORT_INT_TYPE[nelements];
+    total_basis_size_rank1 = new int[nelements];
+    total_basis_size = new int[nelements];
 
 
-    size_t tot_size_rank1 = 0;
-    size_t tot_size = 0;
+    int tot_size_rank1 = 0;
+    int tot_size = 0;
 
     for (SPECIES_TYPE mu = 0; mu < this->nelements; ++mu) {
         tot_size = 0;
@@ -861,8 +861,8 @@ void ACECTildeBasisSet::flatten_basis(C_tilde_full_basis_vector2d &mu0_ctilde_ba
 
 
     for (SPECIES_TYPE mu = 0; mu < this->nelements; ++mu) {
-        size_t ind_rank1 = 0;
-        size_t ind = 0;
+        int ind_rank1 = 0;
+        int ind = 0;
 
         for (auto &func: mu0_ctilde_basis_vector[mu]) {
             if (func.rank == 1) { //r=0, rank=1
@@ -1074,17 +1074,17 @@ vector<DOUBLE_TYPE> ACECTildeBasisSet::get_all_coeffs() const {
     auto coeffs = radial_functions->crad.to_flatten_vector();
 
     for (SPECIES_TYPE mu = 0; mu < nelements; mu++) {
-        for (SHORT_INT_TYPE func_ind = 0; func_ind < total_basis_size_rank1[mu]; func_ind++) {
+        for (int func_ind = 0; func_ind < total_basis_size_rank1[mu]; func_ind++) {
             auto ndens = basis_rank1[mu][func_ind].ndensity;
-            for (SHORT_INT_TYPE ms_ind = 0; ms_ind < basis_rank1[mu][func_ind].num_ms_combs; ms_ind++) {
+            for (int ms_ind = 0; ms_ind < basis_rank1[mu][func_ind].num_ms_combs; ms_ind++) {
                 for (DENSITY_TYPE p = 0; p < ndens; p++)
                     coeffs.emplace_back(basis_rank1[mu][func_ind].ctildes[ms_ind * ndens + p]);
             }
         }
 
-        for (SHORT_INT_TYPE func_ind = 0; func_ind < total_basis_size[mu]; func_ind++) {
+        for (int func_ind = 0; func_ind < total_basis_size[mu]; func_ind++) {
             auto ndens = basis[mu][func_ind].ndensity;
-            for (SHORT_INT_TYPE ms_ind = 0; ms_ind < basis[mu][func_ind].num_ms_combs; ms_ind++) {
+            for (int ms_ind = 0; ms_ind < basis[mu][func_ind].num_ms_combs; ms_ind++) {
                 for (DENSITY_TYPE p = 0; p < ndens; p++)
                     coeffs.emplace_back(basis[mu][func_ind].ctildes[ms_ind * ndens + p]);
             }
@@ -1095,27 +1095,27 @@ vector<DOUBLE_TYPE> ACECTildeBasisSet::get_all_coeffs() const {
 }
 
 void ACECTildeBasisSet::set_all_coeffs(const vector<DOUBLE_TYPE> &coeffs) {
-    size_t crad_size = radial_functions->crad.get_size();
+    int crad_size = radial_functions->crad.get_size();
     vector<DOUBLE_TYPE> crad_flatten_vector(coeffs.begin(), coeffs.begin() + crad_size);
     vector<DOUBLE_TYPE> basis_coeffs_vector(coeffs.begin() + crad_size, coeffs.end());
 
     radial_functions->crad = crad_flatten_vector;
     radial_functions->setuplookupRadspline();
 
-    size_t coeffs_ind = 0;
+    int coeffs_ind = 0;
     for (SPECIES_TYPE mu = 0; mu < nelements; mu++) {
-        for (SHORT_INT_TYPE func_ind = 0; func_ind < total_basis_size_rank1[mu]; func_ind++) {
+        for (int func_ind = 0; func_ind < total_basis_size_rank1[mu]; func_ind++) {
             auto ndens = basis_rank1[mu][func_ind].ndensity;
-            for (SHORT_INT_TYPE ms_ind = 0; ms_ind < basis_rank1[mu][func_ind].num_ms_combs; ms_ind++) {
+            for (int ms_ind = 0; ms_ind < basis_rank1[mu][func_ind].num_ms_combs; ms_ind++) {
                 for (DENSITY_TYPE p = 0; p < ndens; p++, coeffs_ind++) {
                     basis_rank1[mu][func_ind].ctildes[ms_ind * ndens + p] = basis_coeffs_vector[coeffs_ind];
                 }
             }
         }
 
-        for (SHORT_INT_TYPE func_ind = 0; func_ind < total_basis_size[mu]; func_ind++) {
+        for (int func_ind = 0; func_ind < total_basis_size[mu]; func_ind++) {
             auto ndens = basis[mu][func_ind].ndensity;
-            for (SHORT_INT_TYPE ms_ind = 0; ms_ind < basis[mu][func_ind].num_ms_combs; ms_ind++) {
+            for (int ms_ind = 0; ms_ind < basis[mu][func_ind].num_ms_combs; ms_ind++) {
                 for (DENSITY_TYPE p = 0; p < ndens; p++, coeffs_ind++) {
                     basis[mu][func_ind].ctildes[ms_ind * ndens + p] = basis_coeffs_vector[coeffs_ind];
                 }
@@ -1160,10 +1160,10 @@ void ACECTildeBasisSet::save_yaml(const string &yaml_file_name) const {
     map<int, vector<YAML_PACE::Node>> acebbasisfunc_map;
     for (SPECIES_TYPE mu = 0; mu < this->nelements; mu++) {
         vector<YAML_PACE::Node> acebbasisfunc_vec;
-        for (size_t ind = 0; ind < this->total_basis_size_rank1[mu]; ind++)
+        for (int ind = 0; ind < this->total_basis_size_rank1[mu]; ind++)
             acebbasisfunc_vec.emplace_back(this->basis_rank1[mu][ind].to_YAML());
 
-        for (size_t ind = 0; ind < this->total_basis_size[mu]; ind++)
+        for (int ind = 0; ind < this->total_basis_size[mu]; ind++)
             acebbasisfunc_vec.emplace_back(this->basis[mu][ind].to_YAML());
 
         acebbasisfunc_map[mu] = acebbasisfunc_vec;
@@ -1349,10 +1349,10 @@ void ACECTildeBasisSet::load_yaml(const string &yaml_file_name) {
     vector<int> int_vec;
     vector<DOUBLE_TYPE> double_vec;
 
-    total_basis_size_rank1 = new SHORT_INT_TYPE[nelements];
+    total_basis_size_rank1 = new int[nelements];
     basis_rank1 = new ACECTildeBasisFunction *[nelements];
 
-    total_basis_size = new SHORT_INT_TYPE[nelements];
+    total_basis_size = new int[nelements];
     basis = new ACECTildeBasisFunction *[nelements];
 
     this->rankmax = 0;
@@ -1378,14 +1378,14 @@ void ACECTildeBasisSet::load_yaml(const string &yaml_file_name) {
             ctildefunc.num_ms_combs = ctildefunc_yaml["num_ms_combs"].as<SHORT_INT_TYPE>();
 
             int_vec = ctildefunc_yaml["mus"].as<vector<int>>();
-            if (int_vec.size()!=ctildefunc.rank)
+            if (int_vec.size() != ctildefunc.rank)
                 throw invalid_argument("mus:: not sufficient number of values");
             ctildefunc.mus = new SPECIES_TYPE[ctildefunc.rank];
             for (int r = 0; r < ctildefunc.rank; r++)
                 ctildefunc.mus[r] = int_vec.at(r);
 
             int_vec = ctildefunc_yaml["ns"].as<vector<int>>();
-            if (int_vec.size()!=ctildefunc.rank)
+            if (int_vec.size() != ctildefunc.rank)
                 throw invalid_argument("ns:: not sufficient number of values");
             ctildefunc.ns = new NS_TYPE[ctildefunc.rank];
             for (int r = 0; r < ctildefunc.rank; r++)
@@ -1393,7 +1393,7 @@ void ACECTildeBasisSet::load_yaml(const string &yaml_file_name) {
 
 
             int_vec = ctildefunc_yaml["ls"].as<vector<int>>();
-            if (int_vec.size()!=ctildefunc.rank)
+            if (int_vec.size() != ctildefunc.rank)
                 throw invalid_argument("ls:: not sufficient number of values");
             ctildefunc.ls = new LS_TYPE[ctildefunc.rank];
             for (int r = 0; r < ctildefunc.rank; r++)
@@ -1401,7 +1401,7 @@ void ACECTildeBasisSet::load_yaml(const string &yaml_file_name) {
 
             //this->ms_combs; //[num_ms_combs * rank]
             int_vec = ctildefunc_yaml["ms_combs"].as<vector<int>>();
-            if (int_vec.size()!=ctildefunc.rank * ctildefunc.num_ms_combs)
+            if (int_vec.size() != ctildefunc.rank * ctildefunc.num_ms_combs)
                 throw invalid_argument("ms_combs:: not sufficient number of values");
             ctildefunc.ms_combs = new MS_TYPE[ctildefunc.rank * ctildefunc.num_ms_combs];
             for (int r = 0; r < ctildefunc.rank * ctildefunc.num_ms_combs; r++)
@@ -1410,7 +1410,7 @@ void ACECTildeBasisSet::load_yaml(const string &yaml_file_name) {
 
             // this->ctildes; //[num_of_ms_combs * ndensity]
             double_vec = ctildefunc_yaml["ctildes"].as<vector<DOUBLE_TYPE >>();
-            if (double_vec.size()!=ctildefunc.ndensity * ctildefunc.num_ms_combs)
+            if (double_vec.size() != ctildefunc.ndensity * ctildefunc.num_ms_combs)
                 throw invalid_argument("ctildes:: not sufficient number of values");
             ctildefunc.ctildes = new DOUBLE_TYPE[ctildefunc.ndensity * ctildefunc.num_ms_combs];
             for (int r = 0; r < ctildefunc.ndensity * ctildefunc.num_ms_combs; r++)
@@ -1430,7 +1430,7 @@ void ACECTildeBasisSet::load_yaml(const string &yaml_file_name) {
 
         basis_rank1[mu] = new ACECTildeBasisFunction[total_basis_size_rank1[mu]];
         basis[mu] = new ACECTildeBasisFunction[total_basis_size[mu]];
-        size_t func_ind_rank1 = 0, func_ind = 0;
+        int func_ind_rank1 = 0, func_ind = 0;
         for (const ACECTildeBasisFunction ctildefunc: ctildefunc_vec) {
             if (ctildefunc.rank == 1) {
                 basis_rank1[mu][func_ind_rank1] = ctildefunc;

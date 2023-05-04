@@ -275,7 +275,7 @@ struct NeighbourCluster {
     vector<DOUBLE_TYPE> min_r, max_r;
     vector<vector<DOUBLE_TYPE>> positions;
     vector<vector<DOUBLE_TYPE>> scaled_positions;
-    vector<int> species_types;
+    vector<SPECIES_TYPE> species_types;
     vector<int> origins;
     vector<vector<int>> nshifts;
 };
@@ -544,7 +544,7 @@ ACEAtomicEnvironment build_atomic_env_from_cluster_nogrid(NeighbourCluster &clus
     int n_atoms_real = cluster.n_atoms_real;
 
     vector<vector<DOUBLE_TYPE>> x;
-    vector<int> species_type;
+    vector<SPECIES_TYPE> species_type;
     vector<int> origins;
     vector<vector<int>> neighbour_list;
     vector<int> num_neighbours;
@@ -630,7 +630,7 @@ ACEAtomicEnvironment build_atomic_env_from_cluster(NeighbourCluster &cluster, DO
     }
 
     vector<vector<DOUBLE_TYPE>> x;
-    vector<int> species_type;
+    vector<SPECIES_TYPE> species_type;
     vector<int> origins;
     vector<vector<int>> neighbour_list;
     vector<int> num_neighbours;

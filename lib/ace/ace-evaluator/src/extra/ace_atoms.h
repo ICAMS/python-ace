@@ -15,8 +15,8 @@
 using namespace std;
 
 struct ACEAtomicEnvironment {
-    int n_atoms_real; // number of real atoms
-    int n_atoms_extended; // number of extended atoms (incl. periodic images)
+    int n_atoms_real = 0; // number of real atoms
+    int n_atoms_extended = 0; // number of extended atoms (incl. periodic images)
 
     DOUBLE_TYPE **x = nullptr; // of shape (n_atoms_extended,3)
     SPECIES_TYPE *species_type = nullptr; // of shape (n_atoms_extended,)
@@ -106,7 +106,7 @@ struct ACEAtomicEnvironment {
         num_neighbours = nullptr;
     }
 
-    void _clean_species_types(){
+    void _clean_species_types() {
         delete[] species_type;
         species_type = nullptr;
     }

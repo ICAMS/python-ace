@@ -88,7 +88,7 @@ struct ACEAbstractBasisFunction {
     */
     LS_TYPE *ls = nullptr;
 
-    SHORT_INT_TYPE num_ms_combs = 0; ///< number of different ms-combinations
+    int num_ms_combs = 0; ///< number of different ms-combinations
 
     RANK_TYPE rank = 0; ///< number of atomic base functions "A"s in basis function product B
 

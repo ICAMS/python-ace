@@ -1,0 +1,293 @@
+# Example of the potential file for ternary Al-Ni-Cu
+
+global:
+  DeltaSplineBins: 0.001
+
+species:
+  #####################################################################################################################
+  # Single-species block for each element
+  # Each element could have unique embedding function, radial functions, lmax, nradmax, nradbase, radcoefficients, etc...
+  # These parameters for each single specie would be used for multi-species blocks
+  #####################################################################################################################
+
+  ############
+  #   Al     #
+  ############
+  - speciesblock: Al # equivalent to Al Al
+    #embedding is element-specififc
+    ndensityi: 1
+    npoti: FinnisSinclair
+    parameters: [ 1.0, 1.0 ]
+
+    # rho-core-repulsion cutoff is element-specific
+    rho_core_cut: 100000
+    drho_core_cut: 250
+
+    #bond basis / bond is pair-specific
+    lmaxi: 2
+    nradmaxi: 1
+    nradbaseij: 2
+    radbase: ChebExpCos
+    radparameters: [ 3.0 ] #_ij -> symmetric with j-i
+    radcoefficients: [ [ [ 1, 2 ],[ 1, 2 ],[ 1, 2 ] ] ] #_ij  [n][lmax+1][nradbase]
+
+    # bond basis / bond? is pair-specific
+    rcutij: 8.7
+    dcutij: 0.01
+
+    # core-repulsion is bond-basis::bond
+    core-repulsion: [ 400, 7 ] #hard-core repulsion: prefactor, lambda
+
+    # deprecated?
+    NameOfCutoffFunctionij: cos
+
+    # collect to Al - basis functions
+    nbody:
+      - { type: Al Al, nr: [ 1 ], nl: [ 0 ], c: 1.0 }
+      - { type: Al Al, nr: [ 2 ], nl: [ 0 ], c: 2.0 }
+      - { type: Al Al Al, nr: [ 1,1 ], nl: [ 1,1 ], c: 1.0 }
+      - { type: Al Al Al Al, nr: [ 1,1,1 ], nl: [ 1,1,0 ], lint: [ 0 ],c: 1.0 }
+      - { type: Al Al Al Al Al, nr: [ 1,1,1,1 ], nl: [ 1,1,1,1 ], lint: [ 2,2 ],c: 1.0 }
+
+  ############
+  #   Ni     #
+  ############
+  - speciesblock: Ni
+    #embedding
+    ndensityi: 2
+    npoti: FinnisSinclairShiftedScaled
+    parameters: [ 1.0, 1.0, 1.0, 0.5 ]
+
+    # rho-core-repulsion cutoff is element-specific
+    rho_core_cut: 200000
+    drho_core_cut: 150
+
+    #bond basis / bond
+    lmaxi: 2
+    nradmaxi: 1
+    nradbaseij: 1
+    radbase: ChebPow
+    radparameters: [ 2.5 ]
+    radcoefficients: [ [ [ 1 ],[ 2 ],[ 3 ] ] ]
+
+    # bond basis / bond?
+    rcutij: 8.75
+    dcutij: 0.01
+
+    # deprecated?
+    NameOfCutoffFunctionij: cos
+
+    # core-repulsion is bond-basis::bond
+    core-repulsion: [ 500, 8 ] #hard-core repulsion: prefactor, lambda
+
+    # collect to Ni - basis functions
+    nbody:
+      - { type: Ni Ni, nr: [ 1 ], nl: [ 0 ], c: [ 1.0, 2. ] }
+      - { type: Ni Ni Ni, nr: [ 1,1 ], nl: [ 1,1 ], c: [ 1.0, 2. ] }
+      - { type: Ni Ni Ni Ni, nr: [ 1,1,1 ], nl: [ 1,1,0 ], lint: [ 0 ],c: [ 1.0, 2. ] }
+      - { type: Ni Ni Ni Ni Ni, nr: [ 1,1,1,1 ], nl: [ 1,1,1,1 ], lint: [ 2,2 ],c: [ 1.0, 2. ] }
+
+
+  ############
+  #   Cu     #
+  ############
+  - speciesblock: Cu
+    #embedding
+    ndensityi: 1
+    npoti: FinnisSinclairShiftedScaled
+    parameters: [ 1.0, 1.0 ]
+
+    # rho-core-repulsion cutoff is element-specific
+    rho_core_cut: 200000
+    drho_core_cut: 150
+
+    #bond basis / bond
+    lmaxi: 2
+    nradmaxi: 1
+    nradbaseij: 1
+    radbase: ChebExpCos
+    radparameters: [ 3.1 ]
+    radcoefficients: [ [ [ 3 ],[ 2 ],[ 1 ] ] ]
+
+    # bond basis / bond?
+    rcutij: 8.67
+    dcutij: 0.01
+
+    #deprecated?
+    NameOfCutoffFunctionij: cos
+
+    # core-repulsion is bond-basis::bond
+    core-repulsion: [ 600, 9 ] #hard-core repulsion: prefactor, lambda
+
+    # collect to Cu - basis functions
+    nbody:
+      - { type: Cu Cu, nr: [ 1 ], nl: [ 0 ], c: 1.0 }
+      - { type: Cu Cu Cu, nr: [ 1,1 ], nl: [ 1,1 ], c: 1.0 }
+      - { type: Cu Cu Cu Cu, nr: [ 1,1,1 ], nl: [ 1,1,0 ], lint: [ 0 ],c: 1.0 }
+      - { type: Cu Cu Cu Cu Cu, nr: [ 1,1,1,1 ], nl: [ 1,1,1,1 ], lint: [ 2,2 ],c: 1.0 }
+
+
+  #####################################################################################################################
+  # Multi-species blocks
+  # Ordering: central atom + lexicographical (i.e. alphabetical)
+  # example: Al-Cu-Ni
+  #####################################################################################################################
+
+  ############
+  #   Al-*   #
+  ############
+  # bond basis should be
+  # 1. consistent with its symmetric, i.e. Al-Ni  <=> Ni-Al
+  # 2. If not defined, then taken from its symmetric
+  - speciesblock: Al Ni
+    #embedding is taken from Al
+
+    #bond basis / bond
+    lmaxi: 1
+    nradmaxi: 2
+    nradbaseij: 1
+    radbase: ChebExpCos
+    radparameters: [ 3.2 ] #_ij -> symmetric with j-i
+    radcoefficients: [ 1., 1., 2., 3. ] #_ij  [n][lmax+1][nradbase]
+    # bond basis / bond?
+    rcutij: 8.71
+    dcutij: 0.01
+
+    # core-repulsion is bond-basis::bond
+    core-repulsion: [ 550, 10 ] #hard-core repulsion: prefactor, lambda
+
+
+    # collect to Al - basis functions
+    nbody:
+      - { type: Al Ni, nr: [ 1 ], nl: [ 0 ], c: 1.0 }
+      - { type: Al Al Ni, nr: [ 1,2 ], nl: [ 1,1 ], c: 1.0 }
+
+      - { type: Al Al Ni Ni, nr: [ 1,1,1 ], nl: [ 1,1,0 ], lint: [ 0 ],c: 1.0 }
+      - { type: Al Al Ni Ni Ni, nr: [ 1,1,1,1 ], nl: [ 1,1,1,1 ], lint: [ 2,2 ],c: 1.0 }
+
+
+  - speciesblock: Al Cu
+    #embedding is taken from Al
+    #bond basis / bond
+    lmaxi: 1
+    nradmaxi: 1
+    nradbaseij: 1
+    radbase: ChebExpCos
+    radparameters: [ 3.3 ] #_ij -> symmetric with j-i
+    radcoefficients: [ 1., 1. ] #_ij  [n][lmax+1][nradbase]
+    # bond basis / bond?
+    rcutij: 8.5
+    dcutij: 0.01
+
+    # core-repulsion is bond-basis::bond
+    core-repulsion: [ 560, 11 ] #hard-core repulsion: prefactor, lambda
+
+
+    nbody:
+      - { type: Al Cu, nr: [ 1 ], nl: [ 0 ], c: 1.0 }
+      - { type: Al Al Cu, nr: [ 1,1 ], nl: [ 1,1 ], c: 1.0 }
+      - { type: Al Al Cu Cu, nr: [ 1,1,1 ], nl: [ 1,1,0 ], lint: [ 0 ],c: 1.0 }
+      - { type: Al Al Cu Cu Cu, nr: [ 1,1,1,1 ], nl: [ 1,1,1,1 ], lint: [ 2,2 ],c: 1.0 }
+
+  # No any radial basis functions settings for 3-species block?
+  - speciesblock: Al Cu Ni
+    #embedding is taken from Al: 1-dens
+    #bond basis / bond is already defined in Al-Cu and Al-Ni
+
+    # collect to Al - basis functions
+    nbody:
+      #- {type: Al Ni, nr: [1], nl: [0], c: 1.0} # no pair correlations, starts only from triplets
+      - { type: Al Cu Ni, nr: [ 1,1 ], nl: [ 1,1 ], c: 1.0 }
+      - { type: Al Al Cu Ni , nr: [ 1,1,1 ], nl: [ 1,1,0 ], lint: [ 0 ],c: 1.0 }
+      - { type: Al Al Cu Cu Ni , nr: [ 1,1,1,1 ], nl: [ 1,1,1,1 ], lint: [ 2,2 ],c: 1.0 }
+
+
+  ############
+  #   Ni-*   #
+  ############
+  # nradmaxi, lmaxi, etc... should be taken from corresponding single-species block OR defined here ? 
+  - speciesblock: Ni Al
+    #embedding is taken from Ni (2-dens)
+    #bond basis / bond   should be taken from Al-Ni
+
+    # core-rep should be taken from Al-Ni
+
+    # collect to Ni - basis functions
+    nbody:
+      - { type: Ni Al, nr: [ 1 ], nl: [ 0 ], c: [ 1.0, 2. ] }
+      - { type: Ni Al Ni, nr: [ 1,1 ], nl: [ 1,1 ], c: [ 1.0, 2. ] }
+      - { type: Ni Al Al Ni, nr: [ 1,1,1 ], nl: [ 1,1,0 ], lint: [ 0 ],c: [ 1.0, 2. ] }
+      - { type: Ni Al Al Ni Ni, nr: [ 1,1,1,1 ], nl: [ 1,1,1,1 ], lint: [ 2,2 ],c: [ 1.0, 2. ] }
+
+  - speciesblock: Ni Cu
+    #embedding is taken from Ni (2-dens)
+    #bond basis / bond  should be taken from Cu-Ni or defined first time here:
+    lmaxi: 1
+    nradmaxi: 1
+    nradbaseij: 1
+    radbase: ChebExpCos
+    radparameters: [ 2.6 ] #_ij -> symmetric with j-i
+    radcoefficients: [ 1., 1. ] #_ij  [n][lmax+1][nradbase]
+    # bond basis / bond?
+    rcutij: 8.
+    dcutij: 0.01
+
+    # core-repulsion is bond-basis::bond
+    core-repulsion: [ 450, 12 ] #hard-core repulsion: prefactor, lambda
+
+
+    # collect to Ni - basis functions
+    nbody:
+      - { type: Ni Cu, nr: [ 1 ], nl: [ 0 ], c: [ 1.0, 2. ] }
+      - { type: Ni Cu Ni, nr: [ 1,1 ], nl: [ 1,1 ], c: [ 1.0, 2. ] }
+      - { type: Ni Cu Cu Ni, nr: [ 1,1,1 ], nl: [ 1,1,0 ], lint: [ 0 ], c: [ 1.0, 2. ] }
+      - { type: Ni Cu Cu Ni Ni, nr: [ 1,1,1,1 ], nl: [ 1,1,1,1 ], lint: [ 2,2 ], c: [ 1.0, 2. ] }
+
+  - speciesblock: Ni Al Cu
+    #embedding is taken from Ni: 2-dens
+    #bond basis / bond is already defined in Ni-Al and Ni-Cu
+
+
+    # collect to Ni - basis functions
+    nbody:
+      - { type: Ni Al Cu, nr: [ 1,1 ], nl: [ 1,1 ], c: [ 1.0, 2. ] }
+      - { type: Ni Al Al Cu, nr: [ 1,1,1 ], nl: [ 1,1,0 ], lint: [ 0 ],c: [ 1.0, 2. ] }
+      - { type: Ni Al Al Cu Cu, nr: [ 1,1,1,1 ], nl: [ 1,1,1,1 ], lint: [ 2,2 ],c: [ 1.0, 2. ] }
+
+  ############
+  #   Cu-*   #
+  ############
+  - speciesblock: Cu Al
+    #embedding is taken from Cu (1-dens)
+    #bond basis / bond should be taken from Al-Cu
+
+    # core-rep should be taken from Al-Cu
+
+    # collect to Cu - basis functions
+    nbody:
+      - { type: Cu Al, nr: [ 1 ], nl: [ 0 ], c: 1.0 }
+      - { type: Cu Al Cu, nr: [ 1,1 ], nl: [ 1,1 ], c: 1.0 }
+      - { type: Cu Al Al Cu, nr: [ 1,1,1 ], nl: [ 1,1,0 ], lint: [ 0 ],c: 1.0 }
+      - { type: Cu Al Al Cu Cu, nr: [ 1,1,1,1 ], nl: [ 1,1,1,1 ], lint: [ 2,2 ],c: 1.0 }
+
+  - speciesblock: Cu Ni
+    #embedding is taken from Cu (1-dens)
+    #bond basis / bond should be taken from Ni-Cu
+
+    # core-rep should be taken from Al-Cu
+
+    # collect to Cu - basis functions
+    nbody:
+      - { type: Cu Ni, nr: [ 1 ], nl: [ 0 ], c: 1.0 }
+      - { type: Cu Cu Ni, nr: [ 1,1 ], nl: [ 1,1 ], c: 1.0 }
+      - { type: Cu Cu Ni Ni, nr: [ 1,1,1 ], nl: [ 1,1,0 ], lint: [ 0 ],c: 1.0 }
+      - { type: Cu Cu Ni Ni Ni, nr: [ 1,1,1,1 ], nl: [ 1,1,1,1 ], lint: [ 2,2 ],c: 1.0 }
+
+  - speciesblock: Cu Al Ni
+    #embedding is taken from Cu: 1-dens
+    #bond basis / bond is already defined in Cu-Al and Cu-Ni
+    # collect to Cu - basis functions
+    nbody:
+      - { type: Cu Al Ni, nr: [ 1,1 ], nl: [ 1,1 ], c: 1.0 }
+      - { type: Cu Al Al Ni, nr: [ 1,1,1 ], nl: [ 1,1,0 ], lint: [ 0 ],c: 1.0 }
+#      - { type: Cu Al Al Cu Ni, nr: [ 1,1,1,1 ], nl: [ 1,1,1,1 ], lint: [ 2,2 ],c: 1.0 }

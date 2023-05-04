@@ -73,15 +73,15 @@ vector<vector<int>> ACEAtomicEnvironment::get_neighbour_list() const {
 }
 
 DOUBLE_TYPE ACEAtomicEnvironment::get_minimal_nn_distance() const {
-    DOUBLE_TYPE nn_min_distance=1e3;
-    for (int i = 0; i<this->n_atoms_real; i++) {
+    DOUBLE_TYPE nn_min_distance = 1e3;
+    for (int i = 0; i < this->n_atoms_real; i++) {
         auto r_i = this->x[i];
         auto num_neighbours = this->num_neighbours[i];
         auto cur_neighbour_list = this->neighbour_list[i];
-        for(int j=0;j<num_neighbours;j++) {
+        for (int j = 0; j < num_neighbours; j++) {
             auto r_j = this->x[cur_neighbour_list[j]];
-            DOUBLE_TYPE r = sqrt(sqr(r_j[0]-r_i[0]) + sqr(r_j[1]-r_i[1]) + sqr(r_j[2]-r_i[2]));
-            if (r<nn_min_distance)
+            DOUBLE_TYPE r = sqrt(sqr(r_j[0] - r_i[0]) + sqr(r_j[1] - r_i[1]) + sqr(r_j[2] - r_i[2]));
+            if (r < nn_min_distance)
                 nn_min_distance = r;
         }
     }
@@ -116,7 +116,7 @@ void ACEAtomicEnvironment::_load(FILE *fin) {
 
 void ACEAtomicEnvironment::_load(FILE *fin, const string &filename) {
     int res;
-    char buffer[1024]={0};
+    char buffer[1024] = {0};
 
     // read natoms
     int n_atoms_real = 0;
@@ -145,7 +145,7 @@ void ACEAtomicEnvironment::_load(FILE *fin, const string &filename) {
     }
 
     for (int i = 0; i < n_atoms_real; i++) {
-        res = fscanf(fin, "%d %lf %lf %lf\n", &type, &coords[0], &coords[1], &coords[2]);
+        res = fscanf(fin, "%hd %lf %lf %lf\n", &type, &coords[0], &coords[1], &coords[2]);
         if (res != 4) {
             fclose(fin);
             throw runtime_error("Couldn't read 'species_type x y z' data from file " + filename);
@@ -175,7 +175,7 @@ void ACEAtomicEnvironment::save(const string &filename) {
 void ACEAtomicEnvironment::load_full(const string &filename) {
     _clean();
     FILE *fin = fopen(filename.c_str(), "rt");
-    if (fin == NULL)
+    if (fin == nullptr)
         throw invalid_argument("Could not open file " + filename);
 
     int res;
@@ -213,7 +213,7 @@ void ACEAtomicEnvironment::load_full(const string &filename) {
     }
 
     for (int i = 0; i < n_atoms_extended; i++) {
-        res = fscanf(fin, "%d %lf %lf %lf\n", &type, &coords[0], &coords[1], &coords[2]);
+        res = fscanf(fin, "%hd %lf %lf %lf\n", &type, &coords[0], &coords[1], &coords[2]);
         if (res != 4) {
             fclose(fin);
             throw runtime_error("Couldn't read 'species_type x y z' data from file " + filename);
@@ -304,8 +304,7 @@ void ACEAtomicEnvironment::save_full(const string &filename) {
 void ACEAtomicEnvironment::set_origins(vector<int> &new_origins) {
     if (new_origins.size() != n_atoms_extended)
         throw invalid_argument("Length of origins is inconsistent with n_atoms_extended");
-    if (origins != nullptr)
-        delete[] origins;
+    delete[] origins;
     origins = new int[n_atoms_extended];
     for (int i = 0; i < n_atoms_extended; i++)
         origins[i] = new_origins[i];
@@ -472,7 +471,7 @@ Matrix rotation_matrix(DOUBLE_TYPE theta, DOUBLE_TYPE theta1, DOUBLE_TYPE theta2
 
 
 void rotate_structure(ACEAtomicEnvironment &env, Matrix &rotation_matrix) {
-    int nat, i, j, k;
+    int nat, i, j;
 
     for (nat = 0; nat < env.n_atoms_real; nat++) {
         DOUBLE_TYPE r[3] = {0};

@@ -8,7 +8,7 @@
 
 using namespace std;
 
-double wigner3j(LS_TYPE j1, LS_TYPE m1, LS_TYPE j2, LS_TYPE m2, LS_TYPE J, LS_TYPE M) {
+double wigner3j(LS_TYPE j1, MS_TYPE m1, LS_TYPE j2, MS_TYPE m2, LS_TYPE J, MS_TYPE M) {
     if (m1 + m2 + M != 0) return 0;
     wigner::Wigner3jSeriesJ<double, int> w3j;
     w3j.compute(j1, j2, m1, m2);
@@ -20,8 +20,8 @@ double wigner3j(LS_TYPE j1, LS_TYPE m1, LS_TYPE j2, LS_TYPE m2, LS_TYPE J, LS_TY
     return res;
 }
 
-double anotherClebschGordan(LS_TYPE j1, LS_TYPE m1, LS_TYPE j2, LS_TYPE m2, LS_TYPE J,
-                            LS_TYPE M) {
+double anotherClebschGordan(LS_TYPE j1, MS_TYPE m1, LS_TYPE j2, MS_TYPE m2, LS_TYPE J,
+                            MS_TYPE M) {
     if (m1 + m2 != M) return 0;
     LS_TYPE jmin = abs(j1 - j2);
     LS_TYPE jmax = abs(j1 + j2);

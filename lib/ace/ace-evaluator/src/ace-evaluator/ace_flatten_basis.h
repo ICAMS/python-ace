@@ -45,8 +45,8 @@ class ACEFlattenBasisSet : public ACEAbstractBasisSet {
 public:
     //arrays and its sizes for rank = 1 basis functions for packed basis
 
-    size_t rank_array_total_size_rank1 = 0; ///< size for full_ns_rank1, full_ls_rank1, full_Xs_rank1
-    size_t coeff_array_total_size_rank1 = 0; ///< size for full coefficients array (depends on B or C-Tilde basis)
+    int rank_array_total_size_rank1 = 0; ///< size for full_ns_rank1, full_ls_rank1, full_Xs_rank1
+    int coeff_array_total_size_rank1 = 0; ///< size for full coefficients array (depends on B or C-Tilde basis)
 
     NS_TYPE *full_ns_rank1 = nullptr; ///<  ns contiguous package [rank_array_total_size_rank1]
     LS_TYPE *full_ls_rank1 = nullptr; ///< ls contiguous package [rank_array_total_size_rank1]
@@ -54,9 +54,9 @@ public:
     MS_TYPE *full_ms_rank1 = nullptr; ///< m_s contiguous package[rank_array_total_size_rank1]
 
     //arrays and its sizes for rank > 1 basis functions for packed basis
-    size_t rank_array_total_size = 0; ///< size for full_ns, full_ls, full_Xs
-    size_t ms_array_total_size = 0; ///< size for full_ms array
-    size_t coeff_array_total_size = 0;///< size for full coefficients arrays (depends on B- or C- basis)
+    int rank_array_total_size = 0; ///< size for full_ns, full_ls, full_Xs
+    int ms_array_total_size = 0; ///< size for full_ms array
+    int coeff_array_total_size = 0;///< size for full coefficients arrays (depends on B- or C- basis)
 
     NS_TYPE *full_ns = nullptr; ///< ns contiguous package [rank_array_total_size]
     LS_TYPE *full_ls = nullptr; ///<  ls contiguous package [rank_array_total_size]
@@ -71,11 +71,11 @@ public:
     virtual void flatten_basis() = 0;
 
     //1D flat array basis representation: [mu]
-    SHORT_INT_TYPE *total_basis_size_rank1 = nullptr; ///< per-species type array of total_basis_rank1[mu] sizes
-    SHORT_INT_TYPE *total_basis_size = nullptr; ///< per-species type array of total_basis[mu] sizes
+    int *total_basis_size_rank1 = nullptr; ///< per-species type array of total_basis_rank1[mu] sizes
+    int *total_basis_size = nullptr; ///< per-species type array of total_basis[mu] sizes
 
-    size_t max_B_array_size = 0; ///< maximum over elements array size for B[func_ind][ms_ind]
-    size_t max_dB_array_size = 0; ///<  maximum over elements array size for dB[func_ind][ms_ind][r]
+    int max_B_array_size = 0; ///< maximum over elements array size for B[func_ind][ms_ind]
+    int max_dB_array_size = 0; ///<  maximum over elements array size for dB[func_ind][ms_ind][r]
 
     SHORT_INT_TYPE num_ms_combinations_max = 0; ///< maximum number of ms combinations  among all basis functions
 
