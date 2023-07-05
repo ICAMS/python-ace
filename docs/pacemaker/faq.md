@@ -76,6 +76,28 @@ potential:
 
 It will  reset potential from potential.yaml, i.e. set radial coefficients to delta_nk and B-basis function coefficients to zero.
 
+## What is the best value for the relative force weight in the loss function, `kappa`?
+
+The default value of `kappa: 0.3` in the loss function `fit:: loss: {kappa: 0.3, L1_coeffs: 1e-8, L2_coeffs: 1e-8,}` provides a good initial guess.
+
+Additionally, there is an option to use `kappa: auto`, which analyzes the distribution (standard deviation) of training energies and forces to balance the contributions of these two factors in loss function.
+
+However, you can try using the following two-stage scheme to improve both energy and force metrics:
+
+1) Initially, perform the fit with a very high weight on forces, such as `kappa: 0.95` or `kappa: 0.99`.
+
+2) Then, switch to a high weight on energies, ranging from `kappa: 0.05` to `kappa: 0.1`. To do this, you need to continue the fitting process starting from the last version of the potential from the previous step.
+
+```
+pacemaker input.yaml # step 1 with kappa: 0.95
+cp interim_potential_0.yaml cont.yaml
+# or cp output_potential.yaml cont.yaml
+pacemaker input_k-0.1.yaml -p cont.yaml # step 2 with kappa: 0.05 .. 0.1
+```
+
+In the second step, the force metrics may initially increase for the first few dozen iterations, but they should eventually revert and decrease. 
+On the other hand, the energy metrics should decrease immediately. If this is not the case, you can try slightly increasing the value of kappa.
+
 ## My potential behaves unphysical at short distances, how to fix it?
 
 If training data lacks data at shorter distances, expected repulsive behaviour is not always reproduced.

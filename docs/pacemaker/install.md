@@ -5,7 +5,7 @@ It is common practice creating a separate `conda environment` to avoid dependenc
 You can create the new environment named `ace` with minimal amount of required packages with the following command: 
 
 ```
-conda create -n ace python<3.9
+conda create -n ace python=3.9
 ```
 Then, activate the environment with 
 `source activate ace` or `conda activate ace`. To deactivate the environment, use `deactivate` command 
