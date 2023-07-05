@@ -150,7 +150,8 @@ setup(
         "mus_ns_uni_to_rawlsLS_np_rank.pckl",
         "input_template.yaml"
     ]},
-    scripts=["bin/pacemaker", "bin/pace_yaml2yace", "bin/pace_update_ace",
+    scripts=["bin/pacemaker", "bin/pace_yaml2yace",
              "bin/pace_update_yaml_potential", "bin/pace_timing",
-             "bin/pace_info", "bin/pace_activeset", "bin/pace_collect"]
+             "bin/pace_info", "bin/pace_activeset", "bin/pace_select",
+             "bin/pace_collect"]
 )

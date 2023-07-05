@@ -50,6 +50,9 @@ parser.add_argument("-e", "--error-force-threshold [max RMSE(F) (eV/A)]", defaul
 parser.add_argument("-a", "--all-atoms", help="Consider all atoms for construction of active set",
                     dest="all_atoms", default=False, action="store_true")
 
+parser.add_argument("-V", help="suppress verbosity of numerical procedures",
+                    dest="not_verbose", default=False, action="store_true")
+
 args_parse = parser.parse_args()
 potential_file = args_parse.potential_file
 dataset_filename = args_parse.dataset
@@ -61,6 +64,7 @@ mem_lim = args_parse.memory_limit
 is_full = args_parse.full
 error_based_threshold = args_parse.error_based_threshold
 all_atoms = args_parse.all_atoms
+verbose = not args_parse.not_verbose
 
 if mem_lim == "auto":
     # determine 80% of available memory
@@ -167,9 +171,9 @@ if batch_size == "auto":
     if 2 * required_projections_memory + required_active_set_memory < mem_lim:
         batch_size = None
     else:
-        nsplits = int(np.ceil(2 * required_projections_memory // (mem_lim - required_active_set_memory)))
-        batch_size = int(np.round(len(atomic_env_list) / nsplits))
-elif batch_size == "None" or batch_size == "none":
+        n_batches = int(np.ceil(2 * required_projections_memory // (mem_lim - required_active_set_memory)))
+        batch_size = int(np.round(len(atomic_env_list) / n_batches))
+elif batch_size in ["None", "none"]:
     batch_size = None
 else:
     batch_size = int(batch_size)
@@ -186,7 +190,7 @@ if batch_size is None:
     log.info("Single-run (no batch_size is provided)")
     log.info("Compute B-projections")
     A0_proj_dict, forces_dict = compute_B_projections(bbasis, atomic_env_list, is_full=is_full,
-                                                      compute_forces_dict=True)
+                                                      compute_forces_dict=True, verbose=verbose)
     log.info("B-projections computed:")
     for st, A0_proj in A0_proj_dict.items():
         log.info("\tElement: {}, B-projections shape: {}".format(elements_name[st], A0_proj.shape))
@@ -222,8 +226,8 @@ if batch_size is None:
 
             log.info("\tElement: {}, specie type: {}".format(symb, st))
             log.info("\t\tForce error upper bound: {:.3f} meV/A".format(1e3 * upper_bound))
-            log.info("\t\tFraction/number of selected structures: {} ({:.1f}%)".format(np.sum(sel_mask),
-                                                                                       1e2 * np.mean(sel_mask)))
+            log.info("\t\tNumber/fraction of selected atoms: {} ({:.1f}%)".format(np.sum(sel_mask),
+                                                                                  1e2 * np.mean(sel_mask)))
             log.info("\t\tForce RMSE (before): {:.3f} meV/A".format(1e3 * f_rmse_before))
             log.info("\t\tForce RMSE (after) : {:.3f} meV/A".format(1e3 * f_rmse_after))
             A0_projections_cropped_dict[st] = A0_proj_dict[st][sel_mask]
@@ -250,10 +254,11 @@ else:
     log.info("Approximated MaxVol by batches")
     log.info("Batch size: {}".format(batch_size))
     if not all_atoms:
-        log.error('WARNING! Error-based selection of atoms in batch mode is not implemented. Please use --all-atoms option')
+        log.error(
+            'WARNING! Error-based selection of atoms in batch mode is not implemented. Please use --all-atoms option')
         sys.exit(1)
-    nsplits = len(atomic_env_list) // batch_size
-    log.info("Number of batches: {}".format(nsplits))
+    n_batches = len(atomic_env_list) // batch_size
+    log.info("Number of batches: {}".format(n_batches))
 
     log.info("Compute approximate active set (using batched MaxVol algorithm)")
     (best_gamma, best_active_sets_dict, _) = \
@@ -261,12 +266,13 @@ else:
             bbasis,
             atomic_env_list=atomic_env_list,
             structure_ind_list=structure_ind_list,
-            n_batches = nsplits,
+            n_batches=n_batches,
             gamma_tolerance=gamma_tolerance,
             maxvol_iters=maxvol_iters,
             n_refinement_iter=maxvol_refinement,
             save_interim_active_set=True,
-            is_full=is_full
+            is_full=is_full,
+            verbose=verbose
         )
     log.info("Compute pseudoinversion of active set")
     A_active_inverse_set = compute_A_active_inverse(best_active_sets_dict)
