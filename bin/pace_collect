@@ -87,7 +87,7 @@ def generate_selected_indices(selection, number_of_structures):
     return selected_index
 
 
-def read_vasp_output(root_directory, vasp_output_file_name, format, selection="last"):
+def read_vasp_output(root_directory, vasp_output_file_name, selection="last"):
     """
 
     :param root_directory:
@@ -104,7 +104,7 @@ def read_vasp_output(root_directory, vasp_output_file_name, format, selection="l
     if not os.path.getsize(vasp_output_file_name) > 0:
         pass
 
-    vasp_output = read(vasp_output_file_name, format=format, index=':')
+    vasp_output = read(vasp_output_file_name, index=':')
     number_of_structures = len(vasp_output)
     selected_index = generate_selected_indices(selection, number_of_structures)
 
@@ -113,8 +113,7 @@ def read_vasp_output(root_directory, vasp_output_file_name, format, selection="l
         if index not in selected_index:
             continue
 
-        vasp_output_dict["name"].append(
-            '{}/{}##{}'.format(root_directory, os.path.basename(vasp_output_file_name), index))
+        vasp_output_dict["name"].append('{}##{}'.format(root_directory, index))
 
         ase_atoms, free_energy, forces = get_ase_atoms_energy_forces(configuration)
         vasp_output_dict["ase_atoms"].append(ase_atoms)
@@ -202,24 +201,20 @@ def main(args):
     for root, _, filenames in walk_file_or_dir(working_dir):
 
         try:
-            if filenames:
-                for fname in filenames:
-                    if vasprun_file in fname:
-                        vasp_output_dict = read_vasp_output(root, fname, "vasp-xml", selection)
-                        for key, value in vasp_output_dict.items():
-                            data[key] += value
-                        logger.info(
-                            'Data collected successfully from {} with entries {}'.format(
-                                os.path.join(root, fname),
-                                len(vasp_output_dict["name"])))
-                    elif outcar_file in fname:
-                        vasp_output_dict = read_vasp_output(root, fname, "vasp-out", selection)
-                        for key, value in vasp_output_dict.items():
-                            data[key] += value
-                        logger.info(
-                            'Data collected successfully from {} with entries {}'.format(
-                                os.path.join(root, fname),
-                                len(vasp_output_dict["name"])))
+            if filenames and vasprun_file in filenames:
+                vasp_output_dict = read_vasp_output(root, vasprun_file, selection)
+                for key, value in vasp_output_dict.items():
+                    data[key] += value
+                logger.info(
+                    'Data collected successfully from {} with entries {}'.format(os.path.join(root, vasprun_file),
+                                                                                 len(vasp_output_dict["name"])))
+            elif filenames and outcar_file in filenames:
+                vasp_output_dict = read_vasp_output(root, outcar_file, selection)
+                for key, value in vasp_output_dict.items():
+                    data[key] += value
+                logger.info(
+                    'Data collected successfully from {} with entries {}'.format(os.path.join(root, outcar_file),
+                                                                                 len(vasp_output_dict["name"])))
         except InvalidArgumentError as e:
             logger.error('Invalid argument: {}'.format(str(e)))
             raise e
