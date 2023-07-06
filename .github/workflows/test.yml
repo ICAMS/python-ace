@@ -35,11 +35,13 @@ jobs:
       run: |
         cd tensorpotential
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-        python setup.py install
+        #python setup.py install
+        pip install . 
     - name: Install python-ace
       run: |    
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-        python setup.py install
+        #python setup.py install
+        pip install . 
     - name: Test with python-ace with tensorpotential
       run: |
         python -m pytest tests/ --runtensorpot
