@@ -107,3 +107,28 @@ atoms.get_potential_energy()
 #per-atom extrapolation grades are stored in
 calc.results["gamma"]
 ```
+
+# Structure selection with D-optimality
+
+Once you have list of extrapolative structures (i.e. `extrapolative_structures.dump` from LAMMPS), 
+you can select optimal subset of them using D-optimality criterion. For doing this, use `pace_select` command:
+
+```bash
+pace_select -p potential.yaml -a potential.asi -e "Ni Nb" -m 100 extrapolative_structures_1.dump extrapolative_structures_2.dump
+```
+that will load  list of candidates structures from `extrapolative_structures_1.dump` and
+`extrapolative_structures_2.dump` files.
+
+Option `-e "Ni Nb"` specifies mapping of LAMMPS atoms types 1 and 2 to "Ni" and "Nb"
+(this should correspond to species order in `pair_coeff * * ... Ni Nb`). 
+NOTE! List of elements should be in quotes.
+
+If no `-a ...` option is provided, then ONLY atomic environments from list of candidates structures in `extrapolative_structures_*.dump`
+will be considered for structure selection.
+If option `-a potential.asi` is included, then previously selected atomic environments (that form active set) will be
+added into list of all atomic environments before performing MaxVol algorithm.
+
+Finally, all structures will be sorted by number of selected atomic environments in it and top 100 (specified by option
+`-m ...`)  structures will be selected and stored into  `selected.pkl.gz`.
+
+NOTE! If list of candidates structures in is too big, it is better to split it by batches adding `-b NUMBER_OF_STRUCTURES_PER_BATCH` option.

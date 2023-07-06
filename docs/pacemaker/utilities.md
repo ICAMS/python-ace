@@ -109,3 +109,45 @@ pace_activeset -d fitting_data_info.pckl.gzip output_potential.yaml -f
 ```
 that will generate **full** active set (including linearized part of non-linear embedding function)
 and store it into `output_potential.asi.nonlinear` file.
+
+## D-optimality structure selection
+
+Utility to select most representative training structures from large dataset using D-optimality criterion.
+
+```
+usage: pace_select [-h] -p POTENTIAL_FILE [-a ACTIVE_SET_INV_FNAME] [-e ELEMENTS] [-m MAX_STRUCTURES] [-o SELECTED_STRUCTURES_FILENAME] [-b BATCH_SIZE] [-g GAMMA_TOLERANCE] [-i MAXVOL_ITERS] [-r MAXVOL_REFINEMENT] [-mem MEMORY_LIMIT] [-V] dataset [dataset ...]
+
+Utility to select structures for training se based on D-optimality criterion
+
+positional arguments:
+  dataset               Dataset file name(s), ex.: filename.pckl.gzip [extrapolative_structures.dat]
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -p POTENTIAL_FILE, --potential_file POTENTIAL_FILE
+                        B-basis file name (.yaml)
+  -a ACTIVE_SET_INV_FNAME, --active-set-inv ACTIVE_SET_INV_FNAME
+                        Active Set Inverted (ASI) filename
+  -e ELEMENTS, --elements ELEMENTS
+                        List of elements, used in LAMMPS, i.e. "Ni Nb O"
+  -m MAX_STRUCTURES, --max-structures MAX_STRUCTURES
+                        Maximum number of structures to select (default -1 = all)
+  -o SELECTED_STRUCTURES_FILENAME, --output SELECTED_STRUCTURES_FILENAME
+                        Selected structures filename, default: selected.pkl.gz
+  -b BATCH_SIZE, --batch_size BATCH_SIZE
+                        Batch size (number of structures) considered simultaneously.If not provided - all dataset at once is considered
+  -g GAMMA_TOLERANCE, --gamma_tolerance GAMMA_TOLERANCE
+                        Gamma tolerance
+  -i MAXVOL_ITERS, --maxvol_iters MAXVOL_ITERS
+                        Number of maximum iteration in MaxVol algorithm
+  -r MAXVOL_REFINEMENT, --maxvol_refinement MAXVOL_REFINEMENT
+                        Number of refinements (epochs)
+  -mem MEMORY_LIMIT, --memory-limit MEMORY_LIMIT
+                        Memory limit (i.e. 1GB, 500MB or 'auto')
+  -V                    suppress verbosity of numerical procedures
+```
+
+Example of usage:
+```bash
+pace_select -p NiNb_potential.yaml -a NiNb_potential.asi -m 100 -e "Ni Nb"  extrapolative_structures_1.dump extrapolative_structures_2.dump
+```
