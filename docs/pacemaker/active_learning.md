@@ -108,7 +108,7 @@ atoms.get_potential_energy()
 calc.results["gamma"]
 ```
 
-# Structure selection with D-optimality
+## Structure selection with D-optimality
 
 Once you have list of extrapolative structures (i.e. `extrapolative_structures.dump` from LAMMPS), 
 you can select optimal subset of them using D-optimality criterion. For doing this, use `pace_select` command:
