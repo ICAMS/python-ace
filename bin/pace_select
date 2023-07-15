@@ -8,6 +8,8 @@ import psutil
 import pandas as pd
 import os
 
+from ase.io import write
+
 from pyace import BBasisConfiguration, ACEBBasisSet, aseatoms_to_atomicenvironment
 from pyace.activelearning import compute_B_projections, compute_A_active_inverse, compute_active_set_by_batches, \
     read_extrapolation_data, compute_number_of_functions, load_active_inverse_set, \
@@ -34,11 +36,12 @@ parser.add_argument("-a", "--active-set-inv", help="Active Set Inverted (ASI) fi
 parser.add_argument("-e", "--elements", type=str, help='List of elements, used in LAMMPS, i.e. "Ni Nb O"')
 
 parser.add_argument("-m", "--max-structures", type=int,
+                    dest="max_structures",
                     help="Maximum number of structures to select (default -1 = all)",
                     default=-1)
 
 parser.add_argument("-o", "--output", dest="selected_structures_filename", type=str,
-                    help="Selected structures filename, default: selected.pkl.gz",
+                    help="Selected structures filename: selected.pkl.gz or structures/POSCAR (default: selected.pkl.gz)",
                     default="selected.pkl.gz"
                     )
 
@@ -202,10 +205,19 @@ log.info(f"Overall {len(cnt)} structures selected")
 selected_structures_inds = ([int(i) for i, _ in cnt.most_common() if i != -1])
 if max_structures > 0:
     log.info(f"Selection top {max_structures} structures")
-    if max_structures >= len(selected_structures_inds):
+    if max_structures <= len(selected_structures_inds):
         selected_structures_inds = selected_structures_inds[:max_structures]
 
 df_selected = df.iloc[selected_structures_inds]
-log.info(f"Saving selected structures to {selected_structures_filename}")
-df_selected.to_pickle(selected_structures_filename)
+
+# save selected structures
+if "POSCAR" in selected_structures_filename:
+    log.info(f"Saving selected structures to {selected_structures_filename.replace('POSCAR', '*.POSCAR')}")
+    os.makedirs(os.path.dirname(selected_structures_filename), exist_ok=True)
+    for i, at in enumerate(df_selected["ase_atoms"]):
+        fname = selected_structures_filename.replace("POSCAR", "{}.POSCAR".format(i))
+        write(fname, at, format="vasp", sort=True)
+else:
+    log.info(f"Saving selected structures to {selected_structures_filename} as pickled dataframe")
+    df_selected.to_pickle(selected_structures_filename)
 log.info("Done")
