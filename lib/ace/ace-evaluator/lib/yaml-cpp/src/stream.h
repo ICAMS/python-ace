@@ -1,7 +1,7 @@
 #ifndef STREAM_H_62B23520_7C8E_11DE_8A39_0800200C9A66
 #define STREAM_H_62B23520_7C8E_11DE_8A39_0800200C9A66
 
-#if defined(_MSC_VER) || \
+#if defined(_MSC_VER) ||                                            \
     (defined(__GNUC__) && (__GNUC__ == 3 && __GNUC_MINOR__ >= 4) || \
      (__GNUC__ >= 4))  // GCC supports "pragma once" correctly since 3.4
 #pragma once
@@ -17,88 +17,66 @@
 
 namespace YAML_PACE {
 
-    class StreamCharSource;
+class StreamCharSource;
 
-    class Stream {
-    public:
-        friend class StreamCharSource;
+class Stream {
+ public:
+  friend class StreamCharSource;
 
-        Stream(std::istream &input);
+  Stream(std::istream& input);
+  Stream(const Stream&) = delete;
+  Stream(Stream&&) = delete;
+  Stream& operator=(const Stream&) = delete;
+  Stream& operator=(Stream&&) = delete;
+  ~Stream();
 
-        Stream(const Stream &) = delete;
+  operator bool() const;
+  bool operator!() const { return !static_cast<bool>(*this); }
 
-        Stream(Stream &&) = delete;
+  char peek() const;
+  char get();
+  std::string get(int n);
+  void eat(int n = 1);
 
-        Stream &operator=(const Stream &) = delete;
+  static char eof() { return 0x04; }
 
-        Stream &operator=(Stream &&) = delete;
+  const Mark mark() const { return m_mark; }
+  int pos() const { return m_mark.pos; }
+  int line() const { return m_mark.line; }
+  int column() const { return m_mark.column; }
+  void ResetColumn() { m_mark.column = 0; }
 
-        ~Stream();
+ private:
+  enum CharacterSet { utf8, utf16le, utf16be, utf32le, utf32be };
 
-        operator bool() const;
+  std::istream& m_input;
+  Mark m_mark;
 
-        bool operator!() const { return !static_cast<bool>(*this); }
+  CharacterSet m_charSet;
+  mutable std::deque<char> m_readahead;
+  unsigned char* const m_pPrefetched;
+  mutable size_t m_nPrefetchedAvailable;
+  mutable size_t m_nPrefetchedUsed;
 
-        char peek() const;
-
-        char get();
-
-        std::string get(int n);
-
-        void eat(int n = 1);
-
-        static char eof() { return 0x04; }
-
-        const Mark mark() const { return m_mark; }
-
-        int pos() const { return m_mark.pos; }
-
-        int line() const { return m_mark.line; }
-
-        int column() const { return m_mark.column; }
-
-        void ResetColumn() { m_mark.column = 0; }
-
-    private:
-        enum CharacterSet {
-            utf8, utf16le, utf16be, utf32le, utf32be
-        };
-
-        std::istream &m_input;
-        Mark m_mark;
-
-        CharacterSet m_charSet;
-        mutable std::deque<char> m_readahead;
-        unsigned char *const m_pPrefetched;
-        mutable size_t m_nPrefetchedAvailable;
-        mutable size_t m_nPrefetchedUsed;
-
-        void AdvanceCurrent();
-
-        char CharAt(size_t i) const;
-
-        bool ReadAheadTo(size_t i) const;
-
-        bool _ReadAheadTo(size_t i) const;
-
-        void StreamInUtf8() const;
-
-        void StreamInUtf16() const;
-
-        void StreamInUtf32() const;
-
-        unsigned char GetNextByte() const;
-    };
+  void AdvanceCurrent();
+  char CharAt(size_t i) const;
+  bool ReadAheadTo(size_t i) const;
+  bool _ReadAheadTo(size_t i) const;
+  void StreamInUtf8() const;
+  void StreamInUtf16() const;
+  void StreamInUtf32() const;
+  unsigned char GetNextByte() const;
+};
 
 // CharAt
 // . Unchecked access
-    inline char Stream::CharAt(size_t i) const { return m_readahead[i]; }
+inline char Stream::CharAt(size_t i) const { return m_readahead[i]; }
 
-    inline bool Stream::ReadAheadTo(size_t i) const {
-        if (m_readahead.size() > i)
-            return true;
-        return _ReadAheadTo(i);
-    }
-}  // namespace YAML
+inline bool Stream::ReadAheadTo(size_t i) const {
+  if (m_readahead.size() > i)
+    return true;
+  return _ReadAheadTo(i);
+}
+}  // namespace YAML_PACE
 
 #endif  // STREAM_H_62B23520_7C8E_11DE_8A39_0800200C9A66

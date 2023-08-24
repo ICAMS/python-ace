@@ -59,6 +59,7 @@ add_subdirectory(lib/ace)
 #--------------------------------------------------------
 set(SOURCES_SHARMONICS "${ACE_SRC}/ace_couplings.cpp"
             "${ACE_SRC}/ace_spherical_polar.cpp"
+            "${ACE_SRC}/ace_clebsch_gordan.cpp"
             "${SOURCE_DIR}/ace/ace_spherical_polar_binding.cpp"
             )
 
