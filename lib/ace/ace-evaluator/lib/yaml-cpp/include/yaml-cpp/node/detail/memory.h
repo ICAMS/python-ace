@@ -12,13 +12,13 @@
 #include "yaml-cpp/dll.h"
 #include "yaml-cpp/node/ptr.h"
 
-namespace YAML_PACE {
+namespace YAML {
 namespace detail {
 class node;
 }  // namespace detail
-}  // namespace YAML_PACE
+}  // namespace YAML
 
-namespace YAML_PACE {
+namespace YAML {
 namespace detail {
 class YAML_CPP_API memory {
  public:
@@ -42,6 +42,6 @@ class YAML_CPP_API memory_holder {
   shared_memory m_pMemory;
 };
 }  // namespace detail
-}  // namespace YAML_PACE
+}  // namespace YAML
 
 #endif  // VALUE_DETAIL_MEMORY_H_62B23520_7C8E_11DE_8A39_0800200C9A66

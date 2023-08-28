@@ -7,7 +7,7 @@
 #include "stream.h"
 #include "yaml-cpp/exceptions.h"  // IWYU pragma: keep
 
-namespace YAML_PACE {
+namespace YAML {
 // ScanScalar
 // . This is where the scalar magic happens.
 //
@@ -248,4 +248,4 @@ std::string ScanScalar(Stream& INPUT, ScanScalarParams& params) {
 
   return scalar;
 }
-}  // namespace YAML_PACE
+}  // namespace YAML

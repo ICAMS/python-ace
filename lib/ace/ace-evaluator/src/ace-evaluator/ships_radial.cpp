@@ -128,7 +128,7 @@ void SHIPsRadPolyBasis::fread(FILE *fptr) {
 }
 
 
-void SHIPsRadPolyBasis::read_YAML(YAML_PACE::Node node) {
+void SHIPsRadPolyBasis::read_YAML(YAML::Node node) {
     auto rcut = node["rcut"].as<DOUBLE_TYPE>();
     auto xl = node["xl"].as<DOUBLE_TYPE>();
     auto pl = node["pl"].as<int>();
@@ -305,7 +305,7 @@ void SHIPsRadialFunctions::fread(FILE *fptr) {
     }
 }
 
-void SHIPsRadialFunctions::read_yaml(YAML_PACE::Node node) {
+void SHIPsRadialFunctions::read_yaml(YAML::Node node) {
     // node - top-most YAML node
     if (node["polypairpot"]) {
         auto yaml_pairplot = node["polypairpot"];
@@ -330,7 +330,7 @@ void SHIPsRadialFunctions::read_yaml(YAML_PACE::Node node) {
         }
 
         if (node["reppot"] && node["reppot"]["coefficients"]) {
-            auto reppot_coefficients = node["reppot"]["coefficients"].as<map<vector<int>, YAML_PACE::Node>>();;
+            auto reppot_coefficients = node["reppot"]["coefficients"].as<map<vector<int>, YAML::Node>>();;
 
             for (const auto &p: reppot_coefficients) {
                 SPECIES_TYPE mu_i = p.first[0];
@@ -347,7 +347,7 @@ void SHIPsRadialFunctions::read_yaml(YAML_PACE::Node node) {
         }
     }
     //reading bonds
-    auto yaml_map_bond_specifications = node["bonds"].as<map<vector<int>, YAML_PACE::Node>>();
+    auto yaml_map_bond_specifications = node["bonds"].as<map<vector<int>, YAML::Node>>();
     for (const auto &p: yaml_map_bond_specifications) {
         SPECIES_TYPE mu_i = p.first[0];
         SPECIES_TYPE mu_j = p.first[1];

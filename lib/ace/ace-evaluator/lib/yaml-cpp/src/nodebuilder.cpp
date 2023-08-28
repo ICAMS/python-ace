@@ -6,7 +6,7 @@
 #include "yaml-cpp/node/node.h"
 #include "yaml-cpp/node/type.h"
 
-namespace YAML_PACE {
+namespace YAML {
 struct Mark;
 
 NodeBuilder::NodeBuilder()
@@ -131,4 +131,4 @@ void NodeBuilder::RegisterAnchor(anchor_t anchor, detail::node& node) {
     m_anchors.push_back(&node);
   }
 }
-}  // namespace YAML_PACE
+}  // namespace YAML

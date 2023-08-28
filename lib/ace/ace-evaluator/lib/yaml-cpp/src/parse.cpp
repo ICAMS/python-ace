@@ -8,7 +8,7 @@
 #include "yaml-cpp/node/node.h"
 #include "yaml-cpp/parser.h"
 
-namespace YAML_PACE {
+namespace YAML {
 Node Load(const std::string& input) {
   std::stringstream stream(input);
   return Load(stream);
@@ -69,4 +69,4 @@ std::vector<Node> LoadAllFromFile(const std::string& filename) {
   }
   return LoadAll(fin);
 }
-}  // namespace YAML_PACE
+}  // namespace YAML

@@ -2,7 +2,7 @@
 
 #include "yaml-cpp/parser.h"  // IWYU pragma: keep
 
-namespace YAML_PACE {
+namespace YAML {
 class GraphBuilderInterface;
 
 void* BuildGraphOfNextDocument(Parser& parser,
@@ -13,4 +13,4 @@ void* BuildGraphOfNextDocument(Parser& parser,
   }
   return nullptr;
 }
-}  // namespace YAML_PACE
+}  // namespace YAML

@@ -1,6 +1,6 @@
 #include "directives.h"
 
-namespace YAML_PACE {
+namespace YAML {
 Directives::Directives() : version{true, 1, 2}, tags{} {}
 
 std::string Directives::TranslateTagHandle(
@@ -14,4 +14,4 @@ std::string Directives::TranslateTagHandle(
 
   return it->second;
 }
-}  // namespace YAML_PACE
+}  // namespace YAML

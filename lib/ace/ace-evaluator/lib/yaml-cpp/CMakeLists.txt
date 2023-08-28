@@ -8,7 +8,7 @@ if(POLICY CMP0091)
   cmake_policy(SET CMP0091 NEW)
 endif()
 
-project(YAML_CPP_PACE VERSION 0.8.0 LANGUAGES CXX)
+project(YAML_CPP VERSION 0.8.0 LANGUAGES CXX)
 
 set(YAML_CPP_MAIN_PROJECT OFF)
 if(CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
@@ -21,8 +21,8 @@ include(CheckCXXCompilerFlag)
 include(GNUInstallDirs)
 include(CTest)
 
-option(YAML_CPP_BUILD_CONTRIB "Enable yaml-cpp contrib in library" ON)
-option(YAML_CPP_BUILD_TOOLS "Enable parse tools" ON)
+option(YAML_CPP_BUILD_CONTRIB "Enable yaml-cpp contrib in library" OFF)
+option(YAML_CPP_BUILD_TOOLS "Enable parse tools" OFF)
 option(YAML_BUILD_SHARED_LIBS "Build yaml-cpp shared library" ${BUILD_SHARED_LIBS})
 option(YAML_CPP_INSTALL "Enable generation of yaml-cpp install targets" ${YAML_CPP_MAIN_PROJECT})
 option(YAML_CPP_FORMAT_SOURCE "Format source" ON)
@@ -31,7 +31,7 @@ cmake_dependent_option(YAML_CPP_BUILD_TESTS
   "BUILD_TESTING;YAML_CPP_MAIN_PROJECT" OFF)
 cmake_dependent_option(YAML_MSVC_SHARED_RT
   "MSVC: Build yaml-cpp with shared runtime libs (/MD)" ON
-  "CMAKE_SYSTEM_NAME MATCHES Windows" OFF)
+  "CMAKE_SYSTEM_NAME MATCHES Windows" ON)
  
 if (YAML_CPP_FORMAT_SOURCE)
     find_program(YAML_CPP_CLANG_FORMAT_EXE NAMES clang-format)
@@ -75,21 +75,21 @@ set(msvc-rt-mt-dll $<STREQUAL:${msvc-rt},MultiThreadedDLL>)
 
 set(backport-msvc-runtime $<VERSION_LESS:${CMAKE_VERSION},3.15>)
 
-add_library(yaml-cpp-pace ${yaml-cpp-type} "")
-add_library(yaml-cpp-pace::yaml-cpp-pace ALIAS yaml-cpp-pace)
+add_library(yaml-cpp ${yaml-cpp-type} "")
+add_library(yaml-cpp::yaml-cpp ALIAS yaml-cpp)
 
-set_property(TARGET yaml-cpp-pace
+set_property(TARGET yaml-cpp
   PROPERTY
     MSVC_RUNTIME_LIBRARY ${CMAKE_MSVC_RUNTIME_LIBRARY})
-set_property(TARGET yaml-cpp-pace
+set_property(TARGET yaml-cpp
   PROPERTY
     CXX_STANDARD_REQUIRED ON)
 
 if (NOT YAML_BUILD_SHARED_LIBS)
-  set_property(TARGET yaml-cpp-pace PROPERTY POSITION_INDEPENDENT_CODE ON)
+  set_property(TARGET yaml-cpp PROPERTY POSITION_INDEPENDENT_CODE ON)
 endif()
 
-target_include_directories(yaml-cpp-pace
+target_include_directories(yaml-cpp
   PUBLIC
     $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
@@ -97,19 +97,19 @@ target_include_directories(yaml-cpp-pace
     $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src>)
 
 if (NOT DEFINED CMAKE_CXX_STANDARD)
-  set_target_properties(yaml-cpp-pace
+  set_target_properties(yaml-cpp
     PROPERTIES
       CXX_STANDARD 11)
 endif()
 
 if(YAML_CPP_MAIN_PROJECT)
-  target_compile_options(yaml-cpp-pace
+  target_compile_options(yaml-cpp
     PRIVATE
       $<${not-msvc}:-Wall -Wextra -Wshadow -Weffc++ -Wno-long-long>
       $<${not-msvc}:-pedantic -pedantic-errors>)
 endif()
 
-target_compile_options(yaml-cpp-pace
+target_compile_options(yaml-cpp
   PRIVATE
     $<$<AND:${backport-msvc-runtime},${msvc-rt-mtd-static}>:-MTd>
     $<$<AND:${backport-msvc-runtime},${msvc-rt-mt-static}>:-MT>
@@ -122,14 +122,14 @@ target_compile_options(yaml-cpp-pace
     # http://msdn.microsoft.com/en-us/library/3c594ae3.aspx
     $<$<CXX_COMPILER_ID:MSVC>:/W3 /wd4127 /wd4355>)
 
-target_compile_definitions(yaml-cpp-pace
+target_compile_definitions(yaml-cpp
   PUBLIC
     $<$<NOT:$<BOOL:${YAML_BUILD_SHARED_LIBS}>>:YAML_CPP_STATIC_DEFINE>
   PRIVATE
     $<${build-windows-dll}:${PROJECT_NAME}_DLL>
     $<$<NOT:$<BOOL:${YAML_CPP_BUILD_CONTRIB}>>:YAML_CPP_NO_CONTRIB>)
 
-target_sources(yaml-cpp-pace
+target_sources(yaml-cpp
   PRIVATE
     $<$<BOOL:${YAML_CPP_BUILD_CONTRIB}>:${yaml-cpp-contrib-sources}>
     ${yaml-cpp-sources})
@@ -138,14 +138,14 @@ if (NOT DEFINED CMAKE_DEBUG_POSTFIX)
   set(CMAKE_DEBUG_POSTFIX "d")
 endif()
 
-set_target_properties(yaml-cpp-pace PROPERTIES
+set_target_properties(yaml-cpp PROPERTIES
   VERSION "${PROJECT_VERSION}"
   SOVERSION "${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}"
-  PROJECT_LABEL "yaml-cpp-pace ${yaml-cpp-label-postfix}"
+  PROJECT_LABEL "yaml-cpp ${yaml-cpp-label-postfix}"
   DEBUG_POSTFIX "${CMAKE_DEBUG_POSTFIX}")
 
-set(CONFIG_EXPORT_DIR "${CMAKE_INSTALL_LIBDIR}/cmake/yaml-cpp-pace")
-set(EXPORT_TARGETS yaml-cpp-pace)
+set(CONFIG_EXPORT_DIR "${CMAKE_INSTALL_LIBDIR}/cmake/yaml-cpp")
+set(EXPORT_TARGETS yaml-cpp)
 configure_package_config_file(
   "${PROJECT_SOURCE_DIR}/yaml-cpp-config.cmake.in"
   "${PROJECT_BINARY_DIR}/yaml-cpp-config.cmake"
@@ -160,7 +160,7 @@ write_basic_package_version_file(
 configure_file(yaml-cpp.pc.in yaml-cpp.pc @ONLY)
 
 if (YAML_CPP_INSTALL)
-  install(TARGETS yaml-cpp-pace
+  install(TARGETS yaml-cpp
     EXPORT yaml-cpp-targets
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
@@ -169,7 +169,7 @@ if (YAML_CPP_INSTALL)
     DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
                 FILES_MATCHING PATTERN "*.h")
   install(EXPORT yaml-cpp-targets
-    NAMESPACE yaml-cpp-pace::
+    NAMESPACE yaml-cpp::
     DESTINATION "${CONFIG_EXPORT_DIR}")
   install(FILES
       "${PROJECT_BINARY_DIR}/yaml-cpp-config.cmake"
@@ -190,7 +190,7 @@ endif()
 
 if (YAML_CPP_FORMAT_SOURCE AND YAML_CPP_CLANG_FORMAT_EXE)
   add_custom_target(format
-    COMMAND clang-format --style=file -i $<TARGET_PROPERTY:yaml-cpp-pace,SOURCES>
+    COMMAND clang-format --style=file -i $<TARGET_PROPERTY:yaml-cpp,SOURCES>
     COMMAND_EXPAND_LISTS
     COMMENT "Running clang-format"
     VERBATIM)

@@ -12,7 +12,7 @@
 #include <utility>
 #include <vector>
 
-namespace YAML_PACE {
+namespace YAML {
 
 namespace detail {
 struct iterator_value;

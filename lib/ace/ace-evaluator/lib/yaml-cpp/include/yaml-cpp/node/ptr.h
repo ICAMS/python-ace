@@ -9,7 +9,7 @@
 
 #include <memory>
 
-namespace YAML_PACE {
+namespace YAML {
 namespace detail {
 class node;
 class node_ref;

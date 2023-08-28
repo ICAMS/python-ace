@@ -14,7 +14,7 @@
 #include <stdexcept>
 #include <string>
 
-namespace YAML_PACE {
+namespace YAML {
 // error messages
 namespace ErrorMsg {
 const char* const YAML_DIRECTIVE_ARGS =
@@ -298,6 +298,6 @@ class YAML_CPP_API BadFile : public Exception {
   BadFile(const BadFile&) = default;
   ~BadFile() YAML_CPP_NOEXCEPT override;
 };
-}  // namespace YAML_PACE
+}  // namespace YAML
 
 #endif  // EXCEPTIONS_H_62B23520_7C8E_11DE_8A39_0800200C9A66

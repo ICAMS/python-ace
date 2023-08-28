@@ -9,7 +9,7 @@
 
 #include <cstddef>
 
-namespace YAML_PACE {
+namespace YAML {
 using anchor_t = std::size_t;
 const anchor_t NullAnchor = 0;
 }

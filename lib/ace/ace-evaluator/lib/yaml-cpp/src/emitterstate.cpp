@@ -3,7 +3,7 @@
 #include "emitterstate.h"
 #include "yaml-cpp/exceptions.h"  // IWYU pragma: keep
 
-namespace YAML_PACE {
+namespace YAML {
 EmitterState::EmitterState()
     : m_isGood(true),
       m_lastError{},
@@ -397,4 +397,4 @@ bool EmitterState::SetDoublePrecision(std::size_t value,
   _Set(m_doublePrecision, value, scope);
   return true;
 }
-}  // namespace YAML_PACE
+}  // namespace YAML

@@ -12,7 +12,7 @@
 #include "yaml-cpp/null.h"
 #include "yaml-cpp/ostream_wrapper.h"
 
-namespace YAML_PACE {
+namespace YAML {
 namespace Utils {
 namespace {
 enum { REPLACEMENT_CHARACTER = 0xFFFD };
@@ -494,4 +494,4 @@ bool WriteBinary(ostream_wrapper& out, const Binary& binary) {
   return true;
 }
 }  // namespace Utils
-}  // namespace YAML_PACE
+}  // namespace YAML

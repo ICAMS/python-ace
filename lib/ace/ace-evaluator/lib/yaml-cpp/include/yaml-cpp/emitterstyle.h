@@ -7,7 +7,7 @@
 #pragma once
 #endif
 
-namespace YAML_PACE {
+namespace YAML {
 struct EmitterStyle {
   enum value { Default, Block, Flow };
 };

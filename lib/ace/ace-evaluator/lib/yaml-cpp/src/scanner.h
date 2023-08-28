@@ -18,7 +18,7 @@
 #include "token.h"
 #include "yaml-cpp/mark.h"
 
-namespace YAML_PACE {
+namespace YAML {
 class Node;
 class RegEx;
 

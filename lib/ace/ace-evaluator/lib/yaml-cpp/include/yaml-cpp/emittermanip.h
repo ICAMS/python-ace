@@ -9,7 +9,7 @@
 
 #include <string>
 
-namespace YAML_PACE {
+namespace YAML {
 enum EMITTER_MANIP {
   // general manipulators
   Auto,

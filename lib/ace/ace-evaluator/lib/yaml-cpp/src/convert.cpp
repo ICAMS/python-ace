@@ -37,7 +37,7 @@ bool IsFlexibleCase(const std::string& str) {
 }
 }  // namespace
 
-namespace YAML_PACE {
+namespace YAML {
 bool convert<bool>::decode(const Node& node, bool& rhs) {
   if (!node.IsScalar())
     return false;
@@ -71,4 +71,4 @@ bool convert<bool>::decode(const Node& node, bool& rhs) {
 
   return false;
 }
-}  // namespace YAML_PACE
+}  // namespace YAML

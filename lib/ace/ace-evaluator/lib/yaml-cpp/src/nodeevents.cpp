@@ -6,7 +6,7 @@
 #include "yaml-cpp/node/node.h"
 #include "yaml-cpp/node/type.h"
 
-namespace YAML_PACE {
+namespace YAML {
 void NodeEvents::AliasManager::RegisterReference(const detail::node& node) {
   m_anchorByIdentity.insert(std::make_pair(node.ref(), _CreateNewAnchor()));
 }
@@ -95,4 +95,4 @@ bool NodeEvents::IsAliased(const detail::node& node) const {
   auto it = m_refCount.find(node.ref());
   return it != m_refCount.end() && it->second > 1;
 }
-}  // namespace YAML_PACE
+}  // namespace YAML

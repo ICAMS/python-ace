@@ -1125,41 +1125,41 @@ void ACECTildeBasisSet::set_all_coeffs(const vector<DOUBLE_TYPE> &coeffs) {
 }
 
 void ACECTildeBasisSet::save_yaml(const string &yaml_file_name) const {
-    YAML_PACE::Node ctilde_basis_yaml;
+    YAML::Node ctilde_basis_yaml;
 
     vector<string> elements_name_vec;
     elements_name_vec.assign(this->elements_name, this->elements_name + this->nelements);
     ctilde_basis_yaml["elements"] = elements_name_vec;
-    ctilde_basis_yaml["elements"].SetStyle(YAML_PACE::EmitterStyle::Flow);
+    ctilde_basis_yaml["elements"].SetStyle(YAML::EmitterStyle::Flow);
 
     ctilde_basis_yaml["E0"] = E0vals.to_vector();
-    ctilde_basis_yaml["E0"].SetStyle(YAML_PACE::EmitterStyle::Flow);
+    ctilde_basis_yaml["E0"].SetStyle(YAML::EmitterStyle::Flow);
 
     ctilde_basis_yaml["deltaSplineBins"] = this->deltaSplineBins;
 
-    map<int, YAML_PACE::Node> yaml_map_embedding_specifications;
+    map<int, YAML::Node> yaml_map_embedding_specifications;
     for (const auto &p: this->map_embedding_specifications)
         yaml_map_embedding_specifications[p.first] = p.second.to_YAML();
     ctilde_basis_yaml["embeddings"] = yaml_map_embedding_specifications;
 
-    map<vector<int>, YAML_PACE::Node> yaml_map_bond_specifications;
+    map<vector<int>, YAML::Node> yaml_map_bond_specifications;
     for (const auto &p: this->map_bond_specifications) {
         vector<int> bond_pair = {(int) p.first.first, (int) p.first.second};
-        YAML_PACE::Node bond_yaml;
+        YAML::Node bond_yaml;
         bond_yaml = bond_pair;
-        bond_yaml.SetStyle(YAML_PACE::EmitterStyle::Flow);
+        bond_yaml.SetStyle(YAML::EmitterStyle::Flow);
         yaml_map_bond_specifications[bond_pair] = p.second.to_YAML();
     }
     ctilde_basis_yaml["bonds"] = yaml_map_bond_specifications;
 
     //iterate over keys and make them in Flow style
-    for (YAML_PACE::detail::iterator_value p: ctilde_basis_yaml["bonds"]) {
-        p.first.SetStyle(YAML_PACE::EmitterStyle::Flow);
+    for (YAML::detail::iterator_value p: ctilde_basis_yaml["bonds"]) {
+        p.first.SetStyle(YAML::EmitterStyle::Flow);
     }
 
-    map<int, vector<YAML_PACE::Node>> acebbasisfunc_map;
+    map<int, vector<YAML::Node>> acebbasisfunc_map;
     for (SPECIES_TYPE mu = 0; mu < this->nelements; mu++) {
-        vector<YAML_PACE::Node> acebbasisfunc_vec;
+        vector<YAML::Node> acebbasisfunc_vec;
         for (int ind = 0; ind < this->total_basis_size_rank1[mu]; ind++)
             acebbasisfunc_vec.emplace_back(this->basis_rank1[mu][ind].to_YAML());
 
@@ -1171,7 +1171,7 @@ void ACECTildeBasisSet::save_yaml(const string &yaml_file_name) const {
 
     ctilde_basis_yaml["functions"] = acebbasisfunc_map;
 
-    YAML_PACE::Emitter yaml_emitter;
+    YAML::Emitter yaml_emitter;
     yaml_emitter << ctilde_basis_yaml;
 
     std::ofstream fout(yaml_file_name);
@@ -1189,7 +1189,7 @@ void ACECTildeBasisSet::load_yaml(const string &yaml_file_name) {
     }
 
     //load the file with yaml
-    YAML_PACE::Node ctilde_basis_yaml = YAML_PACE::LoadFile(yaml_file_name);
+    YAML::Node ctilde_basis_yaml = YAML::LoadFile(yaml_file_name);
 
     //reading elements and mapping
     auto elements_yaml = ctilde_basis_yaml["elements"];
@@ -1210,7 +1210,7 @@ void ACECTildeBasisSet::load_yaml(const string &yaml_file_name) {
     E0vals = e0_vec;
 
     //reading embeddings
-    auto yaml_map_embedding_specifications = ctilde_basis_yaml["embeddings"].as<map<int, YAML_PACE::Node>>();
+    auto yaml_map_embedding_specifications = ctilde_basis_yaml["embeddings"].as<map<int, YAML::Node>>();
     this->ndensitymax = 0;
     for (auto p: yaml_map_embedding_specifications) {
         SPECIES_TYPE mu_i = p.first;
@@ -1233,7 +1233,7 @@ void ACECTildeBasisSet::load_yaml(const string &yaml_file_name) {
     }
 
     //reading bonds
-    auto yaml_map_bond_specifications = ctilde_basis_yaml["bonds"].as<map<vector<int>, YAML_PACE::Node>>();
+    auto yaml_map_bond_specifications = ctilde_basis_yaml["bonds"].as<map<vector<int>, YAML::Node>>();
     this->lmax = 0;
     this->nradmax = 0;
     this->nradbase = 0;
@@ -1344,7 +1344,7 @@ void ACECTildeBasisSet::load_yaml(const string &yaml_file_name) {
 
     //reading ACECTildeBasisFunctions
     //TODO:setup rankmax
-    map<int, vector<YAML_PACE::Node>> acebbasisfunc_map = ctilde_basis_yaml["functions"].as<map<int, vector<YAML_PACE::Node> >>();
+    map<int, vector<YAML::Node>> acebbasisfunc_map = ctilde_basis_yaml["functions"].as<map<int, vector<YAML::Node> >>();
 
     vector<int> int_vec;
     vector<DOUBLE_TYPE> double_vec;

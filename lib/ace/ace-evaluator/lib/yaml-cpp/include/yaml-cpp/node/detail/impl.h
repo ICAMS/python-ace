@@ -13,7 +13,7 @@
 #include <algorithm>
 #include <type_traits>
 
-namespace YAML_PACE {
+namespace YAML {
 namespace detail {
 template <typename Key, typename Enable = void>
 struct get_idx {

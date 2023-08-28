@@ -61,8 +61,16 @@ class CMakeBuild(build_ext):
         if not extdir.endswith(os.path.sep):
             extdir += os.path.sep
 
-        cmake_args = ['-DCMAKE_LIBRARY_OUTPUT_DIRECTORY=' + extdir,
-                      '-DPYTHON_EXECUTABLE=' + sys.executable]
+        if platform.system() == "Windows":
+            # cmake_args=['-G "MinGW Makefiles"', ext.sourcedir]
+            cmake_args = [ext.sourcedir,
+                          # "-DCMAKE_MAKE_PROGRAM=C:/Program Files/JetBrains/CLion 2023.2.1/bin/ninja/win/x64/ninja.exe",
+                          # '-G Ninja'
+                          ]
+        else:
+            cmake_args = [ext.sourcedir]
+        cmake_args += ['-DCMAKE_LIBRARY_OUTPUT_DIRECTORY=' + extdir,
+                       '-DPYTHON_EXECUTABLE=' + sys.executable]
 
         # TODO: change to Release later
         cfg = 'Debug' if self.debug else 'Release'
@@ -76,21 +84,24 @@ class CMakeBuild(build_ext):
         else:
             cmake_args += ["-DCMAKE_INSTALL_RPATH={}".format("$ORIGIN")]
         cmake_args += ["-DBUILD_SHARED_LIBS=ON"]
-        cmake_args += ["-DYAML_BUILD_SHARED_LIBS=ON"]
+        # cmake_args += ["-DYAML_BUILD_SHARED_LIBS=ON"]
 
+        ## COMMENTED OUT FOR WINDOWS
+        if ext.target is not None:
+            build_args += ["--target", ext.target]
+
+        cmake_args += ['-DCMAKE_BUILD_TYPE=' + cfg]
         if platform.system() == "Windows":
             cmake_args += ['-DCMAKE_LIBRARY_OUTPUT_DIRECTORY_{}={}'.format(
                 cfg.upper(),
                 extdir)]
-            if sys.maxsize > 2 ** 32:
-                cmake_args += ['-A', 'x64']
-            build_args += ['--', '/m']
-        else:
-            cmake_args += ['-DCMAKE_BUILD_TYPE=' + cfg]
-            build_args += ['--', '-j']
+            # if sys.maxsize > 2 ** 32:
+            # cmake_args += ['-A', 'x64']
 
-        if ext.target is not None:
-            build_args += [ext.target]
+            build_args += ['--', '/m']
+            # build_args += ['--', '-j']
+        else:
+            build_args += ['--', '-j']
 
         env = os.environ.copy()
         env['CXXFLAGS'] = '{} -DVERSION_INFO=\\"{}\\"'.format(
@@ -98,11 +109,17 @@ class CMakeBuild(build_ext):
             self.distribution.get_version())
         if not os.path.exists(self.build_temp):
             os.makedirs(self.build_temp)
-        subprocess.check_call(['cmake', ext.sourcedir] + cmake_args,
-                              cwd=self.build_temp, env=env)
-        print("Building arguments: ", " ".join(build_args))
-        subprocess.check_call(['cmake', '--build', '.'] + build_args,
-                              cwd=self.build_temp)
+        print("=======DEBUG: build folder:", self.build_temp)
+        # print("=======DEBUG: env:", env)
+        # print("=======DEBUG: command:", ['cmake', ext.sourcedir] + cmake_args)
+
+        all_args = ['cmake'] + cmake_args
+        print("======= (1) cmake: ", " ".join(all_args))
+        subprocess.check_call(all_args, cwd=self.build_temp, env=env)
+
+        all_args = ['cmake', '--build', '.'] + build_args
+        print("======= (2) cmake: ", " ".join(all_args))
+        subprocess.check_call(all_args, cwd=self.build_temp)
         print()  # Add an empty line for cleaner output
 
 
@@ -134,7 +151,8 @@ setup(
                  CMakeExtension('pyace/calculator', target='calculator'),
                  ],
     # add custom build_ext command
-    cmdclass=versioneer.get_cmdclass(dict(install=InstallMaxVolPyLocalPackage, build_ext=CMakeBuild)),
+    cmdclass=versioneer.get_cmdclass(dict(  # install=InstallMaxVolPyLocalPackage,
+        build_ext=CMakeBuild)),
     zip_safe=False,
     url='https://git.noc.ruhr-uni-bochum.de/atomicclusterexpansion/pyace',
     install_requires=['numpy',

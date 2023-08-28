@@ -5,7 +5,7 @@
 #include "tag.h"
 #include "token.h"
 
-namespace YAML_PACE {
+namespace YAML {
 Tag::Tag(const Token& token)
     : type(static_cast<TYPE>(token.data)), handle{}, value{} {
   switch (type) {
@@ -47,4 +47,4 @@ std::string Tag::Translate(const Directives& directives) {
   }
   throw std::runtime_error("yaml-cpp: internal error, bad tag type");
 }
-}  // namespace YAML_PACE
+}  // namespace YAML

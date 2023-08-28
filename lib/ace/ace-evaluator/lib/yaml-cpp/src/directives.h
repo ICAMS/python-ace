@@ -10,7 +10,7 @@
 #include <string>
 #include <map>
 
-namespace YAML_PACE {
+namespace YAML {
 struct Version {
   bool isDefault;
   int major, minor;

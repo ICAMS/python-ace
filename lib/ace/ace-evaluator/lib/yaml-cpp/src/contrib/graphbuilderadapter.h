@@ -16,12 +16,12 @@
 #include "yaml-cpp/emitterstyle.h"
 #include "yaml-cpp/eventhandler.h"
 
-namespace YAML_PACE {
+namespace YAML {
 class GraphBuilderInterface;
 struct Mark;
-}  // namespace YAML_PACE
+}  // namespace YAML
 
-namespace YAML_PACE {
+namespace YAML {
 class GraphBuilderAdapter : public EventHandler {
  public:
   GraphBuilderAdapter(GraphBuilderInterface& builder)
@@ -81,6 +81,6 @@ class GraphBuilderAdapter : public EventHandler {
   void RegisterAnchor(anchor_t anchor, void* pNode);
   void DispositionNode(void* pNode);
 };
-}  // namespace YAML_PACE
+}  // namespace YAML
 
 #endif  // GRAPHBUILDERADAPTER_H_62B23520_7C8E_11DE_8A39_0800200C9A66

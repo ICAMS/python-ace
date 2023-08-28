@@ -17,15 +17,15 @@
 #include "yaml-cpp/node/ptr.h"
 #include "yaml-cpp/node/type.h"
 
-namespace YAML_PACE {
+namespace YAML {
 namespace detail {
 class node;
 class node_data;
 struct iterator_value;
 }  // namespace detail
-}  // namespace YAML_PACE
+}  // namespace YAML
 
-namespace YAML_PACE {
+namespace YAML {
 class YAML_CPP_API Node {
  public:
   friend class NodeBuilder;
@@ -38,8 +38,8 @@ class YAML_CPP_API Node {
   template <typename T, typename S>
   friend struct as_if;
 
-  using iterator = YAML_PACE::iterator;
-  using const_iterator = YAML_PACE::const_iterator;
+  using iterator = YAML::iterator;
+  using const_iterator = YAML::const_iterator;
 
   Node();
   explicit Node(NodeType::value type);
@@ -49,7 +49,7 @@ class YAML_CPP_API Node {
   Node(const Node& rhs);
   ~Node();
 
-  YAML_PACE::Mark Mark() const;
+  YAML::Mark Mark() const;
   NodeType::value Type() const;
   bool IsDefined() const;
   bool IsNull() const { return Type() == NodeType::Null; }

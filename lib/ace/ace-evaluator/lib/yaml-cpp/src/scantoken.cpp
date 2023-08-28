@@ -11,7 +11,7 @@
 #include "yaml-cpp/exceptions.h"  // IWYU pragma: keep
 #include "yaml-cpp/mark.h"
 
-namespace YAML_PACE {
+namespace YAML {
 ///////////////////////////////////////////////////////////////////////
 // Specialization for scanning specific tokens
 
@@ -434,4 +434,4 @@ void Scanner::ScanBlockScalar() {
   token.value = scalar;
   m_tokens.push(token);
 }
-}  // namespace YAML_PACE
+}  // namespace YAML

@@ -15,7 +15,7 @@
 #include <iterator>
 
 
-namespace YAML_PACE {
+namespace YAML {
 namespace detail {
 struct iterator_value;
 
@@ -91,6 +91,6 @@ class iterator_base {
   shared_memory_holder m_pMemory;
 };
 }  // namespace detail
-}  // namespace YAML_PACE
+}  // namespace YAML
 
 #endif  // VALUE_DETAIL_ITERATOR_H_62B23520_7C8E_11DE_8A39_0800200C9A66

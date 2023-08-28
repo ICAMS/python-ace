@@ -11,7 +11,7 @@
 
 #include "../anchor.h"
 
-namespace YAML_PACE {
+namespace YAML {
 /**
  * An object that stores and retrieves values correlating to {@link anchor_t}
  * values.
@@ -35,6 +35,6 @@ class AnchorDict {
  private:
   std::vector<T> m_data;
 };
-}  // namespace YAML_PACE
+}  // namespace YAML
 
 #endif  // ANCHORDICT_H_62B23520_7C8E_11DE_8A39_0800200C9A66

@@ -12,7 +12,7 @@
 
 #include "yaml-cpp/dll.h"
 
-namespace YAML_PACE {
+namespace YAML {
 class Stream;
 
 enum REGEX_OP {
@@ -81,7 +81,7 @@ class YAML_CPP_API RegEx {
   char m_z{};
   std::vector<RegEx> m_params;
 };
-}  // namespace YAML_PACE
+}  // namespace YAML
 
 #include "regeximpl.h"
 

@@ -12,7 +12,7 @@
 #include <memory>
 #include <vector>
 
-namespace YAML_PACE {
+namespace YAML {
 
 // TODO: This class is no longer needed
 template <typename T>
@@ -40,6 +40,6 @@ class ptr_vector {
  private:
   std::vector<std::unique_ptr<T>> m_data;
 };
-}  // namespace YAML_PACE
+}  // namespace YAML
 
 #endif  // PTR_VECTOR_H_62B23520_7C8E_11DE_8A39_0800200C9A66

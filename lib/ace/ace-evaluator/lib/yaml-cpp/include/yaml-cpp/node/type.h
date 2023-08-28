@@ -7,7 +7,7 @@
 #pragma once
 #endif
 
-namespace YAML_PACE {
+namespace YAML {
 struct NodeType {
   enum value { Undefined, Null, Scalar, Sequence, Map };
 };

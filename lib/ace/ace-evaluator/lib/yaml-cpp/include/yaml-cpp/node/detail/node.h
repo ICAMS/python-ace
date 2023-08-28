@@ -15,7 +15,7 @@
 #include <set>
 #include <atomic>
 
-namespace YAML_PACE {
+namespace YAML {
 namespace detail {
 class node {
  private:
@@ -172,6 +172,6 @@ class node {
   static YAML_CPP_API std::atomic<size_t> m_amount;
 };
 }  // namespace detail
-}  // namespace YAML_PACE
+}  // namespace YAML
 
 #endif  // NODE_DETAIL_NODE_H_62B23520_7C8E_11DE_8A39_0800200C9A66

@@ -14,14 +14,14 @@
 #include "yaml-cpp/eventhandler.h"
 #include "yaml-cpp/node/ptr.h"
 
-namespace YAML_PACE {
+namespace YAML {
 namespace detail {
 class node;
 }  // namespace detail
 struct Mark;
-}  // namespace YAML_PACE
+}  // namespace YAML
 
-namespace YAML_PACE {
+namespace YAML {
 class Node;
 
 class NodeBuilder : public EventHandler {
@@ -69,6 +69,6 @@ class NodeBuilder : public EventHandler {
   std::vector<PushedKey> m_keys;
   std::size_t m_mapDepth;
 };
-}  // namespace YAML_PACE
+}  // namespace YAML
 
 #endif  // NODE_NODEBUILDER_H_62B23520_7C8E_11DE_8A39_0800200C9A66

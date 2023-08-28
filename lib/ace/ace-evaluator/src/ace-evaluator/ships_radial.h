@@ -76,7 +76,7 @@ public:
     void fcut(const DOUBLE_TYPE x, DOUBLE_TYPE &f_out, DOUBLE_TYPE &df_out) const;
 
     void fread(FILE *fptr);
-    void read_YAML(YAML_PACE::Node node);
+    void read_YAML(YAML::Node node);
 
     void _init(DOUBLE_TYPE r0, int p, DOUBLE_TYPE rcut,
                DOUBLE_TYPE xl, DOUBLE_TYPE xr,
@@ -118,7 +118,7 @@ public:
 
 
     void fread(FILE *fptr);
-    void read_yaml(YAML_PACE::Node node);
+    void read_yaml(YAML::Node node);
 
     void load(string fname);
 

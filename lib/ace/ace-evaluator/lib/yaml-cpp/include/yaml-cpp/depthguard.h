@@ -9,7 +9,7 @@
 
 #include "exceptions.h"
 
-namespace YAML_PACE {
+namespace YAML {
 
 /**
  * @brief The DeepRecursion class
@@ -72,6 +72,6 @@ private:
     int & m_depth;
 };
 
-} // namespace YAML_PACE
+} // namespace YAML
 
 #endif // DEPTH_GUARD_H_00000000000000000000000000000000000000000000000000000000

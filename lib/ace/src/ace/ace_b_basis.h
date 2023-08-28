@@ -42,9 +42,9 @@ public:
 
     bool empty() const;
 
-    YAML_PACE::Node to_YAML() const;
+    YAML::Node to_YAML() const;
 
-    void from_YAML(YAML_PACE::Node& node);
+    void from_YAML(YAML::Node& node);
 };
 
 
@@ -110,7 +110,7 @@ public:
 
     std::vector<BBasisFunctionSpecification> funcspecs; // 0 dim = rank, 1 dim - basis func ind
 
-    YAML_PACE::Node to_YAML() const;
+    YAML::Node to_YAML() const;
 
     int get_number_of_coeffs() const;
 

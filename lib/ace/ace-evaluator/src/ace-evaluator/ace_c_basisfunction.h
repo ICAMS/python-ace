@@ -289,9 +289,9 @@ struct ACECTildeBasisFunction : public ACEAbstractBasisFunction {
         cout << "}" << endl;
     }
 
-    YAML_PACE::Node to_YAML() const {
-        YAML_PACE::Node ctilde_yaml;
-        ctilde_yaml.SetStyle(YAML_PACE::EmitterStyle::Flow);
+    YAML::Node to_YAML() const {
+        YAML::Node ctilde_yaml;
+        ctilde_yaml.SetStyle(YAML::EmitterStyle::Flow);
         ctilde_yaml["mu0"] = (int) this->mu0;
         ctilde_yaml["rank"] = (int) this->rank;
         ctilde_yaml["ndensity"] = this->ndensity;
