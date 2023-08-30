@@ -18,8 +18,11 @@ with open('README.md') as readme_file:
 class InstallMaxVolPyLocalPackage(install):
     def run(self):
         install.run(self)
+        cmd = "cd lib/maxvolpy; python setup.py install; cd ../.."
+        if platform.system() != "Windows":
+            cmd = "pip install Cython; " + cmd
         returncode = subprocess.call(
-            "pip install Cython; cd lib/maxvolpy; python setup.py install; cd ../..", shell=True
+            cmd, shell=True
         )
         if returncode != 0:
             print("=" * 40)
@@ -181,7 +184,7 @@ setup(
     long_description_content_type='text/markdown',
 
     # tell setuptools to look for any packages under 'src'
-    packages=find_packages('src','bin/*'),
+    packages=find_packages('src', 'bin/*'),
     # tell setuptools that all packages will be under the 'src' directory
     # and nowhere else
     package_dir={'': 'src'},
@@ -195,7 +198,7 @@ setup(
                  CMakeExtension('pyace/calculator', target='calculator'),
                  ],
     # add custom build_ext command
-    cmdclass=versioneer.get_cmdclass(dict(#install=InstallMaxVolPyLocalPackage,
+    cmdclass=versioneer.get_cmdclass(dict(install=InstallMaxVolPyLocalPackage,
                                           build_ext=CMakeBuild)),
     zip_safe=False,
     url='https://git.noc.ruhr-uni-bochum.de/atomicclusterexpansion/pyace',
