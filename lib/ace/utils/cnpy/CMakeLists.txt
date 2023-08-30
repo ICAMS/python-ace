@@ -8,11 +8,9 @@ set(CMAKE_CXX_STANDARD 11) # Enable c++11 standard
 #option(ENABLE_STATIC "Build static (.a) library" ON)
 
 # Set CMAKE_BUILD_TYPE to Release if not already set
-message("CNPY(before): CMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}")
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Choose the type of build" FORCE)
 endif()
-message("CNPY: CMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}")
 
 
 
@@ -23,9 +21,7 @@ target_include_directories(cnpy PUBLIC
 
 # Add compiler flags for Release builds
 if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
-#    message("CNPY (before) CMAKE_CXX_FLAGS_RELEASE=${CMAKE_CXX_FLAGS_RELEASE}")
 #    target_compile_options(cnpy PRIVATE /O2 /Ob2 /Oi /Ot /Oy)
-#    message("CNPY (after) CMAKE_CXX_FLAGS_RELEASE=${CMAKE_CXX_FLAGS_RELEASE}")
 endif()
 
 #if(ENABLE_STATIC)

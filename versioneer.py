@@ -1354,7 +1354,8 @@ def versions_from_file(filename):
 
 def write_to_version_file(filename, versions):
     """Write the given version number to the given _version.py file."""
-    os.unlink(filename)
+    if os.path.isfile(filename):
+        os.unlink(filename)
     contents = json.dumps(versions, sort_keys=True,
                           indent=1, separators=(",", ": "))
     with open(filename, "w") as f:

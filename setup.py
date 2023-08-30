@@ -53,24 +53,13 @@ class CMakeExtension(Extension):
 
 class CMakeBuild(build_ext):
 
-    # def run(self):
-    #     try:
-    #         out = subprocess.check_output(['cmake', '--version'])
-    #     except OSError:
-    #         raise RuntimeError(
-    #             "CMake must be installed to build the following extensions: " +
-    #             ", ".join(e.name for e in self.extensions))
-    #
-    #     # if platform.system() == "Windows":
-    #     #     cmake_version = LooseVersion(re.search(r'version\s*([\d.]+)',
-    #     #                                            out.decode()).group(1))
-    #     #     if cmake_version < '3.1.0':
-    #     #         raise RuntimeError("CMake >= 3.1.0 is required on Windows")
-    #
-    #     for ext in self.extensions:
-    #         self.build_extension(ext)
-
     def build_extension(self, ext: CMakeExtension) -> None:
+        try:
+            out = subprocess.check_output(['cmake', '--version'])
+        except OSError:
+            raise RuntimeError(
+                "CMake must be installed to build the extensions")
+
         # Must be in this form due to bug in .resolve() only fixed in Python 3.10+
         ext_fullpath = Path.cwd() / self.get_ext_fullpath(ext.name)
         extdir = ext_fullpath.parent.resolve()
@@ -166,7 +155,6 @@ class CMakeBuild(build_ext):
             ["cmake", ext.sourcedir, *cmake_args], cwd=build_temp, check=True
         )
         args = ["cmake", "--build", ".", *build_args]
-        print("Run in,", build_temp, ":", " ".join(args))
         subprocess.run(
             args, cwd=build_temp, check=True
         )
@@ -184,7 +172,7 @@ setup(
     long_description_content_type='text/markdown',
 
     # tell setuptools to look for any packages under 'src'
-    packages=find_packages('src', 'bin/*'),
+    packages=find_packages('src'),
     # tell setuptools that all packages will be under the 'src' directory
     # and nowhere else
     package_dir={'': 'src'},
@@ -201,7 +189,7 @@ setup(
     cmdclass=versioneer.get_cmdclass(dict(install=InstallMaxVolPyLocalPackage,
                                           build_ext=CMakeBuild)),
     zip_safe=False,
-    url='https://git.noc.ruhr-uni-bochum.de/atomicclusterexpansion/pyace',
+    url='https://github.com/ICAMS/python-ace',
     install_requires=['numpy',
                       'ase',
                       'pandas',
@@ -216,12 +204,9 @@ setup(
         "input_template.yaml"
     ]},
     scripts=["bin/pacemaker", "bin/pace_yaml2yace",
-             "bin/pace_update_yaml_potential", "bin/pace_timing",
-             "bin/pace_info", "bin/pace_activeset", "bin/pace_select",
+             "bin/pace_timing", "bin/pace_info",
+             "bin/pace_activeset", "bin/pace_select",
              "bin/pace_collect"],
 
-    # cmdclass={"build_ext": CMakeBuild},
-    # zip_safe=False,
-    # extras_require={"test": ["pytest>=6.0"]},
     python_requires=">=3.7"
 )
