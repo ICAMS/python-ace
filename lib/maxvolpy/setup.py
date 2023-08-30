@@ -9,6 +9,7 @@ from setuptools import setup
 from setuptools.extension import Extension
 from Cython.Build import cythonize
 import numpy
+import platform
 
 extensions = [
     Extension("maxvolpy._maxvol",
@@ -17,6 +18,10 @@ extensions = [
               extra_compile_args=['-O3', '-march=native', '-ffast-math']
               )
 ]
+
+ext_modules = None
+if platform.system() != "Windows":
+    ext_modules = cythonize(extensions)
 
 setup(
     name='maxvolpy',
@@ -31,5 +36,5 @@ setup(
     license='MIT',
     install_requires=['numpy>=1.10.1', 'scipy>=0.16.0', 'cython>=0.23.4'],
     packages=['maxvolpy'],
-    ext_modules=cythonize(extensions),
+    ext_modules=ext_modules
 )
