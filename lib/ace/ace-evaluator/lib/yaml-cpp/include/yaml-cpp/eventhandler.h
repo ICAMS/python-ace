@@ -12,7 +12,7 @@
 #include "yaml-cpp/anchor.h"
 #include "yaml-cpp/emitterstyle.h"
 
-namespace YAML {
+namespace YAML_PACE {
 struct Mark;
 
 class EventHandler {
@@ -40,6 +40,6 @@ class EventHandler {
     // empty default implementation for compatibility
   }
 };
-}  // namespace YAML
+}  // namespace YAML_PACE
 
 #endif  // EVENTHANDLER_H_62B23520_7C8E_11DE_8A39_0800200C9A66

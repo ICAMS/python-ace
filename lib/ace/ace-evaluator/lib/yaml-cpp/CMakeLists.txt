@@ -1,6 +1,6 @@
 # 3.5 is actually available almost everywhere, but this a good minimum.
 # 3.14 as the upper policy limit avoids CMake deprecation warnings.
-cmake_minimum_required(VERSION 3.4...3.14)
+cmake_minimum_required(VERSION 3.4)
 
 # enable MSVC_RUNTIME_LIBRARY target property
 # see https://cmake.org/cmake/help/latest/policy/CMP0091.html
@@ -8,7 +8,7 @@ if(POLICY CMP0091)
   cmake_policy(SET CMP0091 NEW)
 endif()
 
-project(YAML_CPP VERSION 0.8.0 LANGUAGES CXX)
+project(YAML_CPP_PACE VERSION 0.8.0 LANGUAGES CXX)
 
 set(YAML_CPP_MAIN_PROJECT OFF)
 if(CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
@@ -75,21 +75,21 @@ set(msvc-rt-mt-dll $<STREQUAL:${msvc-rt},MultiThreadedDLL>)
 
 set(backport-msvc-runtime $<VERSION_LESS:${CMAKE_VERSION},3.15>)
 
-add_library(yaml-cpp ${yaml-cpp-type} "")
-add_library(yaml-cpp::yaml-cpp ALIAS yaml-cpp)
+add_library(yaml-cpp-pace ${yaml-cpp-type} "")
+add_library(yaml-cpp-pace::yaml-cpp-pace ALIAS yaml-cpp-pace)
 
-set_property(TARGET yaml-cpp
+set_property(TARGET yaml-cpp-pace
   PROPERTY
     MSVC_RUNTIME_LIBRARY ${CMAKE_MSVC_RUNTIME_LIBRARY})
-set_property(TARGET yaml-cpp
+set_property(TARGET yaml-cpp-pace
   PROPERTY
     CXX_STANDARD_REQUIRED ON)
 
 if (NOT YAML_BUILD_SHARED_LIBS)
-  set_property(TARGET yaml-cpp PROPERTY POSITION_INDEPENDENT_CODE ON)
+  set_property(TARGET yaml-cpp-pace PROPERTY POSITION_INDEPENDENT_CODE ON)
 endif()
 
-target_include_directories(yaml-cpp
+target_include_directories(yaml-cpp-pace
   PUBLIC
     $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
@@ -97,19 +97,19 @@ target_include_directories(yaml-cpp
     $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src>)
 
 if (NOT DEFINED CMAKE_CXX_STANDARD)
-  set_target_properties(yaml-cpp
+  set_target_properties(yaml-cpp-pace
     PROPERTIES
       CXX_STANDARD 11)
 endif()
 
 if(YAML_CPP_MAIN_PROJECT)
-  target_compile_options(yaml-cpp
+  target_compile_options(yaml-cpp-pace
     PRIVATE
       $<${not-msvc}:-Wall -Wextra -Wshadow -Weffc++ -Wno-long-long>
       $<${not-msvc}:-pedantic -pedantic-errors>)
 endif()
 
-target_compile_options(yaml-cpp
+target_compile_options(yaml-cpp-pace
   PRIVATE
     $<$<AND:${backport-msvc-runtime},${msvc-rt-mtd-static}>:-MTd>
     $<$<AND:${backport-msvc-runtime},${msvc-rt-mt-static}>:-MT>
@@ -122,14 +122,14 @@ target_compile_options(yaml-cpp
     # http://msdn.microsoft.com/en-us/library/3c594ae3.aspx
     $<$<CXX_COMPILER_ID:MSVC>:/W3 /wd4127 /wd4355>)
 
-target_compile_definitions(yaml-cpp
+target_compile_definitions(yaml-cpp-pace
   PUBLIC
     $<$<NOT:$<BOOL:${YAML_BUILD_SHARED_LIBS}>>:YAML_CPP_STATIC_DEFINE>
   PRIVATE
     $<${build-windows-dll}:${PROJECT_NAME}_DLL>
     $<$<NOT:$<BOOL:${YAML_CPP_BUILD_CONTRIB}>>:YAML_CPP_NO_CONTRIB>)
 
-target_sources(yaml-cpp
+target_sources(yaml-cpp-pace
   PRIVATE
     $<$<BOOL:${YAML_CPP_BUILD_CONTRIB}>:${yaml-cpp-contrib-sources}>
     ${yaml-cpp-sources})
@@ -138,14 +138,14 @@ if (NOT DEFINED CMAKE_DEBUG_POSTFIX)
   set(CMAKE_DEBUG_POSTFIX "d")
 endif()
 
-set_target_properties(yaml-cpp PROPERTIES
+set_target_properties(yaml-cpp-pace PROPERTIES
   VERSION "${PROJECT_VERSION}"
   SOVERSION "${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}"
-  PROJECT_LABEL "yaml-cpp ${yaml-cpp-label-postfix}"
+  PROJECT_LABEL "yaml-cpp-pace ${yaml-cpp-label-postfix}"
   DEBUG_POSTFIX "${CMAKE_DEBUG_POSTFIX}")
 
 set(CONFIG_EXPORT_DIR "${CMAKE_INSTALL_LIBDIR}/cmake/yaml-cpp")
-set(EXPORT_TARGETS yaml-cpp)
+set(EXPORT_TARGETS yaml-cpp-pace)
 configure_package_config_file(
   "${PROJECT_SOURCE_DIR}/yaml-cpp-config.cmake.in"
   "${PROJECT_BINARY_DIR}/yaml-cpp-config.cmake"
@@ -158,51 +158,10 @@ write_basic_package_version_file(
   COMPATIBILITY AnyNewerVersion)
 
 configure_file(yaml-cpp.pc.in yaml-cpp.pc @ONLY)
-
-if (YAML_CPP_INSTALL)
-  install(TARGETS yaml-cpp
-    EXPORT yaml-cpp-targets
-    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
-  install(DIRECTORY ${PROJECT_SOURCE_DIR}/include/
-    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
-                FILES_MATCHING PATTERN "*.h")
-  install(EXPORT yaml-cpp-targets
-    NAMESPACE yaml-cpp::
-    DESTINATION "${CONFIG_EXPORT_DIR}")
-  install(FILES
-      "${PROJECT_BINARY_DIR}/yaml-cpp-config.cmake"
-      "${PROJECT_BINARY_DIR}/yaml-cpp-config-version.cmake"
-    DESTINATION "${CONFIG_EXPORT_DIR}")
-  install(FILES "${PROJECT_BINARY_DIR}/yaml-cpp.pc"
-    DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig)
-endif()
 unset(CONFIG_EXPORT_DIR)
 
-if(YAML_CPP_BUILD_TESTS)
-  add_subdirectory(test)
-endif()
 
 if(YAML_CPP_BUILD_TOOLS)
   add_subdirectory(util)
 endif()
 
-if (YAML_CPP_FORMAT_SOURCE AND YAML_CPP_CLANG_FORMAT_EXE)
-  add_custom_target(format
-    COMMAND clang-format --style=file -i $<TARGET_PROPERTY:yaml-cpp,SOURCES>
-    COMMAND_EXPAND_LISTS
-    COMMENT "Running clang-format"
-    VERBATIM)
-endif()
-
-# uninstall target
-if(NOT TARGET uninstall)
-  configure_file(
-    "${CMAKE_CURRENT_SOURCE_DIR}/cmake_uninstall.cmake.in"
-    "${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake"
-    IMMEDIATE @ONLY)
-
-  add_custom_target(uninstall
-    COMMAND ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake)
-endif()

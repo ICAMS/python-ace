@@ -12,7 +12,7 @@
 #include <utility>
 #include <vector>
 
-namespace YAML {
+namespace YAML_PACE {
 
 class SettingChangeBase {
  public:
@@ -95,6 +95,6 @@ class SettingChanges {
   using setting_changes = std::vector<std::unique_ptr<SettingChangeBase>>;
   setting_changes m_settingChanges;
 };
-}  // namespace YAML
+}  // namespace YAML_PACE
 
 #endif  // SETTING_H_62B23520_7C8E_11DE_8A39_0800200C9A66

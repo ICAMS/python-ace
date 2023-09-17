@@ -11,7 +11,7 @@
 
 #include "../anchor.h"
 
-namespace YAML {
+namespace YAML_PACE {
 /**
  * An object that stores and retrieves values correlating to {@link anchor_t}
  * values.

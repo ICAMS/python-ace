@@ -10,7 +10,7 @@
 #include <cassert>
 #include <stack>
 
-namespace YAML {
+namespace YAML_PACE {
 struct CollectionType {
   enum value { NoCollection, BlockMap, BlockSeq, FlowMap, FlowSeq, CompactMap };
 };
@@ -36,6 +36,6 @@ class CollectionStack {
  private:
   std::stack<CollectionType::value> collectionStack;
 };
-}  // namespace YAML
+}  // namespace YAML_PACE
 
 #endif  // COLLECTIONSTACK_H_62B23520_7C8E_11DE_8A39_0800200C9A66

@@ -16,7 +16,7 @@
 #include <utility>
 #include <vector>
 
-namespace YAML {
+namespace YAML_PACE {
 namespace detail {
 struct iterator_type {
   enum value { NoneType, Sequence, Map };

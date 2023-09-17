@@ -12,7 +12,7 @@
 #include <string>
 #include <vector>
 
-namespace YAML {
+namespace YAML_PACE {
 const std::string TokenNames[] = {
     "DIRECTIVE",        "DOC_START",      "DOC_END",       "BLOCK_SEQ_START",
     "BLOCK_MAP_START",  "BLOCK_SEQ_END",  "BLOCK_MAP_END", "BLOCK_ENTRY",
@@ -65,6 +65,6 @@ struct Token {
   std::vector<std::string> params;
   int data;
 };
-}  // namespace YAML
+}  // namespace YAML_PACE
 
 #endif  // TOKEN_H_62B23520_7C8E_11DE_8A39_0800200C9A66

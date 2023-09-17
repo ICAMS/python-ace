@@ -13,11 +13,11 @@
 #include "yaml-cpp/emitterstyle.h"
 #include "yaml-cpp/eventhandler.h"
 
-namespace YAML {
+namespace YAML_PACE {
 struct Mark;
-}  // namespace YAML
+}  // namespace YAML_PACE
 
-namespace YAML {
+namespace YAML_PACE {
 class Emitter;
 
 class EmitFromEvents : public EventHandler {

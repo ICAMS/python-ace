@@ -11,7 +11,7 @@
 #include "yaml-cpp/node/ptr.h"
 #include "yaml-cpp/node/type.h"
 
-namespace YAML {
+namespace YAML_PACE {
 namespace detail {
 YAML_CPP_API std::atomic<size_t> node::m_amount{0};
 
@@ -257,7 +257,7 @@ bool node_data::remove(node& key, const shared_memory_holder& /* pMemory */) {
 
   auto it =
       std::find_if(m_map.begin(), m_map.end(),
-                   [&](std::pair<YAML::detail::node*, YAML::detail::node*> j) {
+                   [&](std::pair<YAML_PACE::detail::node*, YAML_PACE::detail::node*> j) {
                      return (j.first->is(key));
                    });
 
@@ -321,4 +321,4 @@ void node_data::convert_sequence_to_map(const shared_memory_holder& pMemory) {
   m_type = NodeType::Map;
 }
 }  // namespace detail
-}  // namespace YAML
+}  // namespace YAML_PACE

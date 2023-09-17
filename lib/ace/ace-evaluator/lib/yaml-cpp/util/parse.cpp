@@ -7,28 +7,28 @@
 
 class NullEventHandler : public YAML::EventHandler {
  public:
-  void OnDocumentStart(const YAML::Mark&) override {}
+  void OnDocumentStart(const YAML_PACE::Mark&) override {}
   void OnDocumentEnd() override {}
 
-  void OnNull(const YAML::Mark&, YAML::anchor_t) override {}
-  void OnAlias(const YAML::Mark&, YAML::anchor_t) override {}
-  void OnScalar(const YAML::Mark&, const std::string&, YAML::anchor_t,
+  void OnNull(const YAML_PACE::Mark&, YAML_PACE::anchor_t) override {}
+  void OnAlias(const YAML_PACE::Mark&, YAML_PACE::anchor_t) override {}
+  void OnScalar(const YAML_PACE::Mark&, const std::string&, YAML_PACE::anchor_t,
                 const std::string&) override {}
 
-  void OnSequenceStart(const YAML::Mark&, const std::string&, YAML::anchor_t,
-                       YAML::EmitterStyle::value) override {}
+  void OnSequenceStart(const YAML_PACE::Mark&, const std::string&, YAML_PACE::anchor_t,
+                       YAML_PACE::EmitterStyle::value) override {}
   void OnSequenceEnd() override {}
 
-  void OnMapStart(const YAML::Mark&, const std::string&, YAML::anchor_t,
-                  YAML::EmitterStyle::value) override {}
+  void OnMapStart(const YAML_PACE::Mark&, const std::string&, YAML_PACE::anchor_t,
+                  YAML_PACE::EmitterStyle::value) override {}
   void OnMapEnd() override {}
 };
 
 void parse(std::istream& input) {
   try {
-    YAML::Node doc = YAML::Load(input);
+    YAML_PACE::Node doc = YAML_PACE::Load(input);
     std::cout << doc << "\n";
-  } catch (const YAML::Exception& e) {
+  } catch (const YAML_PACE::Exception& e) {
     std::cerr << e.what() << "\n";
   }
 }

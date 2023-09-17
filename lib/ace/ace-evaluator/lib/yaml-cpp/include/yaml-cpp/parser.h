@@ -12,7 +12,7 @@
 
 #include "yaml-cpp/dll.h"
 
-namespace YAML {
+namespace YAML_PACE {
 class EventHandler;
 class Node;
 class Scanner;

@@ -263,9 +263,9 @@ BBasisFunctionSpecification::BBasisFunctionSpecification(const vector<string> &e
 
 }
 
-YAML::Node BBasisFunctionSpecification::to_YAML() const {
-    YAML::Node spec_yaml;
-    spec_yaml.SetStyle(YAML::EmitterStyle::Flow);
+YAML_PACE::Node BBasisFunctionSpecification::to_YAML() const {
+    YAML_PACE::Node spec_yaml;
+    spec_yaml.SetStyle(YAML_PACE::EmitterStyle::Flow);
     spec_yaml["type"] = join(this->elements, " ");
     spec_yaml["nr"] = ns;
     spec_yaml["nl"] = ls;

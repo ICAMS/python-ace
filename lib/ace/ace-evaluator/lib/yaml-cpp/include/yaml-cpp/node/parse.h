@@ -13,7 +13,7 @@
 
 #include "yaml-cpp/dll.h"
 
-namespace YAML {
+namespace YAML_PACE {
 class Node;
 
 /**
@@ -73,6 +73,6 @@ YAML_CPP_API std::vector<Node> LoadAll(std::istream& input);
  * @throws {@link BadFile} if the file cannot be loaded.
  */
 YAML_CPP_API std::vector<Node> LoadAllFromFile(const std::string& filename);
-}  // namespace YAML
+}  // namespace YAML_PACE
 
 #endif  // VALUE_PARSE_H_62B23520_7C8E_11DE_8A39_0800200C9A66

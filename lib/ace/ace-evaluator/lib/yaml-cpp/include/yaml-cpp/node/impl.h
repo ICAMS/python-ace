@@ -15,7 +15,7 @@
 #include <sstream>
 #include <string>
 
-namespace YAML {
+namespace YAML_PACE {
 inline Node::Node()
     : m_isValid(true), m_invalidKey{}, m_pMemory(nullptr), m_pNode(nullptr) {}
 
@@ -213,7 +213,7 @@ inline Node& Node::operator=(const Node& rhs) {
   return *this;
 }
 
-inline void Node::reset(const YAML::Node& rhs) {
+inline void Node::reset(const YAML_PACE::Node& rhs) {
   if (!m_isValid || !rhs.m_isValid)
     throw InvalidNode(m_invalidKey);
   m_pMemory = rhs.m_pMemory;

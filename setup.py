@@ -59,7 +59,9 @@ class CMakeBuild(build_ext):
         except OSError:
             raise RuntimeError(
                 "CMake must be installed to build the extensions")
-
+        self.parallel = os.cpu_count() - 1
+        if self.parallel < 1:
+            self.parallel = 1
         # Must be in this form due to bug in .resolve() only fixed in Python 3.10+
         ext_fullpath = Path.cwd() / self.get_ext_fullpath(ext.name)
         extdir = ext_fullpath.parent.resolve()
@@ -208,5 +210,5 @@ setup(
              "bin/pace_activeset", "bin/pace_select",
              "bin/pace_collect"],
 
-    python_requires=">=3.7"
+    python_requires=">=3.8"
 )

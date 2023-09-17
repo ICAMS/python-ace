@@ -7,7 +7,7 @@
 #pragma once
 #endif
 
-namespace YAML {
+namespace YAML_PACE {
 struct EmitterNodeType {
   enum value { NoType, Property, Scalar, FlowSeq, BlockSeq, FlowMap, BlockMap };
 };

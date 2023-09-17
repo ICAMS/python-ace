@@ -9,7 +9,7 @@
 
 #include <cstddef>
 
-namespace YAML {
+namespace YAML_PACE {
 class StringCharSource {
  public:
   StringCharSource(const char* str, std::size_t size)

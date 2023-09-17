@@ -1205,15 +1205,15 @@ void convert_B_to_Ctilde_basis_functions(const vector<ACEBBasisFunction> &b_basi
 
 
 void BBasisConfiguration::save(const string &yaml_file_name) {
-    YAML::Node out_yaml;
+    YAML_PACE::Node out_yaml;
 
-    YAML::Node global_yaml;
+    YAML_PACE::Node global_yaml;
     global_yaml["DeltaSplineBins"] = deltaSplineBins;
 
 
-    vector<YAML::Node> species;
+    vector<YAML_PACE::Node> species;
     for (auto &block: funcspecs_blocks) {
-        YAML::Node block_yaml = block.to_YAML();
+        YAML_PACE::Node block_yaml = block.to_YAML();
         species.emplace_back(block_yaml);
     }
 
@@ -1226,7 +1226,7 @@ void BBasisConfiguration::save(const string &yaml_file_name) {
     out_yaml["global"] = global_yaml;
     out_yaml["species"] = species;
 
-    YAML::Emitter yaml_emitter;
+    YAML_PACE::Emitter yaml_emitter;
     yaml_emitter << out_yaml;
 
     std::ofstream fout(yaml_file_name);
@@ -1328,17 +1328,17 @@ bool BBasisConfiguration::validate(bool raise_exception) {
 }
 
 
-YAML::Node BBasisFunctionsSpecificationBlock::to_YAML() const {
-    YAML::Node block_node;
+YAML_PACE::Node BBasisFunctionsSpecificationBlock::to_YAML() const {
+    YAML_PACE::Node block_node;
     block_node["speciesblock"] = this->block_name; //join(this->elements_vec, " ");
-    block_node["speciesblock"].SetStyle(YAML::EmitterStyle::Flow);
+    block_node["speciesblock"].SetStyle(YAML_PACE::EmitterStyle::Flow);
 
     //single species
     if (number_of_species == 1) {
         block_node["ndensityi"] = ndensityi;
         block_node["npoti"] = npoti;
         block_node["parameters"] = fs_parameters;
-        block_node["parameters"].SetStyle(YAML::EmitterStyle::Flow);
+        block_node["parameters"].SetStyle(YAML_PACE::EmitterStyle::Flow);
         block_node["rho_core_cut"] = rho_cut;
         block_node["drho_core_cut"] = drho_cut;
     }
@@ -1359,16 +1359,16 @@ YAML::Node BBasisFunctionsSpecificationBlock::to_YAML() const {
 
         block_node["radbase"] = radbase;
         block_node["radparameters"] = radparameters;
-        block_node["radparameters"].SetStyle(YAML::EmitterStyle::Flow);
+        block_node["radparameters"].SetStyle(YAML_PACE::EmitterStyle::Flow);
 
         block_node["radcoefficients"] = radcoefficients;
-        block_node["radcoefficients"].SetStyle(YAML::EmitterStyle::Flow);
+        block_node["radcoefficients"].SetStyle(YAML_PACE::EmitterStyle::Flow);
 
         block_node["core-repulsion"] = core_rep_parameters;
-        block_node["core-repulsion"].SetStyle(YAML::EmitterStyle::Flow);
+        block_node["core-repulsion"].SetStyle(YAML_PACE::EmitterStyle::Flow);
     }
 
-    vector<YAML::Node> nbody;
+    vector<YAML_PACE::Node> nbody;
 
     for (auto &funcspec: funcspecs) {
         nbody.emplace_back(funcspec.to_YAML());
@@ -1847,33 +1847,33 @@ bool AuxiliaryData::empty() const {
            string_data.empty() && string_arr_data.empty();
 }
 
-YAML::Node AuxiliaryData::to_YAML() const {
-    YAML::Node node;
+YAML_PACE::Node AuxiliaryData::to_YAML() const {
+    YAML_PACE::Node node;
 
     node["_int"] = int_data;
-    node["_int"].SetStyle(YAML::EmitterStyle::Flow);
+    node["_int"].SetStyle(YAML_PACE::EmitterStyle::Flow);
     for (auto const &pair: int_arr_data) {
         node["_int_arr"][pair.first] = pair.second;
-        node["_int_arr"][pair.first].SetStyle(YAML::EmitterStyle::Flow);
+        node["_int_arr"][pair.first].SetStyle(YAML_PACE::EmitterStyle::Flow);
     }
 
     node["_double"] = double_data;
-    node["_double"].SetStyle(YAML::EmitterStyle::Flow);
+    node["_double"].SetStyle(YAML_PACE::EmitterStyle::Flow);
     for (auto const &pair: double_arr_data) {
         node["_double_arr"][pair.first] = pair.second;
-        node["_double_arr"][pair.first].SetStyle(YAML::EmitterStyle::Flow);
+        node["_double_arr"][pair.first].SetStyle(YAML_PACE::EmitterStyle::Flow);
     }
 
     node["_string"] = string_data;
-    node["_string"].SetStyle(YAML::EmitterStyle::Flow);
+    node["_string"].SetStyle(YAML_PACE::EmitterStyle::Flow);
     for (auto const &pair: string_arr_data) {
         node["_string_arr"][pair.first] = pair.second;
-        node["_string_arr"][pair.first].SetStyle(YAML::EmitterStyle::Flow);
+        node["_string_arr"][pair.first].SetStyle(YAML_PACE::EmitterStyle::Flow);
     }
     return node;
 }
 
-void AuxiliaryData::from_YAML(YAML::Node &node) {
+void AuxiliaryData::from_YAML(YAML_PACE::Node &node) {
     if (node["_int"])
         int_data = node["_int"].as<map<string, int>>();
     if (node["_int_arr"])

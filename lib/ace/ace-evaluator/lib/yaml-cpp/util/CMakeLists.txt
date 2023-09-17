@@ -2,9 +2,9 @@ add_executable(yaml-cpp-sandbox sandbox.cpp)
 add_executable(yaml-cpp-parse parse.cpp)
 add_executable(yaml-cpp-read read.cpp)
 
-target_link_libraries(yaml-cpp-sandbox PRIVATE yaml-cpp)
-target_link_libraries(yaml-cpp-parse PRIVATE yaml-cpp)
-target_link_libraries(yaml-cpp-read PRIVATE yaml-cpp)
+target_link_libraries(yaml-cpp-sandbox PRIVATE yaml-cpp-pace)
+target_link_libraries(yaml-cpp-parse PRIVATE yaml-cpp-pace)
+target_link_libraries(yaml-cpp-read PRIVATE yaml-cpp-pace)
 
 set_property(TARGET yaml-cpp-sandbox PROPERTY OUTPUT_NAME sandbox)
 set_property(TARGET yaml-cpp-parse PROPERTY OUTPUT_NAME parse)
