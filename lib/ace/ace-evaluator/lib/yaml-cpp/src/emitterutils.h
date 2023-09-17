@@ -13,11 +13,11 @@
 #include "yaml-cpp/emittermanip.h"
 #include "yaml-cpp/ostream_wrapper.h"
 
-namespace YAML {
+namespace YAML_PACE {
 class ostream_wrapper;
-}  // namespace YAML
+}  // namespace YAML_PACE
 
-namespace YAML {
+namespace YAML_PACE {
 class Binary;
 
 struct StringFormat {

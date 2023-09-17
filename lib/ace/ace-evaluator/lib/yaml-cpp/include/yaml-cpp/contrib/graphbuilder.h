@@ -10,7 +10,7 @@
 #include "yaml-cpp/mark.h"
 #include <string>
 
-namespace YAML {
+namespace YAML_PACE {
 class Parser;
 
 // GraphBuilderInterface

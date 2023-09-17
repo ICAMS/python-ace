@@ -9,7 +9,7 @@
 
 #include <string>
 
-namespace YAML {
+namespace YAML_PACE {
 struct Directives;
 struct Token;
 

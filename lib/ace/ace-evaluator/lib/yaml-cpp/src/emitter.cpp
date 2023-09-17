@@ -7,7 +7,7 @@
 #include "yaml-cpp/emittermanip.h"
 #include "yaml-cpp/exceptions.h"  // IWYU pragma: keep
 
-namespace YAML {
+namespace YAML_PACE {
 class Binary;
 struct _Null;
 
@@ -726,7 +726,7 @@ Emitter& Emitter::Write(const std::string& str) {
                                  m_pState->CurGroupFlowType(), stringEscaping == StringEscaping::NonAscii);
 
   if (strFormat == StringFormat::Literal || str.size() > 1024)
-    m_pState->SetMapKeyFormat(YAML::LongKey, FmtScope::Local);
+    m_pState->SetMapKeyFormat(YAML_PACE::LongKey, FmtScope::Local);
 
   PrepareNode(EmitterNodeType::Scalar);
 
@@ -969,4 +969,4 @@ Emitter& Emitter::Write(const Binary& binary) {
 
   return *this;
 }
-}  // namespace YAML
+}  // namespace YAML_PACE

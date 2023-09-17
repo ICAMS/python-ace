@@ -8,7 +8,7 @@
 #include "yaml-cpp/exceptions.h"  // IWYU pragma: keep
 #include "yaml-cpp/parser.h"
 
-namespace YAML {
+namespace YAML_PACE {
 class EventHandler;
 
 Parser::Parser() : m_pScanner{}, m_pDirectives{} {}
@@ -60,7 +60,7 @@ void Parser::ParseDirectives() {
 }
 
 void Parser::HandleDirective(const Token& token) {
-  if (token.value == "YAML") {
+  if (token.value == "YAML_PACE") {
     HandleYamlDirective(token);
   } else if (token.value == "TAG") {
     HandleTagDirective(token);
@@ -116,4 +116,4 @@ void Parser::PrintTokens(std::ostream& out) {
     m_pScanner->pop();
   }
 }
-}  // namespace YAML
+}  // namespace YAML_PACE

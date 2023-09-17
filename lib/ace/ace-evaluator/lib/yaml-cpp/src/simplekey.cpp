@@ -1,7 +1,7 @@
 #include "scanner.h"
 #include "token.h"
 
-namespace YAML {
+namespace YAML_PACE {
 struct Mark;
 
 Scanner::SimpleKey::SimpleKey(const Mark& mark_, std::size_t flowLevel_)
@@ -129,4 +129,4 @@ void Scanner::PopAllSimpleKeys() {
   while (!m_simpleKeys.empty())
     m_simpleKeys.pop();
 }
-}  // namespace YAML
+}  // namespace YAML_PACE

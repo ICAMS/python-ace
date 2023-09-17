@@ -6,19 +6,19 @@
 #include "yaml-cpp/emittermanip.h"
 #include "yaml-cpp/null.h"
 
-namespace YAML {
+namespace YAML_PACE {
 struct Mark;
-}  // namespace YAML
+}  // namespace YAML_PACE
 
 namespace {
-std::string ToString(YAML::anchor_t anchor) {
+std::string ToString(YAML_PACE::anchor_t anchor) {
   std::stringstream stream;
   stream << anchor;
   return stream.str();
 }
 }  // namespace
 
-namespace YAML {
+namespace YAML_PACE {
 EmitFromEvents::EmitFromEvents(Emitter& emitter)
     : m_emitter(emitter), m_stateStack{} {}
 
@@ -121,4 +121,4 @@ void EmitFromEvents::EmitProps(const std::string& tag, anchor_t anchor) {
   if (anchor)
     m_emitter << Anchor(ToString(anchor));
 }
-}  // namespace YAML
+}  // namespace YAML_PACE

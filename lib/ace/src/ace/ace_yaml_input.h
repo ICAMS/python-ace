@@ -70,13 +70,13 @@ public:
 class Input {
     vector<string> split_key(string);
 
-    void read_radcoefficients(const YAML::Node &YAML_input_species_block,
+    void read_radcoefficients(const YAML_PACE::Node &YAML_input_species_block,
                               BBasisFunctionsSpecificationBlock &b_basisfunc_spec_block) const;
 
-    void read_core_rho_drho_cut(const YAML::Node &YAML_input_species_block,
+    void read_core_rho_drho_cut(const YAML_PACE::Node &YAML_input_species_block,
                                 BBasisFunctionsSpecificationBlock &b_basisfunc_spec_block) const;
 
-    void read_core_repulsion(const YAML::Node &YAML_input_species_block,
+    void read_core_repulsion(const YAML_PACE::Node &YAML_input_species_block,
                              BBasisFunctionsSpecificationBlock &b_basisfunc_spec_block) const;
 
     void copy_radial_basis_from_to_block(const BBasisFunctionsSpecificationBlock &from_spec_block,

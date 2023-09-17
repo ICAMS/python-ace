@@ -15,7 +15,7 @@
 #include <set>
 #include <atomic>
 
-namespace YAML {
+namespace YAML_PACE {
 namespace detail {
 class node {
  private:

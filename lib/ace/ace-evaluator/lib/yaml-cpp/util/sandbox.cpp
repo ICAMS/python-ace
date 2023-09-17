@@ -4,10 +4,10 @@
 #include "yaml-cpp/eventhandler.h"
 #include "yaml-cpp/yaml.h"  // IWYU pragma: keep
 
-class NullEventHandler : public YAML::EventHandler {
+class NullEventHandler : public YAML_PACE::EventHandler {
  public:
-  using Mark = YAML::Mark;
-  using anchor_t = YAML::anchor_t;
+  using Mark = YAML_PACE::Mark;
+  using anchor_t = YAML_PACE::anchor_t;
 
   NullEventHandler() = default;
 
@@ -18,18 +18,18 @@ class NullEventHandler : public YAML::EventHandler {
   void OnScalar(const Mark&, const std::string&, anchor_t,
                 const std::string&) override {}
   void OnSequenceStart(const Mark&, const std::string&, anchor_t,
-                       YAML::EmitterStyle::value style) override {}
+                       YAML_PACE::EmitterStyle::value style) override {}
   void OnSequenceEnd() override {}
   void OnMapStart(const Mark&, const std::string&, anchor_t,
-                  YAML::EmitterStyle::value style) override {}
+                  YAML_PACE::EmitterStyle::value style) override {}
   void OnMapEnd() override {}
 };
 
 int main() {
-  YAML::Node root;
+  YAML_PACE::Node root;
 
   for (;;) {
-    YAML::Node node;
+    YAML_PACE::Node node;
     root = node;
   }
   return 0;

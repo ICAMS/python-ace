@@ -100,7 +100,7 @@ public:
 
     void validate();
 
-    YAML::Node to_YAML() const;
+    YAML_PACE::Node to_YAML() const;
 
     BBasisFunctionSpecification copy() const {
         BBasisFunctionSpecification new_func;

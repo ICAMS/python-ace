@@ -12,7 +12,7 @@
 #include <string>
 #include <sstream>
 
-namespace YAML {
+namespace YAML_PACE {
 template <typename>
 struct is_numeric {
   enum { value = false };

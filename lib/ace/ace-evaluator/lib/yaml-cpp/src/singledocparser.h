@@ -13,7 +13,7 @@
 
 #include "yaml-cpp/anchor.h"
 
-namespace YAML {
+namespace YAML_PACE {
 class CollectionStack;
 template <int> class DepthGuard; // depthguard.h
 class EventHandler;
@@ -66,6 +66,6 @@ class SingleDocParser {
 
   anchor_t m_curAnchor;
 };
-}  // namespace YAML
+}  // namespace YAML_PACE
 
 #endif  // SINGLEDOCPARSER_H_62B23520_7C8E_11DE_8A39_0800200C9A66

@@ -14,7 +14,7 @@
 #include "yaml-cpp/mark.h"
 #include "yaml-cpp/null.h"
 
-namespace YAML {
+namespace YAML_PACE {
 SingleDocParser::SingleDocParser(Scanner& scanner, const Directives& directives)
     : m_scanner(scanner),
       m_directives(directives),
@@ -432,4 +432,4 @@ anchor_t SingleDocParser::LookupAnchor(const Mark& mark,
 
   return it->second;
 }
-}  // namespace YAML
+}  // namespace YAML_PACE

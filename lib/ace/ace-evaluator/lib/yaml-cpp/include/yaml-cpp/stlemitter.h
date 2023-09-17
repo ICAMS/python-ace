@@ -12,7 +12,7 @@
 #include <set>
 #include <map>
 
-namespace YAML {
+namespace YAML_PACE {
 template <typename Seq>
 inline Emitter& EmitSeq(Emitter& emitter, const Seq& seq) {
   emitter << BeginSeq;

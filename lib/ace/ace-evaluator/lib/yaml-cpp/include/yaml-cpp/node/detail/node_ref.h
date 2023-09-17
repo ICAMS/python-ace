@@ -12,7 +12,7 @@
 #include "yaml-cpp/node/ptr.h"
 #include "yaml-cpp/node/detail/node_data.h"
 
-namespace YAML {
+namespace YAML_PACE {
 namespace detail {
 class node_ref {
  public:

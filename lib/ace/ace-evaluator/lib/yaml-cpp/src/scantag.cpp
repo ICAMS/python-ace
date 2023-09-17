@@ -5,7 +5,7 @@
 #include "yaml-cpp/exceptions.h"  // IWYU pragma: keep
 #include "yaml-cpp/mark.h"
 
-namespace YAML {
+namespace YAML_PACE {
 const std::string ScanVerbatimTag(Stream& INPUT) {
   std::string tag;
 
@@ -78,4 +78,4 @@ const std::string ScanTagSuffix(Stream& INPUT) {
 
   return tag;
 }
-}  // namespace YAML
+}  // namespace YAML_PACE

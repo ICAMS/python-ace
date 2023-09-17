@@ -63,9 +63,9 @@ struct ACEEmbeddingSpecification {
         return ss.str();
     }
 
-    YAML::Node to_YAML() const {
-        YAML::Node emb_yaml;
-        emb_yaml.SetStyle(YAML::EmitterStyle::Flow);
+    YAML_PACE::Node to_YAML() const {
+        YAML_PACE::Node emb_yaml;
+        emb_yaml.SetStyle(YAML_PACE::EmitterStyle::Flow);
         emb_yaml["ndensity"] = (int) this->ndensity;
         emb_yaml["FS_parameters"] = this->FS_parameters;
 
@@ -126,7 +126,7 @@ struct ACEBondSpecification {
         return ss.str();
     }
 
-    void from_YAML(YAML::Node bond_yaml) {
+    void from_YAML(YAML_PACE::Node bond_yaml) {
         radbasename = bond_yaml["radbasename"].as<string>();
 
         if(radbasename=="ACE.jl.base") {
@@ -151,9 +151,9 @@ struct ACEBondSpecification {
         }
     }
 
-    YAML::Node to_YAML() const {
-        YAML::Node bond_yaml;
-        bond_yaml.SetStyle(YAML::EmitterStyle::Flow);
+    YAML_PACE::Node to_YAML() const {
+        YAML_PACE::Node bond_yaml;
+        bond_yaml.SetStyle(YAML_PACE::EmitterStyle::Flow);
         bond_yaml["nradmax"] = (int) this->nradmax;
         bond_yaml["lmax"] = (int) this->lmax;
         bond_yaml["nradbasemax"] = (int) this->nradbasemax;

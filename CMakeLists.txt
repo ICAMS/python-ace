@@ -129,17 +129,17 @@ set(CMAKE_CXX_FLAGS_RELEASE "-Ofast") #  -DNDEBUG
 pybind11_add_module(sharmonics ${SOURCES_SHARMONICS} )
 
 pybind11_add_module(coupling ${SOURCES_COUPLING})
-target_link_libraries(coupling PRIVATE yaml-cpp)
+target_link_libraries(coupling PRIVATE yaml-cpp-pace)
 
 
 pybind11_add_module(catomicenvironment ${SOURCES_CATOMICENVIRONMENT} )
 
 pybind11_add_module(basis ${SOURCES_BASIS} )
-target_link_libraries(basis PRIVATE yaml-cpp)
+target_link_libraries(basis PRIVATE yaml-cpp-pace)
 target_link_libraries(basis PRIVATE cnpy)
 
 pybind11_add_module(evaluator ${SOURCES_EVALUATOR}  ${SOURCES_BASIS} )
-target_link_libraries(evaluator PRIVATE yaml-cpp)
+target_link_libraries(evaluator PRIVATE yaml-cpp-pace)
 target_link_libraries(evaluator PRIVATE cnpy)
 
 pybind11_add_module(calculator ${SOURCES_CALCULATOR} )

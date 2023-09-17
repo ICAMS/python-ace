@@ -3,7 +3,7 @@
 #include "yaml-cpp/emitfromevents.h"
 #include "yaml-cpp/emitter.h"
 
-namespace YAML {
+namespace YAML_PACE {
 Emitter& operator<<(Emitter& out, const Node& node) {
   EmitFromEvents emitFromEvents(out);
   NodeEvents events(node);
@@ -22,4 +22,4 @@ std::string Dump(const Node& node) {
   emitter << node;
   return emitter.c_str();
 }
-}  // namespace YAML
+}  // namespace YAML_PACE

@@ -45,7 +45,7 @@ void Input::parse_input(const string &ff) {
     }
 
     //load the file with yaml
-    YAML::Node YAML_input = YAML::LoadFile(inputfile);
+    YAML_PACE::Node YAML_input = YAML_PACE::LoadFile(inputfile);
 
     //all the raw data is now available in rawinput
 
@@ -61,7 +61,7 @@ void Input::parse_input(const string &ff) {
     }
 
     if (YAML_input["auxdata"]) {
-        YAML::Node node = YAML_input["auxdata"];
+        YAML_PACE::Node node = YAML_input["auxdata"];
         global.auxdata.from_YAML(node);
     }
 
@@ -247,9 +247,9 @@ void Input::parse_input(const string &ff) {
                 bBasisFunctionSpec.ns = YAML_input_current_basisfunc_spec["nr"].as<vector<NS_TYPE>>();
                 bBasisFunctionSpec.ls = YAML_input_current_basisfunc_spec["nl"].as<vector<LS_TYPE>>();
 
-                if (YAML_input_current_basisfunc_spec["c"].Type() == YAML::NodeType::Sequence)
+                if (YAML_input_current_basisfunc_spec["c"].Type() == YAML_PACE::NodeType::Sequence)
                     bBasisFunctionSpec.coeffs = YAML_input_current_basisfunc_spec["c"].as<vector<DOUBLE_TYPE>>();
-                else if (YAML_input_current_basisfunc_spec["c"].Type() == YAML::NodeType::Scalar) {
+                else if (YAML_input_current_basisfunc_spec["c"].Type() == YAML_PACE::NodeType::Scalar) {
                     vector<DOUBLE_TYPE> c_vec(1);
                     c_vec[0] = YAML_input_current_basisfunc_spec["c"].as<DOUBLE_TYPE>();
                     bBasisFunctionSpec.coeffs = c_vec;
@@ -494,7 +494,7 @@ void Input::check_radial_basis_consistency(const BBasisFunctionsSpecificationBlo
     }
 }
 
-void Input::read_core_repulsion(const YAML::Node &YAML_input_species_block,
+void Input::read_core_repulsion(const YAML_PACE::Node &YAML_input_species_block,
                                 BBasisFunctionsSpecificationBlock &b_basisfunc_spec_block) const {
     if (YAML_input_species_block["core-repulsion"]) {
         b_basisfunc_spec_block.core_rep_parameters = YAML_input_species_block["core-repulsion"].as<vector<DOUBLE_TYPE>>();
@@ -540,7 +540,7 @@ void Input::check_core_repulsion_consistency(const BBasisFunctionsSpecificationB
 }
 
 
-void Input::read_core_rho_drho_cut(const YAML::Node &YAML_input_species_block,
+void Input::read_core_rho_drho_cut(const YAML_PACE::Node &YAML_input_species_block,
                                    BBasisFunctionsSpecificationBlock &b_basisfunc_spec_block) const {
     if (YAML_input_species_block["rho_core_cut"])
         b_basisfunc_spec_block.rho_cut = YAML_input_species_block["rho_core_cut"].as<DOUBLE_TYPE>();
@@ -554,11 +554,11 @@ void Input::read_core_rho_drho_cut(const YAML::Node &YAML_input_species_block,
         b_basisfunc_spec_block.drho_cut = 250.0;
 }
 
-void Input::read_radcoefficients(const YAML::Node &YAML_input_species_block,
+void Input::read_radcoefficients(const YAML_PACE::Node &YAML_input_species_block,
                                  BBasisFunctionsSpecificationBlock &b_basisfunc_spec_block) const {
     try {
         b_basisfunc_spec_block.radcoefficients = YAML_input_species_block["radcoefficients"].as<vector<vector<vector<DOUBLE_TYPE>>>>();
-    } catch (YAML::RepresentationException &exc) {
+    } catch (YAML_PACE::RepresentationException &exc) {
         cout
                 << "DEPRECATION WARNING!!! Old (flatten) radcoefficients parameter encounterd, whereas it should be three-dimensional with [nradmax][lmax+1][nradbase] shape."
                 << endl;

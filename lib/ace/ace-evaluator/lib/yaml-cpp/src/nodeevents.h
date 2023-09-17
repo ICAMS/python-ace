@@ -17,9 +17,9 @@ namespace YAML {
 namespace detail {
 class node;
 }  // namespace detail
-}  // namespace YAML
+}  // namespace YAML_PACE
 
-namespace YAML {
+namespace YAML_PACE {
 class EventHandler;
 class Node;
 
@@ -63,6 +63,6 @@ class NodeEvents {
   using RefCount = std::map<const detail::node_ref*, int>;
   RefCount m_refCount;
 };
-}  // namespace YAML
+}  // namespace YAML_PACE
 
 #endif  // NODE_NODEEVENTS_H_62B23520_7C8E_11DE_8A39_0800200C9A66

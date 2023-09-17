@@ -10,7 +10,7 @@
 #include "yaml-cpp/dll.h"
 #include <string>
 
-namespace YAML {
+namespace YAML_PACE {
 class Node;
 
 struct YAML_CPP_API _Null {};

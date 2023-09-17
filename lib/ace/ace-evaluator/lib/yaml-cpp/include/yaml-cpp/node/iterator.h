@@ -16,9 +16,9 @@
 #include <vector>
 
 // Assert in place so gcc + libc++ combination properly builds
-static_assert(std::is_constructible<YAML::Node, const YAML::Node&>::value, "Node must be copy constructable");
+static_assert(std::is_constructible<YAML_PACE::Node, const YAML_PACE::Node&>::value, "Node must be copy constructable");
 
-namespace YAML {
+namespace YAML_PACE {
 namespace detail {
 struct iterator_value : public Node, std::pair<Node, Node> {
   iterator_value() = default;
