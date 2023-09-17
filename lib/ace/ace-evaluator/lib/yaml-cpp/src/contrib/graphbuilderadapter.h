@@ -1,7 +1,7 @@
 #ifndef GRAPHBUILDERADAPTER_H_62B23520_7C8E_11DE_8A39_0800200C9A66
 #define GRAPHBUILDERADAPTER_H_62B23520_7C8E_11DE_8A39_0800200C9A66
 
-#if defined(_MSC_VER) || \
+#if defined(_MSC_VER) ||                                            \
     (defined(__GNUC__) && (__GNUC__ == 3 && __GNUC_MINOR__ >= 4) || \
      (__GNUC__ >= 4))  // GCC supports "pragma once" correctly since 3.4
 #pragma once
@@ -13,89 +13,74 @@
 
 #include "yaml-cpp/anchor.h"
 #include "yaml-cpp/contrib/anchordict.h"
-#include "yaml-cpp/contrib/graphbuilder.h"
 #include "yaml-cpp/emitterstyle.h"
 #include "yaml-cpp/eventhandler.h"
 
 namespace YAML_PACE {
-    class GraphBuilderInterface;
-
-    struct Mark;
-}  // namespace YAML
+class GraphBuilderInterface;
+struct Mark;
+}  // namespace YAML_PACE
 
 namespace YAML_PACE {
-    class GraphBuilderAdapter : public EventHandler {
-    public:
-        GraphBuilderAdapter(GraphBuilderInterface &builder)
-                : m_builder(builder),
-                  m_containers{},
-                  m_anchors{},
-                  m_pRootNode(nullptr),
-                  m_pKeyNode(nullptr) {}
+class GraphBuilderAdapter : public EventHandler {
+ public:
+  GraphBuilderAdapter(GraphBuilderInterface& builder)
+      : m_builder(builder),
+        m_containers{},
+        m_anchors{},
+        m_pRootNode(nullptr),
+        m_pKeyNode(nullptr) {}
+  GraphBuilderAdapter(const GraphBuilderAdapter&) = delete;
+  GraphBuilderAdapter(GraphBuilderAdapter&&) = delete;
+  GraphBuilderAdapter& operator=(const GraphBuilderAdapter&) = delete;
+  GraphBuilderAdapter& operator=(GraphBuilderAdapter&&) = delete;
 
-        GraphBuilderAdapter(const GraphBuilderAdapter &) = delete;
+  virtual void OnDocumentStart(const Mark& mark) { (void)mark; }
+  virtual void OnDocumentEnd() {}
 
-        GraphBuilderAdapter(GraphBuilderAdapter &&) = delete;
+  virtual void OnNull(const Mark& mark, anchor_t anchor);
+  virtual void OnAlias(const Mark& mark, anchor_t anchor);
+  virtual void OnScalar(const Mark& mark, const std::string& tag,
+                        anchor_t anchor, const std::string& value);
 
-        GraphBuilderAdapter &operator=(const GraphBuilderAdapter &) = delete;
+  virtual void OnSequenceStart(const Mark& mark, const std::string& tag,
+                               anchor_t anchor, EmitterStyle::value style);
+  virtual void OnSequenceEnd();
 
-        GraphBuilderAdapter &operator=(GraphBuilderAdapter &&) = delete;
+  virtual void OnMapStart(const Mark& mark, const std::string& tag,
+                          anchor_t anchor, EmitterStyle::value style);
+  virtual void OnMapEnd();
 
-        virtual void OnDocumentStart(const Mark &mark) { (void) mark; }
+  void* RootNode() const { return m_pRootNode; }
 
-        virtual void OnDocumentEnd() {}
+ private:
+  struct ContainerFrame {
+    ContainerFrame(void* pSequence)
+        : pContainer(pSequence), pPrevKeyNode(&sequenceMarker) {}
+    ContainerFrame(void* pMap, void* pPreviousKeyNode)
+        : pContainer(pMap), pPrevKeyNode(pPreviousKeyNode) {}
 
-        virtual void OnNull(const Mark &mark, anchor_t anchor);
+    void* pContainer;
+    void* pPrevKeyNode;
 
-        virtual void OnAlias(const Mark &mark, anchor_t anchor);
+    bool isMap() const { return pPrevKeyNode != &sequenceMarker; }
 
-        virtual void OnScalar(const Mark &mark, const std::string &tag,
-                              anchor_t anchor, const std::string &value);
+   private:
+    static int sequenceMarker;
+  };
+  typedef std::stack<ContainerFrame> ContainerStack;
+  typedef AnchorDict<void*> AnchorMap;
 
-        virtual void OnSequenceStart(const Mark &mark, const std::string &tag,
-                                     anchor_t anchor, EmitterStyle::value style);
+  GraphBuilderInterface& m_builder;
+  ContainerStack m_containers;
+  AnchorMap m_anchors;
+  void* m_pRootNode;
+  void* m_pKeyNode;
 
-        virtual void OnSequenceEnd();
-
-        virtual void OnMapStart(const Mark &mark, const std::string &tag,
-                                anchor_t anchor, EmitterStyle::value style);
-
-        virtual void OnMapEnd();
-
-        void *RootNode() const { return m_pRootNode; }
-
-    private:
-        struct ContainerFrame {
-            ContainerFrame(void *pSequence)
-                    : pContainer(pSequence), pPrevKeyNode(&sequenceMarker) {}
-
-            ContainerFrame(void *pMap, void *pPreviousKeyNode)
-                    : pContainer(pMap), pPrevKeyNode(pPreviousKeyNode) {}
-
-            void *pContainer;
-            void *pPrevKeyNode;
-
-            bool isMap() const { return pPrevKeyNode != &sequenceMarker; }
-
-        private:
-            static int sequenceMarker;
-        };
-
-        typedef std::stack<ContainerFrame> ContainerStack;
-        typedef AnchorDict<void *> AnchorMap;
-
-        GraphBuilderInterface &m_builder;
-        ContainerStack m_containers;
-        AnchorMap m_anchors;
-        void *m_pRootNode;
-        void *m_pKeyNode;
-
-        void *GetCurrentParent() const;
-
-        void RegisterAnchor(anchor_t anchor, void *pNode);
-
-        void DispositionNode(void *pNode);
-    };
-}  // namespace YAML
+  void* GetCurrentParent() const;
+  void RegisterAnchor(anchor_t anchor, void* pNode);
+  void DispositionNode(void* pNode);
+};
+}  // namespace YAML_PACE
 
 #endif  // GRAPHBUILDERADAPTER_H_62B23520_7C8E_11DE_8A39_0800200C9A66

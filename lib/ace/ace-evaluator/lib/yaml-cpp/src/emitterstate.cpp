@@ -4,366 +4,397 @@
 #include "yaml-cpp/exceptions.h"  // IWYU pragma: keep
 
 namespace YAML_PACE {
-    EmitterState::EmitterState()
-            : m_isGood(true),
-              m_lastError{},
-            // default global manipulators
-              m_charset(EmitNonAscii),
-              m_strFmt(Auto),
-              m_boolFmt(TrueFalseBool),
-              m_boolLengthFmt(LongBool),
-              m_boolCaseFmt(LowerCase),
-              m_intFmt(Dec),
-              m_indent(2),
-              m_preCommentIndent(2),
-              m_postCommentIndent(1),
-              m_seqFmt(Block),
-              m_mapFmt(Block),
-              m_mapKeyFmt(Auto),
-              m_floatPrecision(std::numeric_limits<float>::max_digits10),
-              m_doublePrecision(std::numeric_limits<double>::max_digits10),
-            //
-              m_modifiedSettings{},
-              m_globalModifiedSettings{},
-              m_groups{},
-              m_curIndent(0),
-              m_hasAnchor(false),
-              m_hasTag(false),
-              m_hasNonContent(false),
-              m_docCount(0) {}
+EmitterState::EmitterState()
+    : m_isGood(true),
+      m_lastError{},
+      // default global manipulators
+      m_charset(EmitNonAscii),
+      m_strFmt(Auto),
+      m_boolFmt(TrueFalseBool),
+      m_boolLengthFmt(LongBool),
+      m_boolCaseFmt(LowerCase),
+      m_nullFmt(TildeNull),
+      m_intFmt(Dec),
+      m_indent(2),
+      m_preCommentIndent(2),
+      m_postCommentIndent(1),
+      m_seqFmt(Block),
+      m_mapFmt(Block),
+      m_mapKeyFmt(Auto),
+      m_floatPrecision(std::numeric_limits<float>::max_digits10),
+      m_doublePrecision(std::numeric_limits<double>::max_digits10),
+      //
+      m_modifiedSettings{},
+      m_globalModifiedSettings{},
+      m_groups{},
+      m_curIndent(0),
+      m_hasAnchor(false),
+      m_hasAlias(false),
+      m_hasTag(false),
+      m_hasNonContent(false),
+      m_docCount(0) {}
 
-    EmitterState::~EmitterState() = default;
+EmitterState::~EmitterState() = default;
 
 // SetLocalValue
 // . We blindly tries to set all possible formatters to this value
 // . Only the ones that make sense will be accepted
-    void EmitterState::SetLocalValue(EMITTER_MANIP value) {
-        SetOutputCharset(value, FmtScope::Local);
-        SetStringFormat(value, FmtScope::Local);
-        SetBoolFormat(value, FmtScope::Local);
-        SetBoolCaseFormat(value, FmtScope::Local);
-        SetBoolLengthFormat(value, FmtScope::Local);
-        SetIntFormat(value, FmtScope::Local);
-        SetFlowType(GroupType::Seq, value, FmtScope::Local);
-        SetFlowType(GroupType::Map, value, FmtScope::Local);
-        SetMapKeyFormat(value, FmtScope::Local);
+void EmitterState::SetLocalValue(EMITTER_MANIP value) {
+  SetOutputCharset(value, FmtScope::Local);
+  SetStringFormat(value, FmtScope::Local);
+  SetBoolFormat(value, FmtScope::Local);
+  SetBoolCaseFormat(value, FmtScope::Local);
+  SetBoolLengthFormat(value, FmtScope::Local);
+  SetNullFormat(value, FmtScope::Local);
+  SetIntFormat(value, FmtScope::Local);
+  SetFlowType(GroupType::Seq, value, FmtScope::Local);
+  SetFlowType(GroupType::Map, value, FmtScope::Local);
+  SetMapKeyFormat(value, FmtScope::Local);
+}
+
+void EmitterState::SetAnchor() { m_hasAnchor = true; }
+
+void EmitterState::SetAlias() { m_hasAlias = true; }
+
+void EmitterState::SetTag() { m_hasTag = true; }
+
+void EmitterState::SetNonContent() { m_hasNonContent = true; }
+
+void EmitterState::SetLongKey() {
+  assert(!m_groups.empty());
+  if (m_groups.empty()) {
+    return;
+  }
+
+  assert(m_groups.back()->type == GroupType::Map);
+  m_groups.back()->longKey = true;
+}
+
+void EmitterState::ForceFlow() {
+  assert(!m_groups.empty());
+  if (m_groups.empty()) {
+    return;
+  }
+
+  m_groups.back()->flowType = FlowType::Flow;
+}
+
+void EmitterState::StartedNode() {
+  if (m_groups.empty()) {
+    m_docCount++;
+  } else {
+    m_groups.back()->childCount++;
+    if (m_groups.back()->childCount % 2 == 0) {
+      m_groups.back()->longKey = false;
     }
+  }
 
-    void EmitterState::SetAnchor() { m_hasAnchor = true; }
+  m_hasAnchor = false;
+  m_hasAlias = false;
+  m_hasTag = false;
+  m_hasNonContent = false;
+}
 
-    void EmitterState::SetTag() { m_hasTag = true; }
+EmitterNodeType::value EmitterState::NextGroupType(
+    GroupType::value type) const {
+  if (type == GroupType::Seq) {
+    if (GetFlowType(type) == Block)
+      return EmitterNodeType::BlockSeq;
+    return EmitterNodeType::FlowSeq;
+  }
 
-    void EmitterState::SetNonContent() { m_hasNonContent = true; }
+  if (GetFlowType(type) == Block)
+    return EmitterNodeType::BlockMap;
+  return EmitterNodeType::FlowMap;
 
-    void EmitterState::SetLongKey() {
-        assert(!m_groups.empty());
-        if (m_groups.empty()) {
-            return;
-        }
+  // can't happen
+  assert(false);
+  return EmitterNodeType::NoType;
+}
 
-        assert(m_groups.back()->type == GroupType::Map);
-        m_groups.back()->longKey = true;
+void EmitterState::StartedDoc() {
+  m_hasAnchor = false;
+  m_hasTag = false;
+  m_hasNonContent = false;
+}
+
+void EmitterState::EndedDoc() {
+  m_hasAnchor = false;
+  m_hasTag = false;
+  m_hasNonContent = false;
+}
+
+void EmitterState::StartedScalar() {
+  StartedNode();
+  ClearModifiedSettings();
+}
+
+void EmitterState::StartedGroup(GroupType::value type) {
+  StartedNode();
+
+  const std::size_t lastGroupIndent =
+      (m_groups.empty() ? 0 : m_groups.back()->indent);
+  m_curIndent += lastGroupIndent;
+
+  // TODO: Create move constructors for settings types to simplify transfer
+  std::unique_ptr<Group> pGroup(new Group(type));
+
+  // transfer settings (which last until this group is done)
+  //
+  // NB: if pGroup->modifiedSettings == m_modifiedSettings,
+  // m_modifiedSettings is not changed!
+  pGroup->modifiedSettings = std::move(m_modifiedSettings);
+
+  // set up group
+  if (GetFlowType(type) == Block) {
+    pGroup->flowType = FlowType::Block;
+  } else {
+    pGroup->flowType = FlowType::Flow;
+  }
+  pGroup->indent = GetIndent();
+
+  m_groups.push_back(std::move(pGroup));
+}
+
+void EmitterState::EndedGroup(GroupType::value type) {
+  if (m_groups.empty()) {
+    if (type == GroupType::Seq) {
+      return SetError(ErrorMsg::UNEXPECTED_END_SEQ);
     }
+    return SetError(ErrorMsg::UNEXPECTED_END_MAP);
+  }
 
-    void EmitterState::ForceFlow() {
-        assert(!m_groups.empty());
-        if (m_groups.empty()) {
-            return;
-        }
+  if (m_hasTag) {
+    SetError(ErrorMsg::INVALID_TAG);
+  }
+  if (m_hasAnchor) {
+    SetError(ErrorMsg::INVALID_ANCHOR);
+  }
 
-        m_groups.back()->flowType = FlowType::Flow;
+  // get rid of the current group
+  {
+    std::unique_ptr<Group> pFinishedGroup = std::move(m_groups.back());
+    m_groups.pop_back();
+    if (pFinishedGroup->type != type) {
+      return SetError(ErrorMsg::UNMATCHED_GROUP_TAG);
     }
+  }
 
-    void EmitterState::StartedNode() {
-        if (m_groups.empty()) {
-            m_docCount++;
-        } else {
-            m_groups.back()->childCount++;
-            if (m_groups.back()->childCount % 2 == 0) {
-                m_groups.back()->longKey = false;
-            }
-        }
+  // reset old settings
+  std::size_t lastIndent = (m_groups.empty() ? 0 : m_groups.back()->indent);
+  assert(m_curIndent >= lastIndent);
+  m_curIndent -= lastIndent;
 
-        m_hasAnchor = false;
-        m_hasTag = false;
-        m_hasNonContent = false;
-    }
+  // some global settings that we changed may have been overridden
+  // by a local setting we just popped, so we need to restore them
+  m_globalModifiedSettings.restore();
 
-    EmitterNodeType::value EmitterState::NextGroupType(
-            GroupType::value type) const {
-        if (type == GroupType::Seq) {
-            if (GetFlowType(type) == Block)
-                return EmitterNodeType::BlockSeq;
-            else
-                return EmitterNodeType::FlowSeq;
-        } else {
-            if (GetFlowType(type) == Block)
-                return EmitterNodeType::BlockMap;
-            else
-                return EmitterNodeType::FlowMap;
-        }
+  ClearModifiedSettings();
+  m_hasAnchor = false;
+  m_hasTag = false;
+  m_hasNonContent = false;
+}
 
-        // can't happen
-        assert(false);
-        return EmitterNodeType::NoType;
-    }
+EmitterNodeType::value EmitterState::CurGroupNodeType() const {
+  if (m_groups.empty()) {
+    return EmitterNodeType::NoType;
+  }
 
-    void EmitterState::StartedDoc() {
-        m_hasAnchor = false;
-        m_hasTag = false;
-        m_hasNonContent = false;
-    }
+  return m_groups.back()->NodeType();
+}
 
-    void EmitterState::EndedDoc() {
-        m_hasAnchor = false;
-        m_hasTag = false;
-        m_hasNonContent = false;
-    }
+GroupType::value EmitterState::CurGroupType() const {
+  return m_groups.empty() ? GroupType::NoType : m_groups.back()->type;
+}
 
-    void EmitterState::StartedScalar() {
-        StartedNode();
-        ClearModifiedSettings();
-    }
+FlowType::value EmitterState::CurGroupFlowType() const {
+  return m_groups.empty() ? FlowType::NoType : m_groups.back()->flowType;
+}
 
-    void EmitterState::StartedGroup(GroupType::value type) {
-        StartedNode();
+std::size_t EmitterState::CurGroupIndent() const {
+  return m_groups.empty() ? 0 : m_groups.back()->indent;
+}
 
-        const std::size_t lastGroupIndent =
-                (m_groups.empty() ? 0 : m_groups.back()->indent);
-        m_curIndent += lastGroupIndent;
+std::size_t EmitterState::CurGroupChildCount() const {
+  return m_groups.empty() ? m_docCount : m_groups.back()->childCount;
+}
 
-        // TODO: Create move constructors for settings types to simplify transfer
-        std::unique_ptr<Group> pGroup(new Group(type));
+bool EmitterState::CurGroupLongKey() const {
+  return m_groups.empty() ? false : m_groups.back()->longKey;
+}
 
-        // transfer settings (which last until this group is done)
-        //
-        // NB: if pGroup->modifiedSettings == m_modifiedSettings,
-        // m_modifiedSettings is not changed!
-        pGroup->modifiedSettings = std::move(m_modifiedSettings);
+std::size_t EmitterState::LastIndent() const {
+  if (m_groups.size() <= 1) {
+    return 0;
+  }
 
-        // set up group
-        if (GetFlowType(type) == Block) {
-            pGroup->flowType = FlowType::Block;
-        } else {
-            pGroup->flowType = FlowType::Flow;
-        }
-        pGroup->indent = GetIndent();
+  return m_curIndent - m_groups[m_groups.size() - 2]->indent;
+}
 
-        m_groups.push_back(std::move(pGroup));
-    }
+void EmitterState::ClearModifiedSettings() { m_modifiedSettings.clear(); }
 
-    void EmitterState::EndedGroup(GroupType::value type) {
-        if (m_groups.empty()) {
-            if (type == GroupType::Seq) {
-                return SetError(ErrorMsg::UNEXPECTED_END_SEQ);
-            } else {
-                return SetError(ErrorMsg::UNEXPECTED_END_MAP);
-            }
-        }
+void EmitterState::RestoreGlobalModifiedSettings() {
+  m_globalModifiedSettings.restore();
+}
 
-        // get rid of the current group
-        {
-            std::unique_ptr<Group> pFinishedGroup = std::move(m_groups.back());
-            m_groups.pop_back();
-            if (pFinishedGroup->type != type) {
-                return SetError(ErrorMsg::UNMATCHED_GROUP_TAG);
-            }
-        }
+bool EmitterState::SetOutputCharset(EMITTER_MANIP value,
+                                    FmtScope::value scope) {
+  switch (value) {
+    case EmitNonAscii:
+    case EscapeNonAscii:
+    case EscapeAsJson:
+      _Set(m_charset, value, scope);
+      return true;
+    default:
+      return false;
+  }
+}
 
-        // reset old settings
-        std::size_t lastIndent = (m_groups.empty() ? 0 : m_groups.back()->indent);
-        assert(m_curIndent >= lastIndent);
-        m_curIndent -= lastIndent;
+bool EmitterState::SetStringFormat(EMITTER_MANIP value, FmtScope::value scope) {
+  switch (value) {
+    case Auto:
+    case SingleQuoted:
+    case DoubleQuoted:
+    case Literal:
+      _Set(m_strFmt, value, scope);
+      return true;
+    default:
+      return false;
+  }
+}
 
-        // some global settings that we changed may have been overridden
-        // by a local setting we just popped, so we need to restore them
-        m_globalModifiedSettings.restore();
+bool EmitterState::SetBoolFormat(EMITTER_MANIP value, FmtScope::value scope) {
+  switch (value) {
+    case OnOffBool:
+    case TrueFalseBool:
+    case YesNoBool:
+      _Set(m_boolFmt, value, scope);
+      return true;
+    default:
+      return false;
+  }
+}
 
-        ClearModifiedSettings();
-    }
+bool EmitterState::SetBoolLengthFormat(EMITTER_MANIP value,
+                                       FmtScope::value scope) {
+  switch (value) {
+    case LongBool:
+    case ShortBool:
+      _Set(m_boolLengthFmt, value, scope);
+      return true;
+    default:
+      return false;
+  }
+}
 
-    EmitterNodeType::value EmitterState::CurGroupNodeType() const {
-        if (m_groups.empty()) {
-            return EmitterNodeType::NoType;
-        }
+bool EmitterState::SetBoolCaseFormat(EMITTER_MANIP value,
+                                     FmtScope::value scope) {
+  switch (value) {
+    case UpperCase:
+    case LowerCase:
+    case CamelCase:
+      _Set(m_boolCaseFmt, value, scope);
+      return true;
+    default:
+      return false;
+  }
+}
 
-        return m_groups.back()->NodeType();
-    }
+bool EmitterState::SetNullFormat(EMITTER_MANIP value, FmtScope::value scope) {
+  switch (value) {
+    case LowerNull:
+    case UpperNull:
+    case CamelNull:
+    case TildeNull:
+      _Set(m_nullFmt, value, scope);
+      return true;
+    default:
+      return false;
+  }
+}
 
-    GroupType::value EmitterState::CurGroupType() const {
-        return m_groups.empty() ? GroupType::NoType : m_groups.back()->type;
-    }
+bool EmitterState::SetIntFormat(EMITTER_MANIP value, FmtScope::value scope) {
+  switch (value) {
+    case Dec:
+    case Hex:
+    case Oct:
+      _Set(m_intFmt, value, scope);
+      return true;
+    default:
+      return false;
+  }
+}
 
-    FlowType::value EmitterState::CurGroupFlowType() const {
-        return m_groups.empty() ? FlowType::NoType : m_groups.back()->flowType;
-    }
+bool EmitterState::SetIndent(std::size_t value, FmtScope::value scope) {
+  if (value <= 1)
+    return false;
 
-    std::size_t EmitterState::CurGroupIndent() const {
-        return m_groups.empty() ? 0 : m_groups.back()->indent;
-    }
+  _Set(m_indent, value, scope);
+  return true;
+}
 
-    std::size_t EmitterState::CurGroupChildCount() const {
-        return m_groups.empty() ? m_docCount : m_groups.back()->childCount;
-    }
+bool EmitterState::SetPreCommentIndent(std::size_t value,
+                                       FmtScope::value scope) {
+  if (value == 0)
+    return false;
 
-    bool EmitterState::CurGroupLongKey() const {
-        return m_groups.empty() ? false : m_groups.back()->longKey;
-    }
+  _Set(m_preCommentIndent, value, scope);
+  return true;
+}
 
-    std::size_t EmitterState::LastIndent() const {
-        if (m_groups.size() <= 1) {
-            return 0;
-        }
-
-        return m_curIndent - m_groups[m_groups.size() - 2]->indent;
-    }
-
-    void EmitterState::ClearModifiedSettings() { m_modifiedSettings.clear(); }
-
-    bool EmitterState::SetOutputCharset(EMITTER_MANIP value,
+bool EmitterState::SetPostCommentIndent(std::size_t value,
                                         FmtScope::value scope) {
-        switch (value) {
-            case EmitNonAscii:
-            case EscapeNonAscii:
-                _Set(m_charset, value, scope);
-                return true;
-            default:
-                return false;
-        }
-    }
+  if (value == 0)
+    return false;
 
-    bool EmitterState::SetStringFormat(EMITTER_MANIP value, FmtScope::value scope) {
-        switch (value) {
-            case Auto:
-            case SingleQuoted:
-            case DoubleQuoted:
-            case Literal:
-                _Set(m_strFmt, value, scope);
-                return true;
-            default:
-                return false;
-        }
-    }
+  _Set(m_postCommentIndent, value, scope);
+  return true;
+}
 
-    bool EmitterState::SetBoolFormat(EMITTER_MANIP value, FmtScope::value scope) {
-        switch (value) {
-            case OnOffBool:
-            case TrueFalseBool:
-            case YesNoBool:
-                _Set(m_boolFmt, value, scope);
-                return true;
-            default:
-                return false;
-        }
-    }
+bool EmitterState::SetFlowType(GroupType::value groupType, EMITTER_MANIP value,
+                               FmtScope::value scope) {
+  switch (value) {
+    case Block:
+    case Flow:
+      _Set(groupType == GroupType::Seq ? m_seqFmt : m_mapFmt, value, scope);
+      return true;
+    default:
+      return false;
+  }
+}
 
-    bool EmitterState::SetBoolLengthFormat(EMITTER_MANIP value,
-                                           FmtScope::value scope) {
-        switch (value) {
-            case LongBool:
-            case ShortBool:
-                _Set(m_boolLengthFmt, value, scope);
-                return true;
-            default:
-                return false;
-        }
-    }
+EMITTER_MANIP EmitterState::GetFlowType(GroupType::value groupType) const {
+  // force flow style if we're currently in a flow
+  if (CurGroupFlowType() == FlowType::Flow)
+    return Flow;
 
-    bool EmitterState::SetBoolCaseFormat(EMITTER_MANIP value,
-                                         FmtScope::value scope) {
-        switch (value) {
-            case UpperCase:
-            case LowerCase:
-            case CamelCase:
-                _Set(m_boolCaseFmt, value, scope);
-                return true;
-            default:
-                return false;
-        }
-    }
+  // otherwise, go with what's asked of us
+  return (groupType == GroupType::Seq ? m_seqFmt.get() : m_mapFmt.get());
+}
 
-    bool EmitterState::SetIntFormat(EMITTER_MANIP value, FmtScope::value scope) {
-        switch (value) {
-            case Dec:
-            case Hex:
-            case Oct:
-                _Set(m_intFmt, value, scope);
-                return true;
-            default:
-                return false;
-        }
-    }
+bool EmitterState::SetMapKeyFormat(EMITTER_MANIP value, FmtScope::value scope) {
+  switch (value) {
+    case Auto:
+    case LongKey:
+      _Set(m_mapKeyFmt, value, scope);
+      return true;
+    default:
+      return false;
+  }
+}
 
-    bool EmitterState::SetIndent(std::size_t value, FmtScope::value scope) {
-        if (value <= 1)
-            return false;
+bool EmitterState::SetFloatPrecision(std::size_t value, FmtScope::value scope) {
+  if (value > std::numeric_limits<float>::max_digits10)
+    return false;
+  _Set(m_floatPrecision, value, scope);
+  return true;
+}
 
-        _Set(m_indent, value, scope);
-        return true;
-    }
-
-    bool EmitterState::SetPreCommentIndent(std::size_t value,
-                                           FmtScope::value scope) {
-        if (value == 0)
-            return false;
-
-        _Set(m_preCommentIndent, value, scope);
-        return true;
-    }
-
-    bool EmitterState::SetPostCommentIndent(std::size_t value,
-                                            FmtScope::value scope) {
-        if (value == 0)
-            return false;
-
-        _Set(m_postCommentIndent, value, scope);
-        return true;
-    }
-
-    bool EmitterState::SetFlowType(GroupType::value groupType, EMITTER_MANIP value,
-                                   FmtScope::value scope) {
-        switch (value) {
-            case Block:
-            case Flow:
-                _Set(groupType == GroupType::Seq ? m_seqFmt : m_mapFmt, value, scope);
-                return true;
-            default:
-                return false;
-        }
-    }
-
-    EMITTER_MANIP EmitterState::GetFlowType(GroupType::value groupType) const {
-        // force flow style if we're currently in a flow
-        if (CurGroupFlowType() == FlowType::Flow)
-            return Flow;
-
-        // otherwise, go with what's asked of us
-        return (groupType == GroupType::Seq ? m_seqFmt.get() : m_mapFmt.get());
-    }
-
-    bool EmitterState::SetMapKeyFormat(EMITTER_MANIP value, FmtScope::value scope) {
-        switch (value) {
-            case Auto:
-            case LongKey:
-                _Set(m_mapKeyFmt, value, scope);
-                return true;
-            default:
-                return false;
-        }
-    }
-
-    bool EmitterState::SetFloatPrecision(std::size_t value, FmtScope::value scope) {
-        if (value > std::numeric_limits<float>::max_digits10)
-            return false;
-        _Set(m_floatPrecision, value, scope);
-        return true;
-    }
-
-    bool EmitterState::SetDoublePrecision(std::size_t value,
-                                          FmtScope::value scope) {
-        if (value > std::numeric_limits<double>::max_digits10)
-            return false;
-        _Set(m_doublePrecision, value, scope);
-        return true;
-    }
-}  // namespace YAML
+bool EmitterState::SetDoublePrecision(std::size_t value,
+                                      FmtScope::value scope) {
+  if (value > std::numeric_limits<double>::max_digits10)
+    return false;
+  _Set(m_doublePrecision, value, scope);
+  return true;
+}
+}  // namespace YAML_PACE

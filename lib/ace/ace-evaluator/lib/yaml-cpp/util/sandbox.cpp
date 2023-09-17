@@ -4,41 +4,33 @@
 #include "yaml-cpp/eventhandler.h"
 #include "yaml-cpp/yaml.h"  // IWYU pragma: keep
 
-class NullEventHandler : public YAML::EventHandler {
-public:
-    typedef YAML::Mark Mark;
-    typedef YAML::anchor_t anchor_t;
+class NullEventHandler : public YAML_PACE::EventHandler {
+ public:
+  using Mark = YAML_PACE::Mark;
+  using anchor_t = YAML_PACE::anchor_t;
 
-    NullEventHandler() {}
+  NullEventHandler() = default;
 
-    virtual void OnDocumentStart(const Mark &) {}
-
-    virtual void OnDocumentEnd() {}
-
-    virtual void OnNull(const Mark &, anchor_t) {}
-
-    virtual void OnAlias(const Mark &, anchor_t) {}
-
-    virtual void OnScalar(const Mark &, const std::string &, anchor_t,
-                          const std::string &) {}
-
-    virtual void OnSequenceStart(const Mark &, const std::string &, anchor_t,
-                                 YAML::EmitterStyle::value style) {}
-
-    virtual void OnSequenceEnd() {}
-
-    virtual void OnMapStart(const Mark &, const std::string &, anchor_t,
-                            YAML::EmitterStyle::value style) {}
-
-    virtual void OnMapEnd() {}
+  void OnDocumentStart(const Mark&) override {}
+  void OnDocumentEnd() override {}
+  void OnNull(const Mark&, anchor_t) override {}
+  void OnAlias(const Mark&, anchor_t) override {}
+  void OnScalar(const Mark&, const std::string&, anchor_t,
+                const std::string&) override {}
+  void OnSequenceStart(const Mark&, const std::string&, anchor_t,
+                       YAML_PACE::EmitterStyle::value style) override {}
+  void OnSequenceEnd() override {}
+  void OnMapStart(const Mark&, const std::string&, anchor_t,
+                  YAML_PACE::EmitterStyle::value style) override {}
+  void OnMapEnd() override {}
 };
 
 int main() {
-    YAML::Node root;
+  YAML_PACE::Node root;
 
-    for (;;) {
-        YAML::Node node;
-        root = node;
-    }
-    return 0;
+  for (;;) {
+    YAML_PACE::Node node;
+    root = node;
+  }
+  return 0;
 }

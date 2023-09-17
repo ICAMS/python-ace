@@ -1,7 +1,7 @@
 #ifndef VALUE_DETAIL_MEMORY_H_62B23520_7C8E_11DE_8A39_0800200C9A66
 #define VALUE_DETAIL_MEMORY_H_62B23520_7C8E_11DE_8A39_0800200C9A66
 
-#if defined(_MSC_VER) || \
+#if defined(_MSC_VER) ||                                            \
     (defined(__GNUC__) && (__GNUC__ == 3 && __GNUC_MINOR__ >= 4) || \
      (__GNUC__ >= 4))  // GCC supports "pragma once" correctly since 3.4
 #pragma once
@@ -13,38 +13,35 @@
 #include "yaml-cpp/node/ptr.h"
 
 namespace YAML_PACE {
-    namespace detail {
-        class node;
-    }  // namespace detail
+namespace detail {
+class node;
+}  // namespace detail
 }  // namespace YAML
 
 namespace YAML_PACE {
-    namespace detail {
-        class YAML_CPP_API memory {
-        public:
-            memory() : m_nodes{} {}
+namespace detail {
+class YAML_CPP_API memory {
+ public:
+  memory() : m_nodes{} {}
+  node& create_node();
+  void merge(const memory& rhs);
 
-            node &create_node();
+ private:
+  using Nodes = std::set<shared_node>;
+  Nodes m_nodes;
+};
 
-            void merge(const memory &rhs);
+class YAML_CPP_API memory_holder {
+ public:
+  memory_holder() : m_pMemory(new memory) {}
 
-        private:
-            using Nodes = std::set<shared_node>;
-            Nodes m_nodes;
-        };
+  node& create_node() { return m_pMemory->create_node(); }
+  void merge(memory_holder& rhs);
 
-        class YAML_CPP_API memory_holder {
-        public:
-            memory_holder() : m_pMemory(new memory) {}
-
-            node &create_node() { return m_pMemory->create_node(); }
-
-            void merge(memory_holder &rhs);
-
-        private:
-            shared_memory m_pMemory;
-        };
-    }  // namespace detail
+ private:
+  shared_memory m_pMemory;
+};
+}  // namespace detail
 }  // namespace YAML
 
 #endif  // VALUE_DETAIL_MEMORY_H_62B23520_7C8E_11DE_8A39_0800200C9A66

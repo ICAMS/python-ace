@@ -9,111 +9,111 @@
 #include "yaml-cpp/parser.h"
 
 namespace YAML_PACE {
-    class EventHandler;
+class EventHandler;
 
-    Parser::Parser() : m_pScanner{}, m_pDirectives{} {}
+Parser::Parser() : m_pScanner{}, m_pDirectives{} {}
 
-    Parser::Parser(std::istream &in) : Parser() { Load(in); }
+Parser::Parser(std::istream& in) : Parser() { Load(in); }
 
-    Parser::~Parser() = default;
+Parser::~Parser() = default;
 
-    Parser::operator bool() const { return m_pScanner && !m_pScanner->empty(); }
+Parser::operator bool() const { return m_pScanner && !m_pScanner->empty(); }
 
-    void Parser::Load(std::istream &in) {
-        m_pScanner.reset(new Scanner(in));
-        m_pDirectives.reset(new Directives);
+void Parser::Load(std::istream& in) {
+  m_pScanner.reset(new Scanner(in));
+  m_pDirectives.reset(new Directives);
+}
+
+bool Parser::HandleNextDocument(EventHandler& eventHandler) {
+  if (!m_pScanner)
+    return false;
+
+  ParseDirectives();
+  if (m_pScanner->empty()) {
+    return false;
+  }
+
+  SingleDocParser sdp(*m_pScanner, *m_pDirectives);
+  sdp.HandleDocument(eventHandler);
+  return true;
+}
+
+void Parser::ParseDirectives() {
+  bool readDirective = false;
+
+  while (!m_pScanner->empty()) {
+    Token& token = m_pScanner->peek();
+    if (token.type != Token::DIRECTIVE) {
+      break;
     }
 
-    bool Parser::HandleNextDocument(EventHandler &eventHandler) {
-        if (!m_pScanner)
-            return false;
-
-        ParseDirectives();
-        if (m_pScanner->empty()) {
-            return false;
-        }
-
-        SingleDocParser sdp(*m_pScanner, *m_pDirectives);
-        sdp.HandleDocument(eventHandler);
-        return true;
+    // we keep the directives from the last document if none are specified;
+    // but if any directives are specific, then we reset them
+    if (!readDirective) {
+      m_pDirectives.reset(new Directives);
     }
 
-    void Parser::ParseDirectives() {
-        bool readDirective = false;
+    readDirective = true;
+    HandleDirective(token);
+    m_pScanner->pop();
+  }
+}
 
-        while (!m_pScanner->empty()) {
-            Token &token = m_pScanner->peek();
-            if (token.type != Token::DIRECTIVE) {
-                break;
-            }
+void Parser::HandleDirective(const Token& token) {
+  if (token.value == "YAML_PACE") {
+    HandleYamlDirective(token);
+  } else if (token.value == "TAG") {
+    HandleTagDirective(token);
+  }
+}
 
-            // we keep the directives from the last document if none are specified;
-            // but if any directives are specific, then we reset them
-            if (!readDirective) {
-                m_pDirectives.reset(new Directives);
-            }
+void Parser::HandleYamlDirective(const Token& token) {
+  if (token.params.size() != 1) {
+    throw ParserException(token.mark, ErrorMsg::YAML_DIRECTIVE_ARGS);
+  }
 
-            readDirective = true;
-            HandleDirective(token);
-            m_pScanner->pop();
-        }
-    }
+  if (!m_pDirectives->version.isDefault) {
+    throw ParserException(token.mark, ErrorMsg::REPEATED_YAML_DIRECTIVE);
+  }
 
-    void Parser::HandleDirective(const Token &token) {
-        if (token.value == "YAML") {
-            HandleYamlDirective(token);
-        } else if (token.value == "TAG") {
-            HandleTagDirective(token);
-        }
-    }
+  std::stringstream str(token.params[0]);
+  str >> m_pDirectives->version.major;
+  str.get();
+  str >> m_pDirectives->version.minor;
+  if (!str || str.peek() != EOF) {
+    throw ParserException(
+        token.mark, std::string(ErrorMsg::YAML_VERSION) + token.params[0]);
+  }
 
-    void Parser::HandleYamlDirective(const Token &token) {
-        if (token.params.size() != 1) {
-            throw ParserException(token.mark, ErrorMsg::YAML_DIRECTIVE_ARGS);
-        }
+  if (m_pDirectives->version.major > 1) {
+    throw ParserException(token.mark, ErrorMsg::YAML_MAJOR_VERSION);
+  }
 
-        if (!m_pDirectives->version.isDefault) {
-            throw ParserException(token.mark, ErrorMsg::REPEATED_YAML_DIRECTIVE);
-        }
+  m_pDirectives->version.isDefault = false;
+  // TODO: warning on major == 1, minor > 2?
+}
 
-        std::stringstream str(token.params[0]);
-        str >> m_pDirectives->version.major;
-        str.get();
-        str >> m_pDirectives->version.minor;
-        if (!str || str.peek() != EOF) {
-            throw ParserException(
-                    token.mark, std::string(ErrorMsg::YAML_VERSION) + token.params[0]);
-        }
+void Parser::HandleTagDirective(const Token& token) {
+  if (token.params.size() != 2)
+    throw ParserException(token.mark, ErrorMsg::TAG_DIRECTIVE_ARGS);
 
-        if (m_pDirectives->version.major > 1) {
-            throw ParserException(token.mark, ErrorMsg::YAML_MAJOR_VERSION);
-        }
+  const std::string& handle = token.params[0];
+  const std::string& prefix = token.params[1];
+  if (m_pDirectives->tags.find(handle) != m_pDirectives->tags.end()) {
+    throw ParserException(token.mark, ErrorMsg::REPEATED_TAG_DIRECTIVE);
+  }
 
-        m_pDirectives->version.isDefault = false;
-        // TODO: warning on major == 1, minor > 2?
-    }
+  m_pDirectives->tags[handle] = prefix;
+}
 
-    void Parser::HandleTagDirective(const Token &token) {
-        if (token.params.size() != 2)
-            throw ParserException(token.mark, ErrorMsg::TAG_DIRECTIVE_ARGS);
+void Parser::PrintTokens(std::ostream& out) {
+  if (!m_pScanner) {
+    return;
+  }
 
-        const std::string &handle = token.params[0];
-        const std::string &prefix = token.params[1];
-        if (m_pDirectives->tags.find(handle) != m_pDirectives->tags.end()) {
-            throw ParserException(token.mark, ErrorMsg::REPEATED_TAG_DIRECTIVE);
-        }
-
-        m_pDirectives->tags[handle] = prefix;
-    }
-
-    void Parser::PrintTokens(std::ostream &out) {
-        if (!m_pScanner) {
-            return;
-        }
-
-        while (!m_pScanner->empty()) {
-            out << m_pScanner->peek() << "\n";
-            m_pScanner->pop();
-        }
-    }
-}  // namespace YAML
+  while (!m_pScanner->empty()) {
+    out << m_pScanner->peek() << "\n";
+    m_pScanner->pop();
+  }
+}
+}  // namespace YAML_PACE

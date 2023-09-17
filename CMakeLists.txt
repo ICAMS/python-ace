@@ -4,6 +4,10 @@ find_program(CMAKE_C_COMPILER NAMES $ENV{CC} gcc PATHS ENV PATH NO_DEFAULT_PATH)
 find_program(CMAKE_CXX_COMPILER NAMES $ENV{CXX} g++ PATHS ENV PATH NO_DEFAULT_PATH)
 project(pyace C CXX)
 
+if(NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Choose the type of build" FORCE)
+endif()
+
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_POSITION_INDEPENDENT_CODE True)
 # Set source directory
@@ -44,9 +48,7 @@ set(CNPY_INCLUDE_PATH lib/ace/utils/)
 include_directories(${CNPY_INCLUDE_PATH})
 
 add_subdirectory(lib/pybind11)
-if (NOT CMAKE_BUILD_TYPE)
-  set(CMAKE_BUILD_TYPE Release)
-endif ()
+
 
 # for advanced functionality
 # TODO: check speed influence of this flag
@@ -59,6 +61,7 @@ add_subdirectory(lib/ace)
 #--------------------------------------------------------
 set(SOURCES_SHARMONICS "${ACE_SRC}/ace_couplings.cpp"
             "${ACE_SRC}/ace_spherical_polar.cpp"
+            "${ACE_SRC}/ace_clebsch_gordan.cpp"
             "${SOURCE_DIR}/ace/ace_spherical_polar_binding.cpp"
             )
 
@@ -118,8 +121,8 @@ set(SOURCES_CALCULATOR
 #---------------------------------------------------------
 #set(CMAKE_CXX_FLAGS "-Wall -Wextra")
 #set(CMAKE_CXX_FLAGS_DEBUG "-g")
-set(CMAKE_CXX_FLAGS_RELEASE "-Ofast -DNDEBUG")
-set(CMAKE_CXX_FLAGS_DEBUG "-Ofast -DNDEBUG")
+set(CMAKE_CXX_FLAGS_RELEASE "-Ofast") #  -DNDEBUG
+#set(CMAKE_CXX_FLAGS_DEBUG "-Ofast -DNDEBUG")
 
 #Finally create the package
 #--------------------------------------------------------
