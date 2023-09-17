@@ -222,7 +222,7 @@ public:
      * @param radbasename  type of radial basis function \f$ g_k(r) \f$ (default: "ChebExpCos")
      */
     void init(NS_TYPE nradb, LS_TYPE lmax, NS_TYPE nradial, DOUBLE_TYPE deltaSplineBins, SPECIES_TYPE nelements,
-              vector<vector<string>> radbasename);
+              vector<vector<string>> radbasename) override;
 
     /**
      * Destructor
