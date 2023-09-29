@@ -538,7 +538,6 @@ inline DOUBLE_TYPE distance(vector<DOUBLE_TYPE> &r1, vector<DOUBLE_TYPE> &r2) {
 
 
 ACEAtomicEnvironment build_atomic_env_from_cluster_nogrid(NeighbourCluster &cluster, DOUBLE_TYPE r_cut) {
-    DOUBLE_TYPE eps = 1e-14;
     // first n_atoms_real of cluster.positions/species_types/origins are for REAL atoms
     // remaining atoms - from ghost images
     int n_atoms_real = cluster.n_atoms_real;

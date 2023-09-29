@@ -145,7 +145,7 @@ void ACEAtomicEnvironment::_load(FILE *fin, const string &filename) {
     }
 
     for (int i = 0; i < n_atoms_real; i++) {
-        res = fscanf(fin, "%hd %lf %lf %lf\n", &type, &coords[0], &coords[1], &coords[2]);
+        res = fscanf(fin, "%d %lf %lf %lf\n", &type, &coords[0], &coords[1], &coords[2]);
         if (res != 4) {
             fclose(fin);
             throw runtime_error("Couldn't read 'species_type x y z' data from file " + filename);
@@ -213,7 +213,7 @@ void ACEAtomicEnvironment::load_full(const string &filename) {
     }
 
     for (int i = 0; i < n_atoms_extended; i++) {
-        res = fscanf(fin, "%hd %lf %lf %lf\n", &type, &coords[0], &coords[1], &coords[2]);
+        res = fscanf(fin, "%d %lf %lf %lf\n", &type, &coords[0], &coords[1], &coords[2]);
         if (res != 4) {
             fclose(fin);
             throw runtime_error("Couldn't read 'species_type x y z' data from file " + filename);
