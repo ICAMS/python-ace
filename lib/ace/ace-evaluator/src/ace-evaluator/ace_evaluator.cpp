@@ -668,3 +668,27 @@ ACECTildeEvaluator::compute_atom(int i, DOUBLE_TYPE **x, const SPECIES_TYPE *typ
     per_atom_calc_timer.stop();
 }
 
+vector<int> ACECTildeEvaluator::get_func_ind_shift() {
+    vector<int> func_ind_shift(basis_set->nelements, 0);
+    for (SPECIES_TYPE mu = 1; mu < basis_set->nelements; mu++) {
+        func_ind_shift.at(mu) =
+                func_ind_shift.at(mu - 1) + basis_set->total_basis_size_rank1[mu] + basis_set->total_basis_size[mu];
+    }
+    return func_ind_shift;
+}
+
+int ACECTildeEvaluator::get_total_number_of_functions() {
+    int tot_num = 0;
+    for (SPECIES_TYPE mu = 0; mu < basis_set->nelements; mu++) {
+        tot_num += basis_set->total_basis_size_rank1[mu] + basis_set->total_basis_size[mu];
+    }
+    return tot_num;
+}
+
+vector<int> ACECTildeEvaluator::get_number_of_functions() {
+    vector<int> func_num_vec(basis_set->nelements, 0);
+    for (SPECIES_TYPE mu = 0; mu < basis_set->nelements; mu++) {
+        func_num_vec.at(mu) = basis_set->total_basis_size_rank1[mu] + basis_set->total_basis_size[mu];
+    }
+    return func_num_vec;
+}

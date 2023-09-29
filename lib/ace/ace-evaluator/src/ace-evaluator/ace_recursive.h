@@ -248,7 +248,11 @@ public:
     void set_recursive(bool tf) { recursive = tf; }
 
     /********************************/
+    vector<int> get_func_ind_shift() override;
 
+    int get_total_number_of_functions() override;
+
+    vector<int> get_number_of_functions() override;
 };
 
 

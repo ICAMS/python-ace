@@ -167,19 +167,19 @@ struct ACEAtomicEnvironment {
         _clean();
     }
 
-    void set_x(vector<vector<DOUBLE_TYPE>> &new_x);
+    void set_x(const vector<vector<DOUBLE_TYPE>> &new_x);
 
     vector<vector<DOUBLE_TYPE>> get_x() const;
 
-    void set_species_types(vector<SPECIES_TYPE> &new_species_types);
+    void set_species_types(const vector<SPECIES_TYPE> &new_species_types);
 
     vector<SPECIES_TYPE> get_species_types() const;
 
-    void set_origins(vector<int> &new_origins);
+    void set_origins(const vector<int> &new_origins);
 
     vector<int> get_origins() const;
 
-    void set_neighbour_list(vector<vector<int>> &new_neighbour_list);
+    void set_neighbour_list(const vector<vector<int>> &new_neighbour_list);
 
     vector<vector<int>> get_neighbour_list() const;
 

@@ -20,6 +20,11 @@ class ACEBEvaluator : public ACEEvaluator {
     Array2D<DOUBLE_TYPE> weights_rank1 = Array2D<DOUBLE_TYPE>("weights_rank1");
     Array4DLM<ACEComplex> weights = Array4DLM<ACEComplex>("weights");
 
+#ifdef COMPUTE_B_GRAD
+    // for B-derivatives
+    Array3D<DOUBLE_TYPE> weights_rank1_dB = Array3D<DOUBLE_TYPE>("weights_rank1_dB");
+    Array5DLM<ACEComplex> weights_dB = Array5DLM<ACEComplex>("weights_dB");
+#endif
     //cache for grads: grad_phi(jj,n)=A2DLM(l,m)
     //(neigh_jj)(n=0..nr-1)
     Array2D<DOUBLE_TYPE> DG_cache = Array2D<DOUBLE_TYPE>("DG_cache");
@@ -86,6 +91,12 @@ public:
     void set_active_set(const vector<vector<vector<DOUBLE_TYPE>>> &species_type_active_set_inv);
 
     bool get_is_linear_extrapolation_grade() { return this->is_linear_extrapolation_grade; }
+
+    vector<int> get_func_ind_shift() override;
+
+    int get_total_number_of_functions() override;
+
+    vector<int> get_number_of_functions() override;
 };
 
 
