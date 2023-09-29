@@ -196,7 +196,8 @@ setup(
                       'ase',
                       'pandas',
                       'ruamel.yaml',
-                      'psutil'
+                      'psutil',
+                      'scikit-learn'
                       ],
     classifiers=[
         'Programming Language :: Python :: 3',
