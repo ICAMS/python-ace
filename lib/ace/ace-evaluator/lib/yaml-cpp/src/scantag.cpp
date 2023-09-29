@@ -6,76 +6,76 @@
 #include "yaml-cpp/mark.h"
 
 namespace YAML_PACE {
-    const std::string ScanVerbatimTag(Stream &INPUT) {
-        std::string tag;
+const std::string ScanVerbatimTag(Stream& INPUT) {
+  std::string tag;
 
-        // eat the start character
-        INPUT.get();
+  // eat the start character
+  INPUT.get();
 
-        while (INPUT) {
-            if (INPUT.peek() == Keys::VerbatimTagEnd) {
-                // eat the end character
-                INPUT.get();
-                return tag;
-            }
-
-            int n = Exp::URI().Match(INPUT);
-            if (n <= 0)
-                break;
-
-            tag += INPUT.get(n);
-        }
-
-        throw ParserException(INPUT.mark(), ErrorMsg::END_OF_VERBATIM_TAG);
+  while (INPUT) {
+    if (INPUT.peek() == Keys::VerbatimTagEnd) {
+      // eat the end character
+      INPUT.get();
+      return tag;
     }
 
-    const std::string ScanTagHandle(Stream &INPUT, bool &canBeHandle) {
-        std::string tag;
-        canBeHandle = true;
-        Mark firstNonWordChar;
+    int n = Exp::URI().Match(INPUT);
+    if (n <= 0)
+      break;
 
-        while (INPUT) {
-            if (INPUT.peek() == Keys::Tag) {
-                if (!canBeHandle)
-                    throw ParserException(firstNonWordChar, ErrorMsg::CHAR_IN_TAG_HANDLE);
-                break;
-            }
+    tag += INPUT.get(n);
+  }
 
-            int n = 0;
-            if (canBeHandle) {
-                n = Exp::Word().Match(INPUT);
-                if (n <= 0) {
-                    canBeHandle = false;
-                    firstNonWordChar = INPUT.mark();
-                }
-            }
+  throw ParserException(INPUT.mark(), ErrorMsg::END_OF_VERBATIM_TAG);
+}
 
-            if (!canBeHandle)
-                n = Exp::Tag().Match(INPUT);
+const std::string ScanTagHandle(Stream& INPUT, bool& canBeHandle) {
+  std::string tag;
+  canBeHandle = true;
+  Mark firstNonWordChar;
 
-            if (n <= 0)
-                break;
-
-            tag += INPUT.get(n);
-        }
-
-        return tag;
+  while (INPUT) {
+    if (INPUT.peek() == Keys::Tag) {
+      if (!canBeHandle)
+        throw ParserException(firstNonWordChar, ErrorMsg::CHAR_IN_TAG_HANDLE);
+      break;
     }
 
-    const std::string ScanTagSuffix(Stream &INPUT) {
-        std::string tag;
-
-        while (INPUT) {
-            int n = Exp::Tag().Match(INPUT);
-            if (n <= 0)
-                break;
-
-            tag += INPUT.get(n);
-        }
-
-        if (tag.empty())
-            throw ParserException(INPUT.mark(), ErrorMsg::TAG_WITH_NO_SUFFIX);
-
-        return tag;
+    int n = 0;
+    if (canBeHandle) {
+      n = Exp::Word().Match(INPUT);
+      if (n <= 0) {
+        canBeHandle = false;
+        firstNonWordChar = INPUT.mark();
+      }
     }
-}  // namespace YAML
+
+    if (!canBeHandle)
+      n = Exp::Tag().Match(INPUT);
+
+    if (n <= 0)
+      break;
+
+    tag += INPUT.get(n);
+  }
+
+  return tag;
+}
+
+const std::string ScanTagSuffix(Stream& INPUT) {
+  std::string tag;
+
+  while (INPUT) {
+    int n = Exp::Tag().Match(INPUT);
+    if (n <= 0)
+      break;
+
+    tag += INPUT.get(n);
+  }
+
+  if (tag.empty())
+    throw ParserException(INPUT.mark(), ErrorMsg::TAG_WITH_NO_SUFFIX);
+
+  return tag;
+}
+}  // namespace YAML_PACE

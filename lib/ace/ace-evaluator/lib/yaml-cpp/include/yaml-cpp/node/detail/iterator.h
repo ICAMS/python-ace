@@ -1,7 +1,7 @@
 #ifndef VALUE_DETAIL_ITERATOR_H_62B23520_7C8E_11DE_8A39_0800200C9A66
 #define VALUE_DETAIL_ITERATOR_H_62B23520_7C8E_11DE_8A39_0800200C9A66
 
-#if defined(_MSC_VER) || \
+#if defined(_MSC_VER) ||                                            \
     (defined(__GNUC__) && (__GNUC__ == 3 && __GNUC_MINOR__ >= 4) || \
      (__GNUC__ >= 4))  // GCC supports "pragma once" correctly since 3.4
 #pragma once
@@ -16,87 +16,81 @@
 
 
 namespace YAML_PACE {
-    namespace detail {
-        struct iterator_value;
+namespace detail {
+struct iterator_value;
 
-        template<typename V>
-        class iterator_base {
+template <typename V>
+class iterator_base {
 
-        private:
-            template<typename>
-            friend
-            class iterator_base;
+ private:
+  template <typename>
+  friend class iterator_base;
+  struct enabler {};
+  using base_type = node_iterator;
 
-            struct enabler {
-            };
-            using base_type = node_iterator;
+  struct proxy {
+    explicit proxy(const V& x) : m_ref(x) {}
+    V* operator->() { return std::addressof(m_ref); }
+    operator V*() { return std::addressof(m_ref); }
 
-            struct proxy {
-                explicit proxy(const V &x) : m_ref(x) {}
+    V m_ref;
+  };
 
-                V *operator->() { return std::addressof(m_ref); }
+ public:
+  using iterator_category = std::forward_iterator_tag;
+  using value_type = V;
+  using difference_type = std::ptrdiff_t;
+  using pointer = V*;
+  using reference = V;
 
-                operator V *() { return std::addressof(m_ref); }
+ public:
+  iterator_base() : m_iterator(), m_pMemory() {}
+  explicit iterator_base(base_type rhs, shared_memory_holder pMemory)
+      : m_iterator(rhs), m_pMemory(pMemory) {}
 
-                V m_ref;
-            };
+  template <class W>
+  iterator_base(const iterator_base<W>& rhs,
+                typename std::enable_if<std::is_convertible<W*, V*>::value,
+                                        enabler>::type = enabler())
+      : m_iterator(rhs.m_iterator), m_pMemory(rhs.m_pMemory) {}
 
-        public:
-            using iterator_category = std::forward_iterator_tag;
-            using value_type = V;
-            using difference_type = std::ptrdiff_t;
-            using pointer = V *;
-            using reference = V;
+  iterator_base<V>& operator++() {
+    ++m_iterator;
+    return *this;
+  }
 
-        public:
-            iterator_base() : m_iterator(), m_pMemory() {}
+  iterator_base<V> operator++(int) {
+    iterator_base<V> iterator_pre(*this);
+    ++(*this);
+    return iterator_pre;
+  }
 
-            explicit iterator_base(base_type rhs, shared_memory_holder pMemory)
-                    : m_iterator(rhs), m_pMemory(pMemory) {}
+  template <typename W>
+  bool operator==(const iterator_base<W>& rhs) const {
+    return m_iterator == rhs.m_iterator;
+  }
 
-            template<class W>
-            iterator_base(const iterator_base<W> &rhs,
-                          typename std::enable_if<std::is_convertible<W *, V *>::value,
-                                  enabler>::type = enabler())
-                    : m_iterator(rhs.m_iterator), m_pMemory(rhs.m_pMemory) {}
+  template <typename W>
+  bool operator!=(const iterator_base<W>& rhs) const {
+    return m_iterator != rhs.m_iterator;
+  }
 
-            iterator_base<V> &operator++() {
-                ++m_iterator;
-                return *this;
-            }
+  value_type operator*() const {
+    const typename base_type::value_type& v = *m_iterator;
+    if (v.pNode)
+      return value_type(Node(*v, m_pMemory));
+    if (v.first && v.second)
+      return value_type(Node(*v.first, m_pMemory), Node(*v.second, m_pMemory));
+    return value_type();
+  }
 
-            iterator_base<V> operator++(int) {
-                iterator_base<V> iterator_pre(*this);
-                ++(*this);
-                return iterator_pre;
-            }
+  proxy operator->() const { return proxy(**this); }
 
-            template<typename W>
-            bool operator==(const iterator_base<W> &rhs) const {
-                return m_iterator == rhs.m_iterator;
-            }
-
-            template<typename W>
-            bool operator!=(const iterator_base<W> &rhs) const {
-                return m_iterator != rhs.m_iterator;
-            }
-
-            value_type operator*() const {
-                const typename base_type::value_type &v = *m_iterator;
-                if (v.pNode)
-                    return value_type(Node(*v, m_pMemory));
-                if (v.first && v.second)
-                    return value_type(Node(*v.first, m_pMemory), Node(*v.second, m_pMemory));
-                return value_type();
-            }
-
-            proxy operator->() const { return proxy(**this); }
-
-        private:
-            base_type m_iterator;
-            shared_memory_holder m_pMemory;
-        };
-    }  // namespace detail
+ private:
+  base_type m_iterator;
+  shared_memory_holder m_pMemory;
+};
+}  // namespace detail
 }  // namespace YAML
 
 #endif  // VALUE_DETAIL_ITERATOR_H_62B23520_7C8E_11DE_8A39_0800200C9A66

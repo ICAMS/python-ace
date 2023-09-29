@@ -1,7 +1,7 @@
 #ifndef NODE_NODEEVENTS_H_62B23520_7C8E_11DE_8A39_0800200C9A66
 #define NODE_NODEEVENTS_H_62B23520_7C8E_11DE_8A39_0800200C9A66
 
-#if defined(_MSC_VER) || \
+#if defined(_MSC_VER) ||                                            \
     (defined(__GNUC__) && (__GNUC__ == 3 && __GNUC_MINOR__ >= 4) || \
      (__GNUC__ >= 4))  // GCC supports "pragma once" correctly since 3.4
 #pragma once
@@ -13,64 +13,56 @@
 #include "yaml-cpp/anchor.h"
 #include "yaml-cpp/node/ptr.h"
 
-namespace YAML_PACE {
-    namespace detail {
-        class node;
-    }  // namespace detail
-}  // namespace YAML
+namespace YAML {
+namespace detail {
+class node;
+}  // namespace detail
+}  // namespace YAML_PACE
 
 namespace YAML_PACE {
-    class EventHandler;
+class EventHandler;
+class Node;
 
-    class Node;
+class NodeEvents {
+ public:
+  explicit NodeEvents(const Node& node);
+  NodeEvents(const NodeEvents&) = delete;
+  NodeEvents(NodeEvents&&) = delete;
+  NodeEvents& operator=(const NodeEvents&) = delete;
+  NodeEvents& operator=(NodeEvents&&) = delete;
 
-    class NodeEvents {
-    public:
-        explicit NodeEvents(const Node &node);
+  void Emit(EventHandler& handler);
 
-        NodeEvents(const NodeEvents &) = delete;
+ private:
+  class AliasManager {
+   public:
+    AliasManager() : m_anchorByIdentity{}, m_curAnchor(0) {}
 
-        NodeEvents(NodeEvents &&) = delete;
+    void RegisterReference(const detail::node& node);
+    anchor_t LookupAnchor(const detail::node& node) const;
 
-        NodeEvents &operator=(const NodeEvents &) = delete;
+   private:
+    anchor_t _CreateNewAnchor() { return ++m_curAnchor; }
 
-        NodeEvents &operator=(NodeEvents &&) = delete;
+   private:
+    using AnchorByIdentity = std::map<const detail::node_ref*, anchor_t>;
+    AnchorByIdentity m_anchorByIdentity;
 
-        void Emit(EventHandler &handler);
+    anchor_t m_curAnchor;
+  };
 
-    private:
-        class AliasManager {
-        public:
-            AliasManager() : m_anchorByIdentity{}, m_curAnchor(0) {}
+  void Setup(const detail::node& node);
+  void Emit(const detail::node& node, EventHandler& handler,
+            AliasManager& am) const;
+  bool IsAliased(const detail::node& node) const;
 
-            void RegisterReference(const detail::node &node);
+ private:
+  detail::shared_memory_holder m_pMemory;
+  detail::node* m_root;
 
-            anchor_t LookupAnchor(const detail::node &node) const;
-
-        private:
-            anchor_t _CreateNewAnchor() { return ++m_curAnchor; }
-
-        private:
-            using AnchorByIdentity = std::map<const detail::node_ref *, anchor_t>;
-            AnchorByIdentity m_anchorByIdentity;
-
-            anchor_t m_curAnchor;
-        };
-
-        void Setup(const detail::node &node);
-
-        void Emit(const detail::node &node, EventHandler &handler,
-                  AliasManager &am) const;
-
-        bool IsAliased(const detail::node &node) const;
-
-    private:
-        detail::shared_memory_holder m_pMemory;
-        detail::node *m_root;
-
-        using RefCount = std::map<const detail::node_ref *, int>;
-        RefCount m_refCount;
-    };
-}  // namespace YAML
+  using RefCount = std::map<const detail::node_ref*, int>;
+  RefCount m_refCount;
+};
+}  // namespace YAML_PACE
 
 #endif  // NODE_NODEEVENTS_H_62B23520_7C8E_11DE_8A39_0800200C9A66

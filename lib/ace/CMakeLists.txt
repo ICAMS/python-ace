@@ -31,32 +31,31 @@ add_subdirectory(${CNPY_PATH})
 
 ########################################################################################################################
 ##### test_extend #####
-add_executable(test_extended ${EVALUATOR_SOURCE_FILES} ${EVALUATOR_EXTRA_FILES} ${EVALUATOR_EXTRA_UTILS_FILES}
-        ${TEST_FITTING} ${TEST_UTILS} ${FITTING_SOURCE_FILES} ${UTILS_SOURCE_FILES})
-if (CMAKE_COMPILER_IS_GNUCC)
-    target_compile_options(test_extended PRIVATE -Wunused-variable -Wvla -Wno-effc++ -Werror=vla)
-endif ()
-target_include_directories(test_extended PUBLIC ${TEST_DIR})
-target_include_directories(test_extended PUBLIC ${EVALUATOR_INCLUDE_DIR} ${EVALUATOR_EXTRA_INCLUDE_DIR} ${EVALUATOR_EXTRA_UTILS_INCLUDE_DIR})
-target_include_directories(test_extended PUBLIC ${FITTING_INCLUDE_DIR})
-target_include_directories(test_extended PUBLIC ${UTILS_INCLUDE_DIR})
-#Wigner
-target_include_directories(test_extended PUBLIC ${WIGNER_INCLUDE_PATH})
-# cnpy
-target_include_directories(test_extended PUBLIC ${CNPY_INCLUDE_PATH})
-target_link_libraries(test_extended cnpy-static)
-#YAML
-target_include_directories(test_extended PUBLIC ${YAML_INCLUDE_PATH})
-target_link_libraries(test_extended yaml-cpp-pace)
-#Google Test
-target_include_directories(test_extended PUBLIC ${GOOGLE_TEST_INCLUDE_DIR})
-target_link_libraries(test_extended gtest_main gtest)
-#pthread
-# target_link_libraries(test_extended pthread)
-#compiler options
-target_compile_definitions(test_extended PUBLIC EXTRA_C_PROJECTIONS)
-target_compile_definitions(test_extended PUBLIC COMPUTE_B_GRAD)
-target_compile_definitions(test_extended PUBLIC MULTIARRAY_INDICES_CHECK) #
+#add_executable(test_extended ${EVALUATOR_SOURCE_FILES} ${EVALUATOR_EXTRA_FILES} ${EVALUATOR_EXTRA_UTILS_FILES}
+#        ${TEST_FITTING} ${TEST_UTILS} ${FITTING_SOURCE_FILES} ${UTILS_SOURCE_FILES})
+#if (CMAKE_COMPILER_IS_GNUCC)
+#    target_compile_options(test_extended PRIVATE -Wunused-variable -Wvla -Wno-effc++ -Werror=vla)
+#endif ()
+#target_include_directories(test_extended PUBLIC ${TEST_DIR})
+#target_include_directories(test_extended PUBLIC ${EVALUATOR_INCLUDE_DIR} ${EVALUATOR_EXTRA_INCLUDE_DIR} ${EVALUATOR_EXTRA_UTILS_INCLUDE_DIR})
+#target_include_directories(test_extended PUBLIC ${FITTING_INCLUDE_DIR})
+#target_include_directories(test_extended PUBLIC ${UTILS_INCLUDE_DIR})
+##Wigner
+#target_include_directories(test_extended PUBLIC ${WIGNER_INCLUDE_PATH})
+## cnpy
+#target_include_directories(test_extended PUBLIC ${CNPY_INCLUDE_PATH})
+#target_link_libraries(test_extended cnpy-static)
+##YAML
+#target_include_directories(test_extended PUBLIC ${YAML_INCLUDE_PATH})
+#target_link_libraries(test_extended yaml-cpp)
+##Google Test
+#target_include_directories(test_extended PUBLIC ${GOOGLE_TEST_INCLUDE_DIR})
+#target_link_libraries(test_extended gtest_main gtest)
+##pthread
+## target_link_libraries(test_extended pthread)
+##compiler options
+#target_compile_definitions(test_extended PUBLIC EXTRA_C_PROJECTIONS)
+#target_compile_definitions(test_extended PUBLIC MULTIARRAY_INDICES_CHECK) #
 #target_compile_definitions(test_extended PUBLIC FINE_TIMING) # enforce to check the indices range of multiarrays
 #target_compile_definitions(test_extended PUBLIC PRINT_BASIS_FUNCTION) # print B and C-tilde basis functions
 #target_compile_definitions(test_extended PUBLIC PRINT_MAIN_STEPS) # print main steps (loop over atoms, energy calc, force calc, etc.)

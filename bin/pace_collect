@@ -199,27 +199,31 @@ def main(args):
     outcar_file = 'OUTCAR'
     data = {"name": [], "energy": [], "forces": [], "ase_atoms": []}
 
-    for root, _, filenames in walk_file_or_dir(working_dir):
+    def collect_and_update(root, fname, format):
+        vasp_output_dict = read_vasp_output(root, fname, format, selection)
+        for key, value in vasp_output_dict.items():
+            data[key] += value
+        logger.info('Data collected successfully from {} with entries {}'.format(
+                os.path.join(root, fname),
+                len(vasp_output_dict["name"])))
 
+    for root, _, filenames in walk_file_or_dir(working_dir):
         try:
             if filenames:
-                for fname in filenames:
-                    if vasprun_file in fname:
-                        vasp_output_dict = read_vasp_output(root, fname, "vasp-xml", selection)
-                        for key, value in vasp_output_dict.items():
-                            data[key] += value
-                        logger.info(
-                            'Data collected successfully from {} with entries {}'.format(
-                                os.path.join(root, fname),
-                                len(vasp_output_dict["name"])))
-                    elif outcar_file in fname:
-                        vasp_output_dict = read_vasp_output(root, fname, "vasp-out", selection)
-                        for key, value in vasp_output_dict.items():
-                            data[key] += value
-                        logger.info(
-                            'Data collected successfully from {} with entries {}'.format(
-                                os.path.join(root, fname),
-                                len(vasp_output_dict["name"])))
+                # 1. check if OUTCAR is presented
+                if outcar_file in filenames:
+                    collect_and_update(root, outcar_file, "vasp-out")
+                elif vasprun_file in filenames:
+                    # 2. check if vasprun.xml is presented
+                    collect_and_update(root, vasprun_file, "vasp-xml")
+                # 3. scan for modifications of OUTCAR or vasprun.xml
+                else:
+                    for fname in filenames:
+                        if outcar_file in fname:
+                            collect_and_update(root, fname, "vasp-out")
+                        elif vasprun_file in fname:
+                            collect_and_update(root, fname, "vasp-xml")
+                    
         except InvalidArgumentError as e:
             logger.error('Invalid argument: {}'.format(str(e)))
             raise e

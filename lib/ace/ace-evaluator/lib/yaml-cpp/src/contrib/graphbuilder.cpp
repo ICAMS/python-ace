@@ -3,15 +3,14 @@
 #include "yaml-cpp/parser.h"  // IWYU pragma: keep
 
 namespace YAML_PACE {
-    class GraphBuilderInterface;
+class GraphBuilderInterface;
 
-    void *BuildGraphOfNextDocument(Parser &parser,
-                                   GraphBuilderInterface &graphBuilder) {
-        GraphBuilderAdapter eventHandler(graphBuilder);
-        if (parser.HandleNextDocument(eventHandler)) {
-            return eventHandler.RootNode();
-        } else {
-            return nullptr;
-        }
-    }
-}  // namespace YAML
+void* BuildGraphOfNextDocument(Parser& parser,
+                               GraphBuilderInterface& graphBuilder) {
+  GraphBuilderAdapter eventHandler(graphBuilder);
+  if (parser.HandleNextDocument(eventHandler)) {
+    return eventHandler.RootNode();
+  }
+  return nullptr;
+}
+}  // namespace YAML_PACE
