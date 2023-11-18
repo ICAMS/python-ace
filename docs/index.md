@@ -10,14 +10,10 @@ Please use the navigation bar on the left to explore the documentation.
 # Citation
 
 Please cite following papers:
-- [Lysogorskiy, Y., Bochkarev, A., Mrovec, M. and Drautz, R. Active learning strategies for atomic cluster expansion models. PRM 7(4) 043801 (2023)](https://journals.aps.org/prmaterials/abstract/10.1103/PhysRevMaterials.7.043801)
-  
+
+- [Lysogorskiy, Y., Bochkarev, A., Mrovec, M. and Drautz, R. Active learning strategies for atomic cluster expansion models. PRM 7(4) 043801 (2023)](https://journals.aps.org/prmaterials/abstract/10.1103/PhysRevMaterials.7.043801)  
 - [Bochkarev, A., Lysogorskiy, Y., Menon, S., Qamar, M., Mrovec, M. and Drautz, R. Efficient parametrization of the atomic cluster expansion. PRM 6(1) 013804 (2022)](https://journals.aps.org/prmaterials/abstract/10.1103/PhysRevMaterials.6.013804)
-
-  
 - [Lysogorskiy, Y., Oord, C. v. d., Bochkarev, A., Menon, S., Rinaldi, M., Hammerschmidt, T., Mrovec, M., Thompson, A., Csányi, G., Ortner, C. and  Drautz, R. Performant implementation of the atomic cluster expansion (PACE) and application to copper and silicon. npj Comp. Mat. 7(1), 1-12 (2021)](https://www.nature.com/articles/s41524-021-00559-9)
-
-  
 - [Drautz, R. Atomic cluster expansion for accurate and transferable interatomic potentials. PRB, 99(1), 014104 (2019)](https://journals.aps.org/prb/abstract/10.1103/PhysRevB.99.014104)
 
 BibTeX:
