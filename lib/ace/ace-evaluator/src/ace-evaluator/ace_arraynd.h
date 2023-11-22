@@ -33,7 +33,7 @@
 #include <vector>
 #include <stdexcept>
 
-#include "ace_contigous_array.h"
+#include "ace-evaluator/ace_contigous_array.h"
 
 using namespace std;
 

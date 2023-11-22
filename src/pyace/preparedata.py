@@ -313,9 +313,6 @@ class StructuresDatasetSpecification:
         # ### Path where pickle files will be stored
         self.datapath = datapath
 
-        # if self.datapath is not None and self.filename is not None:
-        #     self.filename = os.path.join(self.datapath, self.filename)
-
         # random seed
         self.seed = seed
         if self.seed is not None:
@@ -554,23 +551,24 @@ class StructuresDatasetSpecification:
         if force_query is None:
             force_query = self.force_query
 
-        file_to_load = self.get_actual_filename()
+        files_to_load = self.get_actual_filename()  # return list
 
-        log.info("Search for cache ref-file: " + str(file_to_load))
+        log.info("Search for ref-file(s): " + str(files_to_load))
         ref_energy = None
         if self.raw_df is not None and not force_query:
             self.df = self.raw_df
-        elif file_to_load is not None and os.path.isfile(file_to_load) and not force_query:
-            log.info(file_to_load + " found, try to load")
-            self.df = load_dataframe(file_to_load, compression="infer")
+        elif files_to_load is not None and not force_query:  # and os.path.isfile(files_to_load)
+            dfs = []
+            for i, fname in enumerate(files_to_load):
+                log.info(f"#{i + 1}/{len(files_to_load)}: try to load {fname}")
+                df = load_dataframe(fname, compression="infer")
+                log.info(f" {len(df)} structures found")
+                if "name" not in df.columns:
+                    df["name"]=fname+":"+df.index.map(str)
+                dfs.append(df)
+            self.df = pd.concat(dfs, axis=0).reset_index(drop=True)
         else:  # if ref_df is still not loaded, try to query from DB
-            if not force_query:
-                log.info("Cache not found, querying database")
-            else:
-                log.info("Forcing query database")
-            self.df, ref_energy = query_data(config=self.config, seed=self.seed, query_limit=self.query_limit,
-                                             db_conn_string=self.db_conn_string)
-            self.ref_df_changed = True
+            raise NotImplementedError("Querying from DB is not supported in pacemaker anymore, use another tools")
 
         if not isinstance(self.df, DataFrameWithMetadata):
             log.info("Transforming to DataFrameWithMetadata")
@@ -592,14 +590,25 @@ class StructuresDatasetSpecification:
         :return: filename of dataframe
         """
         if self.filename is not None:
-            if os.path.isfile(self.filename) or self.datapath is None:
-                file_to_load = self.filename
+            if isinstance(self.filename, str):
+                filename_list = [self.filename]
+            elif isinstance(self.filename, list):
+                filename_list = self.filename
             else:
-                file_to_load = os.path.join(self.datapath, self.filename)
+                raise ValueError(f"Non-supported type of filename: `{self.filename}` (type: {type(self.filename)})")
+
+            files_to_load = []
+            for f in filename_list:
+                if os.path.isfile(f) or self.datapath is None:
+                    files_to_load.append(f)
+                else:
+                    files_to_load.append(os.path.join(self.datapath, f))
+
         else:
-            file_to_load = self.get_default_ref_filename()
-            file_to_load = os.path.join(self.datapath, file_to_load) if self.datapath is not None else file_to_load
-        return file_to_load
+            files_to_load = self.get_default_ref_filename()
+            files_to_load = os.path.join(self.datapath, files_to_load) if self.datapath is not None else files_to_load
+            files_to_load = [files_to_load]  # make a single list
+        return files_to_load
 
     def get_ref_dataframe(self, force_query=None, cache_ref_df=False):
         self.ref_df_changed = False
@@ -608,13 +617,14 @@ class StructuresDatasetSpecification:
         if self.df is None:
             self.df = self.load_or_query_ref_structures_dataframe(force_query=force_query)
         if cache_ref_df or self.cache_ref_df:
-            if self.ref_df_changed:
-                # generate filename to save df: if name is provided - try to put it into datapath
-                filename = self.get_actual_filename() or "df_ref.pckl.gzip"
-                log.info("Saving processed raw dataframe into " + filename)
-                save_dataframe(self.df, filename=filename)
-            else:
-                log.info("Reference dataframe was not changed, nothing to save")
+            log.warning("Saving cached dataframe is not supported anymore, you can ignore this warning anyway")
+            # if self.ref_df_changed:
+            #     # generate filename to save df: if name is provided - try to put it into datapath
+            #     filename = self.get_actual_filename()
+            #     log.info("Saving processed raw dataframe into " + filename)
+            #     save_dataframe(self.df, filename=filename)
+            # else:
+            #     log.info("Reference dataframe was not changed, nothing to save")
         return self.df
 
     def get_fit_dataframe(self, force_query=None, weights_policy=None, ignore_weights=None):
@@ -665,7 +675,8 @@ class EnergyBasedWeightingPolicy(StructuresDatasetWeightingPolicy):
                  n_upper=None,
                  reftype='all',
                  seed=None,
-                 energy="convex_hull"):
+                 energy="convex_hull",
+                 aug_factor=1e-4):
         """
 
         :param nfit:
@@ -944,7 +955,7 @@ class EnergyBasedWeightingPolicy(StructuresDatasetWeightingPolicy):
 def compute_convexhull_dist(df):
     df["comp_dict"] = df["ase_atoms"].map(lambda atoms: Counter(atoms.get_chemical_symbols()))
     df["elements"] = df["comp_dict"].map(lambda cnt: tuple(sorted(cnt.keys())))
-
+    df["NUMBER_OF_ATOMS"] = df["ase_atoms"].map(len);
     elements_set = set()
     for els in df["elements"].unique():
         elements_set.update(els)
@@ -1024,7 +1035,7 @@ def compute_convexhull_dist(df):
 
 class UniformWeightingPolicy(StructuresDatasetWeightingPolicy):
 
-    def __init__(self):
+    def __init__(self, aug_factor=1e-4):
         pass
 
     def __str__(self):
@@ -1187,8 +1198,32 @@ def get_fitting_dataset(evaluator_name, data_config: Dict, weighting_policy_spec
     spec = get_dataset_specification(evaluator_name=evaluator_name, data_config=data_config,
                                      cutoff=cutoff, elements=elements)
     spec.set_weights_policy(get_weighting_policy(weighting_policy_spec))
-
     df = spec.get_fit_dataframe(force_query=force_query, ignore_weights=force_weighting)
+    if "name" in df.columns:
+        aug_mask = df["name"].str.startswith("augmented")
+        if aug_mask.sum()>0:
+            log.info(f"{aug_mask.sum()} augmented structures found in dataset")
+            aug_factor = data_config.get("aug_factor",
+                                         weighting_policy_spec.get("aug_factor", 1e-4) if isinstance(weighting_policy_spec,
+                                                                                                     dict) else 1e-4)
+
+            #  if weights are NAN - fallback to const(median) * aug_factor
+            if df.loc[aug_mask, WEIGHTS_ENERGY_COLUMN].isna().any() or df.loc[aug_mask, WEIGHTS_FORCES_COLUMN].isna().any():
+                log.info(
+                    "Augmented weights are not set, probably because real data weights are provided already")
+                we_const = df.loc[~aug_mask, WEIGHTS_ENERGY_COLUMN].median()
+                wf_const = np.median(np.hstack(df.loc[~aug_mask, WEIGHTS_FORCES_COLUMN]))
+                log.info(f"Estimating median weights for real data: {we_const=:.5g}, {wf_const=:.5g}")
+                df.loc[aug_mask, WEIGHTS_ENERGY_COLUMN] = we_const
+                df.loc[aug_mask, WEIGHTS_FORCES_COLUMN] = wf_const * df.loc[aug_mask, "ase_atoms"].map(
+                    lambda at: np.ones((len(at),)))
+                if "w_forces_mask" in df.columns:
+                    df.loc[aug_mask, WEIGHTS_FORCES_COLUMN] = df.loc[aug_mask, WEIGHTS_FORCES_COLUMN] * df.loc[
+                        aug_mask, "w_forces_mask"]
+            log.info(f"Decreasing augmented weights by factor {aug_factor}")
+            df.loc[aug_mask, WEIGHTS_ENERGY_COLUMN] *= aug_factor
+            df.loc[aug_mask, WEIGHTS_FORCES_COLUMN] *= aug_factor
+
     normalize_energy_forces_weights(df)
     return df
 

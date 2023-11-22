@@ -1,12 +1,15 @@
 import numpy as np
 # get everything from atomic environment
 import pandas as pd
-from pyace.catomicenvironment import ACEAtomicEnvironment, get_minimal_nn_distance_tp, build_atomic_env
+from pyace.catomicenvironment import ACEAtomicEnvironment, get_minimal_nn_distance_tp, \
+    get_minimal_nn_distance_per_bond_tp, build_atomic_env
 from pyace.catomicenvironment import get_nghbrs_tp_atoms
 from pyace.pyneighbor import ACENeighborList
 import warnings
 from ase import Atoms
 from ase import data
+
+atomic_numbers_to_element = {v: k for k, v in data.atomic_numbers.items()}
 
 
 def create_cube(dr, cube_side_length):
@@ -130,6 +133,10 @@ def calculate_minimal_nn_atomic_env(atomic_env):
     return atomic_env.get_minimal_nn_distance()
 
 
+def calculate_minimal_nn_per_bond_atomic_env(atomic_env):
+    return atomic_env.get_minimal_nn_distance_per_bond()
+
+
 def calculate_minimal_nn_tp_atoms(tp_atoms):
     _positions = tp_atoms["_positions"]
     _cell = tp_atoms["_cell"][0]
@@ -138,6 +145,18 @@ def calculate_minimal_nn_tp_atoms(tp_atoms):
     _offsets = tp_atoms["_offsets"]
 
     return get_minimal_nn_distance_tp(_positions, _cell, _ind_i, _ind_j, _offsets)
+
+
+def calculate_minimal_nn_tp_atoms_per_bond(tp_atoms):
+    _positions = tp_atoms["_positions"]
+    _cell = tp_atoms["_cell"][0]
+    _ind_i = tp_atoms["_ind_i"]
+    _ind_j = tp_atoms["_ind_j"]
+    _mu_i = tp_atoms["_mu_i"]
+    _mu_j = tp_atoms["_mu_j"]
+    _offsets = tp_atoms["_offsets"]
+
+    return get_minimal_nn_distance_per_bond_tp(_positions, _cell, _ind_i, _ind_j, _mu_i, _mu_j, _offsets)
 
 
 def copy_atoms(atoms):
@@ -197,7 +216,7 @@ def generate_tp_atoms(ase_atoms, cutoff=8.7, verbose=False):
         return None
 
 
-def calculate_minimal_nn_distance(df: pd.DataFrame, target_column_name = "min_distance"):
+def calculate_minimal_nn_distance(df: pd.DataFrame, target_column_name="min_distance"):
     if target_column_name in df.columns:
         return
     if "atomic_env" in df.columns:
@@ -208,3 +227,44 @@ def calculate_minimal_nn_distance(df: pd.DataFrame, target_column_name = "min_di
         df[target_column_name] = df["tp_atoms"].map(calculate_minimal_nn_tp_atoms)
     else:
         raise ValueError("Neither `atomic_env` nor `tp_atoms` columns are presented in dataframe")
+
+
+def calculate_minimal_nn_distance_per_bond(df: pd.DataFrame, target_column_name="min_distance_per_bond"):
+    """
+    Compute minimal distance per-bond, return it as dictionary
+    :param df: pd.Dataframe with "atomic_env" or "tp_atoms" column
+    :param target_column_name: default = "min_distance_per_bond"
+
+    :return:  min_dist_dict = {(0,0): 1.23, (0,1): 1.5, ...}
+    """
+    def agg_min_dist_dict():
+        min_dist_dict = {}
+        for md in df[target_column_name]:
+            for k, v in md.items():
+                if k not in min_dist_dict or v < min_dist_dict[k]:
+                    min_dist_dict[k] = v
+        return min_dist_dict
+
+    if "atomic_env" in df.columns:
+        # computing minimum NN distance per structure from atomic_env
+        df[target_column_name] = df["atomic_env"].map(calculate_minimal_nn_per_bond_atomic_env)
+        min_dist_dict = agg_min_dist_dict()
+        # min_dist_dict = {(0,0): 1.23, (0,1): 1.5, ...}  - atomic numbers are used
+    elif "tp_atoms" in df.columns:
+        # computing minimum NN distance per structure from tp_atoms
+        df[target_column_name] = df["tp_atoms"].map(calculate_minimal_nn_tp_atoms_per_bond)
+        min_dist_dict = agg_min_dist_dict()
+        # min_dist_dict = {(6,6): 1.23, (6,10): 1.5, ...}  - atomic numbers are used
+        atomic_numbers = set()
+        for k in min_dist_dict:
+            for kk in k:
+                atomic_numbers.add(kk)
+        elements = sorted([atomic_numbers_to_element[a] for a in atomic_numbers])
+        elements_to_mu = {e: i for i, e in enumerate(elements)}
+        z_to_mu = {z: elements_to_mu[atomic_numbers_to_element[z]] for z in atomic_numbers}
+        min_dist_dict = {(z_to_mu[k[0]], z_to_mu[k[1]]): v
+                         for k, v in min_dist_dict.items()}
+    else:
+        raise ValueError("Neither `atomic_env` nor `tp_atoms` columns are presented in dataframe")
+
+    return min_dist_dict

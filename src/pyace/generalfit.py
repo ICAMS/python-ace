@@ -19,7 +19,7 @@ from pyace.preparedata import get_fitting_dataset, normalize_energy_forces_weigh
 from pyace.lossfuncspec import LossFunctionSpecification
 from pyace.metrics_aggregator import MetricsAggregator
 
-from pyace.atomicenvironment import calculate_minimal_nn_distance
+from pyace.atomicenvironment import calculate_minimal_nn_distance, calculate_minimal_nn_distance_per_bond
 
 log = logging.getLogger(__name__)
 log.setLevel(logging.DEBUG)
@@ -27,6 +27,7 @@ log.setLevel(logging.DEBUG)
 __username = None
 
 FITTING_DATA_INFO_FILENAME = "fitting_data_info.pckl.gzip"
+TEST_DATA_INFO_FILENAME = "test_data_info.pckl.gzip"
 
 
 def get_username():
@@ -43,7 +44,6 @@ def get_username():
         return __username
 
 
-
 def setup_inner_core_repulsion(basisconf, r_in, delta_in=0.1, rho_cut=5, drho_cut=5,
                                core_rep_parameters=(10000, 1)):
     for block in basisconf.funcspecs_blocks:
@@ -58,6 +58,30 @@ def setup_inner_core_repulsion(basisconf, r_in, delta_in=0.1, rho_cut=5, drho_cu
         elif block.number_of_species == 2:
             block.core_rep_parameters = core_rep_parameters
             block.inner_cutoff_type = "distance"
+
+
+def setup_zbl_inner_core_repulsion(bconf, min_dist_per_bond_dict, dr_in=0.1, rho_cut=1, drho_cut=1,
+                                   core_rep_pars=(1, 1)):
+    elements = set()
+    for sp in bconf.funcspecs_blocks:
+        for e in sp.elements_vec:
+            elements.add(e)
+    elements = sorted(elements)
+    e_to_mu = {e: i for i, e in enumerate(elements)}
+    for sp in bconf.funcspecs_blocks:
+        key = tuple(sorted(sp.block_name.split()))
+        if len(key) == 2:
+            r_in = min_dist_per_bond_dict[(e_to_mu[key[0]], e_to_mu[key[1]])]
+        elif len(key) == 1:
+            r_in = min_dist_per_bond_dict[(e_to_mu[key[0]], e_to_mu[key[0]])]
+        else:
+            raise RuntimeError(f"Invalid block key: {key}")
+        sp.core_rep_parameters = core_rep_pars
+        sp.r_in = r_in
+        sp.delta_in = dr_in
+        sp.inner_cutoff_type = 'zbl'
+        sp.rho_cut = rho_cut
+        sp.drho_cut = drho_cut
 
 
 def get_initial_potential(start_potential):
@@ -109,6 +133,19 @@ def train_test_split(df, test_size: Union[float, int]) -> Tuple[pd.DataFrame, pd
     test_inds = sorted(inds[train_size:])
 
     return df.iloc[train_inds].copy(), df.iloc[test_inds].copy()
+
+
+def save_dataset(dataframe, fname):
+    # columns to save: w_energy, w_forces, NUMBER_OF_ATOMS, PROTOTYPE_NAME, prop_id,structure_id, gen_id, if any
+    # columns_to_save = ["PROTOTYPE_NAME", "NUMBER_OF_ATOMS", "prop_id", "structure_id", "gen_id", "pbc"] + \
+    #                   [ENERGY_CORRECTED_COL, EWEIGHTS_COL, FWEIGHTS_COL]
+    columns_to_drop = ["tp_atoms", "atomic_env"]
+    fitting_data_columns = dataframe.columns
+
+    columns_to_save = [col for col in fitting_data_columns if col not in columns_to_drop]
+
+    dataframe[columns_to_save].to_pickle(fname, compression="gzip", protocol=4)
+    log.info("Dataset saved into {}".format(fname))
 
 
 class GeneralACEFit:
@@ -297,6 +334,7 @@ class GeneralACEFit:
         self.fitting_data = None
         self.test_data = None
         if isinstance(self.data_config, (dict, str)):
+            ### TODO: augment dataset here
             self.fitting_data = get_fitting_dataset(evaluator_name=self.evaluator_name,
                                                     data_config=self.data_config,
                                                     weighting_policy_spec=self.weighting_policy_spec,
@@ -327,22 +365,23 @@ class GeneralACEFit:
 
         if self.fitting_data is not None:
             normalize_energy_forces_weights(self.fitting_data)
+            save_dataset(self.fitting_data, FITTING_DATA_INFO_FILENAME)
+
         if self.test_data is not None:
             normalize_energy_forces_weights(self.test_data)
-
-        self.save_fitting_data_info()
+            save_dataset(self.test_data, TEST_DATA_INFO_FILENAME)
 
         # automatic repulsion selection
         if "repulsion" in self.fit_config and self.fit_config["repulsion"] == "auto":
             log.info("Auto core-repulsion estimation. Minimal distance calculation...")
-            calculate_minimal_nn_distance(self.fitting_data)
-            min_distance = self.fitting_data["min_distance"].min()
-            log.info("Minimal distance = {:.2f} A ".format(min_distance))
-            r_in = min_distance - 0.01
-            setup_inner_core_repulsion(self.target_bbasisconfig, r_in)
+            min_distance_per_bond = calculate_minimal_nn_distance_per_bond(self.fitting_data)
+            log.info("Minimal distance per bonds = {} A ".format(min_distance_per_bond))
+            setup_zbl_inner_core_repulsion(self.target_bbasisconfig, min_distance_per_bond)
             if self.initial_bbasisconfig:
-                setup_inner_core_repulsion(self.initial_bbasisconfig, r_in)
-            log.info("Inner cutoff / core-repulsion initialized")
+                setup_zbl_inner_core_repulsion(self.initial_bbasisconfig, min_distance_per_bond)
+            log.info("Inner cutoff / core-repulsion initialized with ZBL")
+            # save target_potential.yaml
+            self.target_bbasisconfig.save(TARGET_POTENTIAL_YAML)
 
         # plot self.fitting_data, self.test_data
         if self.fitting_data is not None:
@@ -371,20 +410,6 @@ class GeneralACEFit:
         metrics_dict["cycle_step"] = self.current_fit_cycle
         metrics_dict["ladder_step"] = self.current_ladder_step
         self.metrics_aggregator.test_metric_callback(metrics_dict, extended_display_step=extended_display_step)
-
-    def save_fitting_data_info(self):
-        # columns to save: w_energy, w_forces, NUMBER_OF_ATOMS, PROTOTYPE_NAME, prop_id,structure_id, gen_id, if any
-        # columns_to_save = ["PROTOTYPE_NAME", "NUMBER_OF_ATOMS", "prop_id", "structure_id", "gen_id", "pbc"] + \
-        #                   [ENERGY_CORRECTED_COL, EWEIGHTS_COL, FWEIGHTS_COL]
-        columns_to_drop = ["tp_atoms", "atomic_env"]
-        fitting_data_columns = self.fitting_data.columns
-
-        columns_to_save = [col for col in fitting_data_columns if col not in columns_to_drop]
-
-        self.fitting_data[columns_to_save].to_pickle(FITTING_DATA_INFO_FILENAME,
-                                                     compression="gzip",
-                                                     protocol=4)
-        log.info("Fitting dataset info saved into {}".format(FITTING_DATA_INFO_FILENAME))
 
     def fit(self) -> BBasisConfiguration:
         gc.collect()

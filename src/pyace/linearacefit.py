@@ -26,7 +26,7 @@ def compute_b_grad_ae(ae):
     :return: energy_list (sum of B_projection over all atoms), forces_list (B-grad for each atom and B-function)
     """
     global g_calc, g_func_ind_shift, g_nfunc
-    g_calc.compute(ae, True)
+    g_calc.compute(ae, compute_projections=True, compute_b_grad=True)
 
     # energy projections
     projections = g_calc.projections
@@ -58,7 +58,8 @@ def compute_nfunc_func_ind_shift(basis):
 
 
 # Generate random data using multiple processes
-def generate_data(data, basis, shared_design_matrix, structures_chunk, atoms_chunk, verbose=False, proc_id=-1):
+def generate_data(data, basis, shared_design_matrix, structures_chunk, atoms_chunk, cutoff, elements_mapper_dict,
+                  verbose=False, proc_id=-1):
     if verbose:
         print(f"[Proc-{proc_id}]structures_chunk={structures_chunk}, atoms_chunk={atoms_chunk} " +
               f" # struct={structures_chunk[1] - structures_chunk[0]}, #at = {atoms_chunk[1] - atoms_chunk[0]}",
@@ -84,10 +85,10 @@ def generate_data(data, basis, shared_design_matrix, structures_chunk, atoms_chu
     loc_n_structures = len(data_subset)
     step = max(loc_n_structures // 25, 1)
     t_loop_start = perf_counter()
-    for struct_ind, ae in enumerate(data_subset["atomic_env"]):
-
+    for struct_ind, at in enumerate(data_subset["ase_atoms"]):
+        ae = aseatoms_to_atomicenvironment(at, cutoff=cutoff, elements_mapper_dict=elements_mapper_dict)
         # do calculation with compute gradients flag
-        calc.compute(ae, True)
+        calc.compute(ae, compute_projections=True, compute_b_grad=True)
 
         # energy projections
         projections = calc.projections
@@ -158,6 +159,10 @@ class LinearACEDataset:
         self.total_number_of_atoms: int = 0
         self.total_number_of_structures: int = 0
         self.df: pd.DataFrame = df
+
+        self.elements_mapper_dict = self.basis.elements_to_index_map
+        self.cutoff = self.basis.cutoffmax
+
         if self.df is not None:
             self.prepare_df()
 
@@ -171,12 +176,12 @@ class LinearACEDataset:
     def prepare_df(self):
         if "NUMBER_OF_ATOMS" not in self.df.columns:
             self.df["NUMBER_OF_ATOMS"] = self.df["ase_atoms"].map(len)
-        if "atomic_env" not in self.df.columns:
-            elements_mapper_dict = self.basis.elements_to_index_map
-            cutoff = self.basis.cutoffmax
-            build_ae = lambda at: aseatoms_to_atomicenvironment(at, cutoff=cutoff,
-                                                                elements_mapper_dict=elements_mapper_dict)
-            self.df["atomic_env"] = self.df["ase_atoms"].map(build_ae)
+        # if "atomic_env" not in self.df.columns:
+        #
+        #     build_ae = lambda at: aseatoms_to_atomicenvironment(at, cutoff=cutoff,
+        #                                                         elements_mapper_dict=elements_mapper_dict)
+        #     print(f"Constructing atomic environments with {cutoff=} and {elements_mapper_dict=}")
+        #     self.df["atomic_env"] = self.df["ase_atoms"].map(build_ae)
 
         self.total_number_of_atoms: int = self.df["NUMBER_OF_ATOMS"].sum()
         self.total_number_of_structures: int = len(self.df)
@@ -228,7 +233,8 @@ class LinearACEDataset:
         for proc_ind, (s_chunk, a_chunk) in enumerate(zip(structure_ind_chunks, atoms_ind_chunks)):
             p = mp.Process(target=generate_data,
                            args=(self.df, self.basis,
-                                 self.shared_design_matrix, s_chunk, a_chunk, verbose, proc_ind))
+                                 self.shared_design_matrix, s_chunk, a_chunk, self.cutoff, self.elements_mapper_dict,
+                                 verbose, proc_ind))
             processes.append(p)
             p.start()
 
@@ -236,18 +242,18 @@ class LinearACEDataset:
         for p in processes:
             p.join()
 
-    def get_design_matrix(self):
+    def get_design_matrix(self, df=None, max_workers=4, verbose=False):
         """ Get design matrix """
         if self.design_matrix is None:
-            self.construct_design_matrix()
+            self.construct_design_matrix(df=df, max_workers=max_workers, verbose=verbose)
         return self.design_matrix
 
     def construct_target_vector(self):
         """ Construct target matrix from the dataset """
         if "energy_corrected" in self.df.columns:
-            energies_ref = self.df["energy_corrected"].values
+            energies_ref = self.df["energy_corrected"].values.copy()
         elif "energy" in self.df.columns:
-            energies_ref = self.df["energy"].values
+            energies_ref = self.df["energy"].values.copy()
         else:
             raise ValueError("No `energy` or `energy_corrected` columns in the dataset")
         energies_ref /= self.df["NUMBER_OF_ATOMS"].values

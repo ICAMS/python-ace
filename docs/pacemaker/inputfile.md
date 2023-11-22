@@ -35,7 +35,8 @@ Dataset could be saved into file as a pickled `pandas` dataframe with special na
 ```YAML
 data: 
   filename: some_stored_dataset.pckl.gzip
-  # cache_ref_df: False             # whether to store the queried or modified dataset into file, default - True
+  # filename: [dataset1.pckl.gzip, aug_df.pkl.gz]  # multiple datasets are possible to provide
+  # aug_factor: 1e-4 # common prefactor for weights of augmented structures (determined by prefix in `name` column)
   # ignore_weights: False          # whether to ignore energy and force weighting columns in dataframe
   # datapath: ../data              # path to folder with cache files with pickled dataframes 
 ```

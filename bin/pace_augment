@@ -1,0 +1,247 @@
+#!/usr/bin/env python
+
+import logging
+import sys
+
+LOG_FMT = '%(asctime)s %(levelname).1s - %(message)s'
+logging.basicConfig(level=logging.INFO, format=LOG_FMT, datefmt="%Y/%m/%d %H:%M:%S")
+log = logging.getLogger()
+
+from collections import defaultdict
+
+import numpy as np
+import pandas as pd
+import argparse
+
+from pyace import BBasisConfiguration, ACEBBasisSet, PyACECalculator
+from pyace.activelearning import load_active_inverse_set, compute_A_active_inverse
+from pyace.process_df import compute_compositions, tqdm
+
+from pyace.atomicenvironment import aseatoms_to_atomicenvironment
+from pyace.aceselect import load_multiple_datasets
+from pyace.data_aug import ZBLCalculator, augment_structure_eos, generate_nndist_atoms
+from pyace.aceselect import select_structures_maxvol
+
+
+def build_parser():
+    parser = argparse.ArgumentParser(prog="pace_augment",
+                                     description="Utility to generate augmented dataset with ZBL and/or EOS data")
+
+    parser.add_argument("potential_file", help="B-basis file name (.yaml)", type=str)
+
+    parser.add_argument("-d", "--dataset", action='append',
+                        help="Dataset file name(s), ex.: -d filename.pckl.gzip [-d filename2.pckl.gzip]", type=str,
+                        required=True)
+
+    parser.add_argument("-a", "--active-set-inv",
+                        help="Active Set Inverted (ASI) filename, considered as extra B-projections",
+                        default=None, type=str, dest="active_set_inv_fname")
+
+    parser.add_argument("-m", "--max-structures", type=int,
+                        dest="max_structures",
+                        help="Maximum number of structures to select (default -1 = all)",
+                        default=-1)
+    parser.add_argument("-o", "--output", dest="augmented_structures_filename", type=str,
+                        help="Augmented structures filename, (default: aug_df.pkl.gz)",
+                        default="aug_df.pkl.gz"
+                        )
+    parser.add_argument("-V", help="suppress verbosity of numerical procedures",
+                        dest="not_verbose", default=False, action="store_true")
+
+    parser.add_argument("-mnat", "--max-num-atoms", type=int,
+                        dest="max_num_at",
+                        help="Maximum number of atoms for seed structures, selected for augmentation (-1 = no limit, default = 32)",
+                        default=32)
+    parser.add_argument("-mss", "--max-seed-structures", type=int,
+                        dest="max_seed_structures",
+                        help="Maximum number of seed structures, selected for augmentation (-1 = all, default = 100)",
+                        default=100)
+
+    parser.add_argument("-minepa", "--min--aug-epa", type=float,
+                        dest="min_aug_epa",
+                        help="Minimal augmented energy-per-atom (default None = no limit)",
+                        default=None)
+
+    parser.add_argument("-maxepa", "--max--aug-epa", type=float,
+                        dest="max_aug_epa",
+                        help="Maximal augmented energy-per-atom (default None = 150)",
+                        default=150)
+
+    parser.add_argument("-eparmax", "--epa-reliable-max", type=float,
+                        dest="epa_reliable_max",
+                        help="Maximum for reliable energy-per-atom (default None = no limit)",
+                        default=None)
+
+    parser.add_argument("-nnstep", "--nn-dist-step", type=float,
+                        dest="nn_distance_step",
+                        help="Nearest-neighbour distance step for data augmentation (default = 0.1)",
+                        default=0.1)
+
+    parser.add_argument("-nnmin", "--nn-dist-min", type=float,
+                        dest="nn_distance_min",
+                        help="Nearest-neighbour distance step for data augmentation (default = 1)",
+                        default=1)
+
+    return parser
+
+
+def compute_nn_dist_per_bond(atoms, cutoff=3, elements_mapper_dict=None):
+    ae = aseatoms_to_atomicenvironment(atoms, cutoff, elements_mapper_dict=elements_mapper_dict)
+    return ae.get_minimal_nn_distance_per_bond()
+
+
+def generate_w_forces_mask(at, bond_quantile_dict, cutoff=3, elements_mapper_dict=None):
+    ae = aseatoms_to_atomicenvironment(at, cutoff=cutoff, elements_mapper_dict=elements_mapper_dict)
+    return np.array(
+        [float(bond_quantile_dict[(ti, tj)] > dist) for ti, tj, dist in ae.get_nearest_atom_type_and_distance()])
+
+
+def compute_and_filter_w_forces_mask(aug_df, bond_quantile_dict, cutoff=None, elements_mapper_dict=None,
+                                     MIN_AUG_EPA=None, MAX_AUG_EPA=None):
+    if cutoff is None:
+        cutoff = max(bond_quantile_dict.values()) + 0.01
+    aug_df["w_forces_mask"] = aug_df['ase_atoms'].apply(generate_w_forces_mask,
+                                                        bond_quantile_dict=bond_quantile_dict,
+                                                        cutoff=cutoff,
+                                                        elements_mapper_dict=elements_mapper_dict)
+
+    aug_df = aug_df[aug_df["w_forces_mask"].map(lambda wfm: np.any(wfm == 1.0))].reset_index(drop=True)
+
+    if MIN_AUG_EPA is not None:
+        aug_df = aug_df.query(f"{MIN_AUG_EPA} <= energy_corrected_per_atom").reset_index(drop=True)
+
+    if MAX_AUG_EPA is not None:
+        aug_df = aug_df.query(f"energy_corrected_per_atom <= {MAX_AUG_EPA}").reset_index(drop=True)
+
+    return aug_df
+
+
+def main():
+    args_parse = build_parser().parse_args()
+    dataset_filename = args_parse.dataset
+    potential_file = args_parse.potential_file
+    verbose = not args_parse.not_verbose
+    augmented_structures_filename = args_parse.augmented_structures_filename
+
+    if isinstance(dataset_filename, list):
+        df = load_multiple_datasets(dataset_filename, verbose=verbose)
+    else:
+        raise ValueError("Unrecognized --dataset (-d) argument: {}".format(dataset_filename))
+
+    if verbose:
+        log.info(f"{len(df['ase_atoms'])} structures in candidate list")
+        log.info(f"Loading B-basis configuration from {potential_file}")
+    bconf = BBasisConfiguration(potential_file)
+    bbasis = ACEBBasisSet(bconf)
+    elements_mapper_dict = bbasis.elements_to_index_map
+
+    active_set_inv_fname = args_parse.active_set_inv_fname
+    if active_set_inv_fname:
+        if verbose:
+            log.info(f"Loading Active Set Inverted  from {active_set_inv_fname}")
+        asi = load_active_inverse_set(active_set_inv_fname)
+        extra_A0_projections_dict = compute_A_active_inverse(asi)
+    else:
+        if verbose:
+            log.info(f"No Active Set Inverted provided")
+        extra_A0_projections_dict = None
+
+    df["nn_dist_per_bond"] = df["ase_atoms"].apply(compute_nn_dist_per_bond,
+                                                   cutoff=bbasis.cutoffmax,
+                                                   elements_mapper_dict=elements_mapper_dict)
+    df["NUMBER_OF_ATOMS"] = df["ase_atoms"].map(len)
+    min_num_at = df["NUMBER_OF_ATOMS"].min()
+    max_num_at = df["NUMBER_OF_ATOMS"].max()
+
+    min_nn_dist_dd = defaultdict(list)
+    for nn_dist_per_bond in df['nn_dist_per_bond']:
+        for k, v in nn_dist_per_bond.items():
+            min_nn_dist_dd[k].append(v)
+
+    log.info("Minimal distance threshold (quantile=0.001) per bond (Ang):")
+    bond_quantile_dict = {}
+
+    for k, v in min_nn_dist_dd.items():
+        q_th = 0.001  # q_th = max(2. / len(v), 0.001)
+        log.info(f"Bond {k}: #{len(v)} nn_dists, quantile_threshold = {q_th:.3f}")
+        q = np.quantile(v, q=q_th)
+        bond_quantile_dict[k] = q
+        # log.info(f"{elements_mapper_dict[k[0]]}-{elements_mapper_dict[k[1]]}: {q:.3f}")
+        log.info(f"{k}: {q:.3f}")
+
+    max_min_dist = max(bond_quantile_dict.values())
+    min_min_dist = min(bond_quantile_dict.values())
+
+    compute_compositions(df, compute_composition_tuples=True)
+
+    if args_parse.max_num_at == -1:
+        args_parse.max_num_at = max_num_at
+    MAX_NUM_AT = max(args_parse.max_num_at, min_num_at)
+    if args_parse.max_seed_structures == -1:
+        args_parse.max_seed_structures = len(df)
+    RANDOMLY_SELECTED = min(args_parse.max_seed_structures, len(df))
+    # MAX_STRUCT_PER_COMPOSITION = RANDOMLY_SELECTED
+    MIN_AUG_EPA = args_parse.min_aug_epa
+    MAX_AUG_EPA = args_parse.max_aug_epa
+    # RANDOMLY_SELECTED_FRAC = 0.01
+
+    groups = df.query(f"NUMBER_OF_ATOMS<={MAX_NUM_AT}").groupby("comp_tuple")
+    MAX_STRUCT_PER_COMPOSITION = max(1, int(round(RANDOMLY_SELECTED / len(groups))))
+    sub_df = (pd.concat([
+        gr.sample(min(MAX_STRUCT_PER_COMPOSITION, len(gr)), random_state=42)
+        for _, gr in groups
+    ]).reset_index(drop=True))
+
+    sub_df = sub_df.sample(n=min(RANDOMLY_SELECTED, len(sub_df)), random_state=42)  # frac=RANDOMLY_SELECTED_FRAC,
+    log.info(f"{len(sub_df)} structures selected to seed dataset")
+
+    # TODO: scenario 1
+
+    #### Scenario 2:
+
+    calc = PyACECalculator(bconf)
+    has_asi = False
+    if active_set_inv_fname is not None:
+        log.info(f"Setting ASI to PyACECalculator: {active_set_inv_fname}")
+        calc.set_active_set(active_set_inv_fname)
+        has_asi = True
+
+    log.info("Augmentation of data")
+    all_aug_df_list = []
+    for at in tqdm(sub_df["ase_atoms"]):
+        try:
+            adf = augment_structure_eos(at, calc,
+                                        nn_distance_range=(args_parse.nn_distance_min, bbasis.cutoffmax),  #
+                                        nn_distance_step=args_parse.nn_distance_step,
+                                        reliability_criteria="extrapolation" if has_asi else "kink",
+                                        augmentation_type="zbl",  # augment with "zbl" or "eos"
+                                        epa_reliable_max=args_parse.epa_reliable_max,
+                                        epa_aug_max=MAX_AUG_EPA,
+                                        epa_aug_min=MIN_AUG_EPA
+                                        );
+            all_aug_df_list.append(adf)
+        except Exception as e:
+            print("Error:", e)
+    aug_df = pd.concat(all_aug_df_list).reset_index(drop=True)
+    log.info(f"{len(aug_df)} augmented structures before filtering")
+
+    if len(aug_df) == 0:
+        log.error("No augmented structures found")
+        sys.exit(1)
+
+    aug_df = compute_and_filter_w_forces_mask(aug_df, bond_quantile_dict,
+                                              elements_mapper_dict=elements_mapper_dict,
+                                              cutoff=aug_df["z"].max())
+    log.info(f"{len(aug_df)} augmented structures after filtering")
+
+    log.info("Optimal selection of augmented structures using D-optimality")
+    aug_selected_df = select_structures_maxvol(aug_df, bconf, extra_A0_projections_dict=extra_A0_projections_dict,
+                                               verbose=verbose)
+    log.info(f"{len(aug_selected_df)} augmented structures after D-optimality selection")
+
+    log.info(f"Saving augmented structures to {augmented_structures_filename}")
+    aug_selected_df.to_pickle(augmented_structures_filename)
+
+
+if __name__ == "__main__":
+    main()

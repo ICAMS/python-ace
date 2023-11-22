@@ -44,7 +44,7 @@ potential:
 data:
   filename: {{DATAFILENAME}}       # force to read reference pickled dataframe from given file
   {{test_size}}
-
+  #  aug_factor: 1e-4 # common prefactor for weights of augmented structures
 
 #################################################################
 ## Fit specification section
@@ -63,8 +63,8 @@ fit:
   ## additional options for scipy.minimize
   #  options: {maxcor: 100}
 
-  ## Automatically find the smallest interatomic distance in dataset  and set inner cutoff based on this
-  #  repulsion: auto
+  ## Automatically find the smallest interatomic distance in dataset  and set inner cutoff for ZBL to it
+  repulsion: auto
 
   #  ladder_step: 100
   #  ladder_type: power_order

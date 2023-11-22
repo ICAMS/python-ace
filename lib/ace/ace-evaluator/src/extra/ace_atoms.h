@@ -7,6 +7,8 @@
 
 #include <cmath>
 #include <vector>
+#include <map>
+#include <utility>
 #include "ace-evaluator/ace_types.h"
 #include "ace-evaluator/ace_arraynd.h"
 
@@ -184,6 +186,10 @@ struct ACEAtomicEnvironment {
     vector<vector<int>> get_neighbour_list() const;
 
     DOUBLE_TYPE get_minimal_nn_distance() const;
+
+    std::map<std::pair<SPECIES_TYPE,SPECIES_TYPE>,DOUBLE_TYPE> get_minimal_nn_distance_per_bond() const;
+
+    std::vector<std::tuple<SPECIES_TYPE,SPECIES_TYPE,DOUBLE_TYPE>> get_nearest_atom_type_and_distance() const;
 };
 
 ACEAtomicEnvironment create_linear_chain(int n, int axis = 2, double scale_factor = 1.);

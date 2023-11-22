@@ -20,11 +20,6 @@ class ACEBEvaluator : public ACEEvaluator {
     Array2D<DOUBLE_TYPE> weights_rank1 = Array2D<DOUBLE_TYPE>("weights_rank1");
     Array4DLM<ACEComplex> weights = Array4DLM<ACEComplex>("weights");
 
-#ifdef COMPUTE_B_GRAD
-    // for B-derivatives
-    Array3D<DOUBLE_TYPE> weights_rank1_dB = Array3D<DOUBLE_TYPE>("weights_rank1_dB");
-    Array5DLM<ACEComplex> weights_dB = Array5DLM<ACEComplex>("weights_dB");
-#endif
     //cache for grads: grad_phi(jj,n)=A2DLM(l,m)
     //(neigh_jj)(n=0..nr-1)
     Array2D<DOUBLE_TYPE> DG_cache = Array2D<DOUBLE_TYPE>("DG_cache");
@@ -49,9 +44,6 @@ class ACEBEvaluator : public ACEEvaluator {
 
     void init(ACEBBasisSet *basis_set);
 
-    // active sets
-    map<SPECIES_TYPE, Array2D<DOUBLE_TYPE>> A_active_set_inv;
-
     bool is_linear_extrapolation_grade = true;
 
     void resize_projections();
@@ -61,6 +53,9 @@ class ACEBEvaluator : public ACEEvaluator {
     void validate_ASI_shape(const string &element_name, SPECIES_TYPE st, const vector<size_t> &shape);
 
 public:
+
+    // active sets
+    map<SPECIES_TYPE, Array2D<DOUBLE_TYPE>> A_active_set_inv;
 
     ACEBEvaluator() = default;
 

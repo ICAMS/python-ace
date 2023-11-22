@@ -161,7 +161,7 @@ def compute_B_projections(bconf: Union[BBasisConfiguration, ACEBBasisSet, PyACEC
     cur_inds = [0] * len(elements_mapper_dict)
     progress_wrapper = tqdm if verbose else simple_tqdm
     for struct_ind, ae in progress_wrapper(zip(tmp_structure_ind_list, atomic_env_list), total=len(atomic_env_list)):
-        calc.compute(ae)
+        calc.compute(ae, compute_projections=True)
         if is_full:
             basis_projections = calc.dE_dc
         else:
@@ -405,7 +405,7 @@ def compute_active_set(A0_projections_dict: Dict[int, np.array],
             zero_projs = np.zeros((len(cur_A0), len(zero_proj_columns)))
             np.fill_diagonal(zero_projs, EPSILON)
             cur_A0[:, zero_proj_columns] += zero_projs
-        selected_rows, _ = maxvol(cur_A0, tol=tol, max_iters=max_iters)
+        selected_rows, _ = maxvol(cur_A0, tol=tol, max_iters=max_iters, verbose=verbose)
         cur_A_active_set = cur_A0[selected_rows]
         A_active_set_dict[st] = cur_A_active_set
         if structure_ind_dict is not None:

@@ -19,266 +19,287 @@ from pyace.activelearning import compute_B_projections, compute_active_set, comp
     count_number_total_atoms_per_species_type, save_active_inverse_set, extract_reference_forces_dict
 from pyace.preparedata import sizeof_fmt
 
-parser = argparse.ArgumentParser(prog="pace_activeset",
-                                 description="Utility to compute active set for PACE (.yaml) potential")
+from pyace.aceselect import compute_mem_limit, compute_batch_size, compute_required_memory, load_datasets
 
-parser.add_argument("potential_file", help="B-basis file name (.yaml)", type=str)
 
-parser.add_argument("-d", "--dataset", action='append',
-                    help="Dataset file name(s), ex.: -d filename.pckl.gzip [-d filename2.pckl.gzip]", type=str,
-                    required=True)
+def build_parser():
+    parser = argparse.ArgumentParser(prog="pace_activeset",
+                                     description="Utility to compute active set for PACE (.yaml) potential")
+    parser.add_argument("potential_file", help="B-basis file name (.yaml)", type=str)
+    parser.add_argument("-d", "--dataset", action='append',
+                        help="Dataset file name(s), ex.: -d filename.pckl.gzip [-d filename2.pckl.gzip]", type=str,
+                        required=True)
+    parser.add_argument("-q", "--query", type=str, default=None,
+                        help="""pd.query argument for further filtering dataset. Example: -q 'not name.str.contains("augmented")'""")
+    parser.add_argument("-f", "--full", help="Compute active set on full (linearized) design matrix",
+                        action='store_true')
+    parser.add_argument("-b", "--batch_size", help="Batch size (number of structures) considered simultaneously."
+                                                   "If not provided - all dataset at once is considered",
+                        default="auto", type=str)
+    parser.add_argument("-g", "--gamma_tolerance", help="Gamma tolerance",
+                        default=1.01, type=float)
+    parser.add_argument("-i", "--maxvol_iters", help="Number of maximum iteration in MaxVol algorithm",
+                        default=300, type=int)
+    parser.add_argument("-r", "--maxvol_refinement", help="Number of refinements (epochs)",
+                        default=5, type=int)
+    parser.add_argument("-m", "--memory-limit", help="Memory limit (i.e. 1GB, 500MB or 'auto')", default="auto",
+                        type=str)
+    parser.add_argument("-e", "--error-force-threshold [max RMSE(F) (eV/A)]", default=0, type=float,
+                        help="Include into active set only atoms with force RMSE error lower than provided. "
+                             "If zero, then Q3+1.5*IQR upper range will be used", dest="error_based_threshold")
+    parser.add_argument("-a", "--all-atoms", help="Consider all atoms for construction of active set",
+                        dest="all_atoms", default=False, action="store_true")
+    parser.add_argument("-V", help="suppress verbosity of numerical procedures",
+                        dest="not_verbose", default=False, action="store_true")
 
-parser.add_argument("-f", "--full", help="Compute active set on full (linearized) design matrix",
-                    action='store_true')
-parser.add_argument("-b", "--batch_size", help="Batch size (number of structures) considered simultaneously."
-                                               "If not provided - all dataset at once is considered",
-                    default="auto", type=str)
-parser.add_argument("-g", "--gamma_tolerance", help="Gamma tolerance",
-                    default=1.01, type=float)
-parser.add_argument("-i", "--maxvol_iters", help="Number of maximum iteration in MaxVol algorithm",
-                    default=300, type=int)
+    return parser
 
-parser.add_argument("-r", "--maxvol_refinement", help="Number of refinements (epochs)",
-                    default=5, type=int)
 
-parser.add_argument("-m", "--memory-limit", help="Memory limit (i.e. 1GB, 500MB or 'auto')", default="auto", type=str)
+def main():
+    parser = build_parser()
 
-parser.add_argument("-e", "--error-force-threshold [max RMSE(F) (eV/A)]", default=0, type=float,
-                    help="Include into active set only atoms with force RMSE error lower than provided. "
-                         "If zero, then Q3+1.5*IQR upper range will be used", dest="error_based_threshold")
+    args_parse = parser.parse_args()
+    potential_file = args_parse.potential_file
+    dataset_filename = args_parse.dataset
+    batch_size_option = args_parse.batch_size
+    gamma_tolerance = args_parse.gamma_tolerance
+    maxvol_iters = args_parse.maxvol_iters
+    maxvol_refinement = args_parse.maxvol_refinement
+    mem_lim_option = args_parse.memory_limit
+    is_full = args_parse.full
+    error_based_threshold = args_parse.error_based_threshold
+    all_atoms = args_parse.all_atoms
+    verbose = not args_parse.not_verbose
+    query = args_parse.query
 
-parser.add_argument("-a", "--all-atoms", help="Consider all atoms for construction of active set",
-                    dest="all_atoms", default=False, action="store_true")
+    mem_lim = compute_mem_limit(mem_lim_option)
 
-parser.add_argument("-V", help="suppress verbosity of numerical procedures",
-                    dest="not_verbose", default=False, action="store_true")
-
-args_parse = parser.parse_args()
-potential_file = args_parse.potential_file
-dataset_filename = args_parse.dataset
-batch_size = args_parse.batch_size
-gamma_tolerance = args_parse.gamma_tolerance
-maxvol_iters = args_parse.maxvol_iters
-maxvol_refinement = args_parse.maxvol_refinement
-mem_lim = args_parse.memory_limit
-is_full = args_parse.full
-error_based_threshold = args_parse.error_based_threshold
-all_atoms = args_parse.all_atoms
-verbose = not args_parse.not_verbose
-
-if mem_lim == "auto":
-    # determine 80% of available memory
-    mem_lim = int(0.8 * psutil.virtual_memory().available)
-else:
-    mem_lim = mem_lim.replace("GB", "*2**30").replace("MB", "*2**20")
-    mem_lim = eval(mem_lim)
-
-data_path = os.environ.get("PACEMAKERDATAPATH", "")
-if data_path:
-    log.info("Data path set to $PACEMAKERDATAPATH = {}".format(data_path))
-if isinstance(dataset_filename, list):
-    df_list = []
-    for i, dsfn in enumerate(dataset_filename):
-        if os.path.isfile(dsfn):
-            dsfn = dsfn
-        elif os.path.isfile(os.path.join(data_path, dsfn)):
-            dsfn = os.path.join(data_path, dsfn)
-        else:
-            raise RuntimeError("File {} not found".format(dsfn))
-        log.info("Loading dataset #{}/{} from {}".format(i + 1, len(dataset_filename), dsfn))
-        df = pd.read_pickle(dsfn, compression="gzip")
-        log.info("Number of structures: {}".format(len(df)))
-        df_list.append(df)
-    df = pd.concat(df_list, axis=0)
-    df.reset_index(drop=True, inplace=True)
-else:
-    raise ValueError("Unrecognized --dataset (-d) argument: {}".format(dataset_filename))
-
-log.info("Total number of structures: {}".format(len(df)))
-log.info("Potential file: {}".format(potential_file))
-
-bconf = BBasisConfiguration(potential_file)
-bbasis = ACEBBasisSet(bconf)
-nfuncs = compute_number_of_functions(bbasis)
-if is_full:
-    n_projections = [p * bbasis.map_embedding_specifications[st].ndensity for st, p in enumerate(nfuncs)]
-else:  # linear
-    n_projections = nfuncs
-
-elements_to_index_map = bbasis.elements_to_index_map
-elements_name = bbasis.elements_name
-cutoffmax = bbasis.cutoffmax
-
-ATOMIC_ENV_COLUMN = "atomic_env"
-
-rebuild_atomic_env = False
-if ATOMIC_ENV_COLUMN not in df.columns:
-    rebuild_atomic_env = True
-else:
-    # check if cutoff is not smaller than requested now
-    try:
-        metadata_kwargs = df.metadata_dict[ATOMIC_ENV_COLUMN + "_kwargs"]
-        metadata_cutoff = metadata_kwargs["cutoff"]
-        if metadata_cutoff < cutoffmax:
-            log.warning("WARNING! Column {} was constructed with smaller cutoff ({}A) "
-                        "that necessary now ({}A). "
-                        "Neighbourlists will be re-built".format(ATOMIC_ENV_COLUMN, metadata_cutoff,
-                                                                 cutoffmax))
-            rebuild_atomic_env = True
-        else:
-            log.info("Column '{}': existing cutoff ({}A) >= "
-                     "requested  cutoff ({}A), skipping...".format(ATOMIC_ENV_COLUMN, metadata_cutoff,
-                                                                   cutoffmax))
-            rebuild_atomic_env = False
-
-    except KeyboardInterrupt as e:
-        raise e
-    except Exception as e:
-        log.info("Could not extract cutoff metadata "
-                 "for column '{}' (error: {}). Please ensure the valid cutoff for "
-                 "precomputed neighbourlists".format(ATOMIC_ENV_COLUMN, e))
-        rebuild_atomic_env = True
-
-if rebuild_atomic_env:
-    log.info("Constructing {} column, cutoffmax={}, elements_to_index_map={}".format(ATOMIC_ENV_COLUMN, cutoffmax,
-                                                                                     elements_to_index_map))
-    df[ATOMIC_ENV_COLUMN] = df["ase_atoms"].apply(aseatoms_to_atomicenvironment,
-                                                  cutoff=cutoffmax, elements_mapper_dict=elements_to_index_map)
-
-atomic_env_list = df[ATOMIC_ENV_COLUMN]
-structure_ind_list = df.index
-total_number_of_atoms_per_species_type = count_number_total_atoms_per_species_type(atomic_env_list)
-
-number_of_projection_entries = 0
-required_active_set_memory = 0
-for st in total_number_of_atoms_per_species_type.keys():
-    log.info("\tElement: {}, # atoms: {}, # B-func: {}, # projections: {}".format(elements_name[st],
-                                                                                  total_number_of_atoms_per_species_type[
-                                                                                      st],
-                                                                                  nfuncs[st], n_projections[st]
-                                                                                  ))
-    number_of_projection_entries += total_number_of_atoms_per_species_type[st] * n_projections[st]
-    required_active_set_memory += n_projections[st] ** 2
-
-required_projections_memory = number_of_projection_entries * 8  # float64
-required_active_set_memory *= 8  # in bytes, float64
-log.info("Required memory to store complete dataset projections: {}".format(sizeof_fmt(required_projections_memory)))
-log.info("Required memory to store active set: {}".format(sizeof_fmt(required_active_set_memory)))
-
-if batch_size == "auto":
-    log.info("Automatic batch_size determination")
-    log.info("Memory limit: {}".format(sizeof_fmt(mem_lim)))
-    if 2 * required_projections_memory + required_active_set_memory < mem_lim:
-        batch_size = None
+    data_path = os.environ.get("PACEMAKERDATAPATH", "")
+    if data_path:
+        if verbose:
+            log.info("Data path set to $PACEMAKERDATAPATH = {}".format(data_path))
+    if isinstance(dataset_filename, list):
+        df = load_datasets(dataset_filename, data_path, verbose)
     else:
-        n_batches = int(np.ceil(2 * required_projections_memory // (mem_lim - required_active_set_memory)))
-        batch_size = int(np.round(len(atomic_env_list) / n_batches))
-elif batch_size in ["None", "none"]:
-    batch_size = None
-else:
-    batch_size = int(batch_size)
+        raise ValueError("Unrecognized --dataset (-d) argument: {}".format(dataset_filename))
 
-if is_full:
-    active_set_inv_filename = potential_file.replace(".yaml", ".asi.nonlinear")
-    log.info("FULL (non-linear) matrix will be used for active set calculation")
-else:
-    active_set_inv_filename = potential_file.replace(".yaml", ".asi")
-    log.info("LINEAR matrix will be used for active set calculation")
+    if verbose:
+        log.info("Total number of structures: {}".format(len(df)))
 
-if batch_size is None:
-    # single shot MaxVol
-    log.info("Single-run (no batch_size is provided)")
-    log.info("Compute B-projections")
-    A0_proj_dict, forces_dict = compute_B_projections(bbasis, atomic_env_list, is_full=is_full,
-                                                      compute_forces_dict=True, verbose=verbose)
-    log.info("B-projections computed:")
-    for st, A0_proj in A0_proj_dict.items():
-        log.info("\tElement: {}, B-projections shape: {}".format(elements_name[st], A0_proj.shape))
+    if query is None and "name" in df.columns:
+        size_before = len(df)
+        df = df.query("not name.str.startswith('augmented')").reset_index(drop=True)
+        ndrop = size_before - len(df)
+        if verbose and ndrop > 0:
+            log.info(f"AUGMENTED STRUCTURES: {ndrop} structure(s) were dropped, new dataset size: {len(df)}")
+    if query is not None and not all_atoms:
+        if verbose:
+            log.info(f"Applying query ``{query}``")
+        df = df.query(query).reset_index(drop=True)
+        if verbose:
+            log.info("Total number of structures after query: {}".format(len(df)))
+    if verbose:
+        log.info("Potential file: {}".format(potential_file))
 
-    if not all_atoms:
-        log.info("Select atomic environments with force error below threshold")
-        if error_based_threshold == 0:
-            log.info("Automatic force error threshold determination(Q3+1.5*IQR)")
-        else:
-            log.info("Force error threshold: {:.3f} eV/A".format(error_based_threshold))
-        ref_forces_dict = extract_reference_forces_dict(df["ase_atoms"], df["forces"], elements_to_index_map)
+    bconf = BBasisConfiguration(potential_file)
 
-        A0_projections_cropped_dict = {}
-        outlier_struct_ind_dict = {}
-        sel_mask_dict = {}
-        for symb, st in elements_to_index_map.items():
-            dforces = ref_forces_dict[st] - forces_dict[st]
-            dforces_norm = np.linalg.norm(dforces, axis=1)
+    bbasis = ACEBBasisSet(bconf)
+    nfuncs = compute_number_of_functions(bbasis)
+    if is_full:
+        n_projections = [p * bbasis.map_embedding_specifications[st].ndensity for st, p in enumerate(nfuncs)]
+    else:  # linear
+        n_projections = nfuncs
 
-            if error_based_threshold <= 0:
-                q1, q2, q3 = np.quantile(dforces_norm, q=[0.25, 0.5, 0.75], )
-                iqr = q3 - q1
-                upper_bound = q3 + 1.5 * iqr
+    elements_to_index_map = bbasis.elements_to_index_map
+    elements_name = bbasis.elements_name
+    cutoffmax = bbasis.cutoffmax
+
+    ATOMIC_ENV_COLUMN = "atomic_env"
+
+    rebuild_atomic_env = False
+    if ATOMIC_ENV_COLUMN not in df.columns:
+        rebuild_atomic_env = True
+    else:
+        # check if cutoff is not smaller than requested now
+        try:
+            metadata_kwargs = df.metadata_dict[ATOMIC_ENV_COLUMN + "_kwargs"]
+            metadata_cutoff = metadata_kwargs["cutoff"]
+            if metadata_cutoff < cutoffmax:
+                if verbose:
+                    log.warning("WARNING! Column {} was constructed with smaller cutoff ({}A) "
+                                "that necessary now ({}A). "
+                                "Neighbourlists will be re-built".format(ATOMIC_ENV_COLUMN, metadata_cutoff,
+                                                                         cutoffmax))
+                rebuild_atomic_env = True
             else:
-                upper_bound = error_based_threshold
+                if verbose:
+                    log.info("Column '{}': existing cutoff ({}A) >= "
+                             "requested  cutoff ({}A), skipping...".format(ATOMIC_ENV_COLUMN, metadata_cutoff,
+                                                                           cutoffmax))
+                rebuild_atomic_env = False
 
-            sel_mask = dforces_norm <= upper_bound
-            sel_mask_dict[st] = sel_mask
+        except KeyboardInterrupt as e:
+            raise e
+        except Exception as e:
+            if verbose:
+                log.info("Could not extract cutoff metadata "
+                         "for column '{}' (error: {}). Please ensure the valid cutoff for "
+                         "precomputed neighbourlists".format(ATOMIC_ENV_COLUMN, e))
+            rebuild_atomic_env = True
 
-            f_rmse_before = np.sqrt(np.mean(dforces_norm ** 2))
+    if rebuild_atomic_env:
+        if verbose:
+            log.info(
+                "Constructing {} column, cutoffmax={}, elements_to_index_map={}".format(ATOMIC_ENV_COLUMN, cutoffmax,
+                                                                                        elements_to_index_map))
+        df[ATOMIC_ENV_COLUMN] = df["ase_atoms"].apply(aseatoms_to_atomicenvironment,
+                                                      cutoff=cutoffmax, elements_mapper_dict=elements_to_index_map)
 
-            f_rmse_after = np.sqrt(np.mean(dforces_norm[sel_mask] ** 2))
+    atomic_env_list = df[ATOMIC_ENV_COLUMN]
+    structure_ind_list = df.index
+    total_number_of_atoms_per_species_type = count_number_total_atoms_per_species_type(atomic_env_list)
 
-            log.info("\tElement: {}, specie type: {}".format(symb, st))
-            log.info("\t\tForce error upper bound: {:.3f} meV/A".format(1e3 * upper_bound))
-            log.info("\t\tNumber/fraction of selected atoms: {} ({:.1f}%)".format(np.sum(sel_mask),
-                                                                                  1e2 * np.mean(sel_mask)))
-            log.info("\t\tForce RMSE (before): {:.3f} meV/A".format(1e3 * f_rmse_before))
-            log.info("\t\tForce RMSE (after) : {:.3f} meV/A".format(1e3 * f_rmse_after))
-            A0_projections_cropped_dict[st] = A0_proj_dict[st][sel_mask]
+    required_active_set_memory, required_projections_memory = compute_required_memory(
+        total_number_of_atoms_per_species_type, elements_name, nfuncs, n_projections, verbose)
 
-        A0_proj_dict = A0_projections_cropped_dict
+    if verbose:
+        log.info(
+            "Required memory to store complete dataset projections: {}".format(sizeof_fmt(required_projections_memory)))
+        log.info("Required memory to store active set: {}".format(sizeof_fmt(required_active_set_memory)))
+    num_structures = len(atomic_env_list)
+    batch_size = compute_batch_size(batch_size_option, mem_lim, num_structures, required_active_set_memory,
+                                    required_projections_memory, verbose)
 
-    log.info("Compute active set (using MaxVol algorithm)")
-    A_active_set_dict = compute_active_set(A0_proj_dict, tol=gamma_tolerance, max_iters=maxvol_iters, verbose=True)
-    log.info("Compute pseudoinversion of active set")
-    A_active_inverse_set = compute_A_active_inverse(A_active_set_dict)
-    log.info("Done")
-    gamma_dict = compute_extrapolation_grade(A0_proj_dict, A_active_inverse_set)
-    gamma_max = {k: gg.max() for k, gg in gamma_dict.items()}
+    if is_full:
+        active_set_inv_filename = potential_file.replace(".yaml", ".asi.nonlinear")
+        if verbose:
+            log.info("FULL (non-linear) matrix will be used for active set calculation")
+    else:
+        active_set_inv_filename = potential_file.replace(".yaml", ".asi")
+        if verbose:
+            log.info("LINEAR matrix will be used for active set calculation")
 
-    for st, AS_inv in A_active_inverse_set.items():
-        log.info("\tElement: {}, Active set inv. shape: {}, gamma_max: {:.3f}".format(elements_name[st], AS_inv.shape,
-                                                                                      gamma_max[st]))
-    log.info("Saving Active Set Inversion (ASI) to {}".format(active_set_inv_filename))
-    with open(active_set_inv_filename, "wb") as f:
-        np.savez(f, **{elements_name[st]: v for st, v in A_active_inverse_set.items()})
-    log.info("Saving  done to {} ({})".format(active_set_inv_filename, sizeof_fmt(active_set_inv_filename)))
-else:
-    # multiple round maxvol
-    log.info("Approximated MaxVol by batches")
-    log.info("Batch size: {}".format(batch_size))
-    if not all_atoms:
-        log.error(
-            'WARNING! Error-based selection of atoms in batch mode is not implemented. Please use --all-atoms option')
-        sys.exit(1)
-    n_batches = len(atomic_env_list) // batch_size
-    log.info("Number of batches: {}".format(n_batches))
+    if batch_size is None:
+        # single shot MaxVol
+        if verbose:
+            log.info("Single-run (no batch_size is provided)")
+            log.info("Compute B-projections")
+        A0_proj_dict, forces_dict = compute_B_projections(bbasis, atomic_env_list, is_full=is_full,
+                                                          compute_forces_dict=True, verbose=verbose)
+        if verbose:
+            log.info("B-projections computed:")
+            for st, A0_proj in A0_proj_dict.items():
+                log.info("\tElement: {}, B-projections shape: {}".format(elements_name[st], A0_proj.shape))
 
-    log.info("Compute approximate active set (using batched MaxVol algorithm)")
-    (best_gamma, best_active_sets_dict, _) = \
-        compute_active_set_by_batches(
-            bbasis,
-            atomic_env_list=atomic_env_list,
-            structure_ind_list=structure_ind_list,
-            n_batches=n_batches,
-            gamma_tolerance=gamma_tolerance,
-            maxvol_iters=maxvol_iters,
-            n_refinement_iter=maxvol_refinement,
-            save_interim_active_set=True,
-            is_full=is_full,
-            verbose=verbose
-        )
-    log.info("Compute pseudoinversion of active set")
-    A_active_inverse_set = compute_A_active_inverse(best_active_sets_dict)
-    for st, AS_inv in A_active_inverse_set.items():
-        log.info("\tElement: {}, Active set inv. shape: {}, gamma_max: {:.3f}".format(elements_name[st], AS_inv.shape,
-                                                                                      best_gamma[st]))
-    log.info("Saving Active Set Inversion (ASI) to {}".format(active_set_inv_filename))
-    save_active_inverse_set(active_set_inv_filename, A_active_inverse_set, elements_name=elements_name)
-    log.info("Saving  done to {} ({})".format(active_set_inv_filename, sizeof_fmt(active_set_inv_filename)))
+        if not all_atoms:
+            if verbose:
+                log.info("Select atomic environments with force error below threshold")
+            if error_based_threshold == 0:
+                if verbose:
+                    log.info("Automatic force error threshold determination(Q3+1.5*IQR)")
+            else:
+                if verbose:
+                    log.info("Force error threshold: {:.3f} eV/A".format(error_based_threshold))
+            ref_forces_dict = extract_reference_forces_dict(df["ase_atoms"], df["forces"], elements_to_index_map)
+
+            A0_projections_cropped_dict = {}
+            outlier_struct_ind_dict = {}
+            sel_mask_dict = {}
+            for symb, st in elements_to_index_map.items():
+                dforces = ref_forces_dict[st] - forces_dict[st]
+                dforces_norm = np.linalg.norm(dforces, axis=1)
+
+                if error_based_threshold <= 0:
+                    q1, q2, q3 = np.quantile(dforces_norm, q=[0.25, 0.5, 0.75], )
+                    iqr = q3 - q1
+                    upper_bound = q3 + 1.5 * iqr
+                else:
+                    upper_bound = error_based_threshold
+
+                sel_mask = dforces_norm <= upper_bound
+                sel_mask_dict[st] = sel_mask
+
+                f_rmse_before = np.sqrt(np.mean(dforces_norm ** 2))
+
+                f_rmse_after = np.sqrt(np.mean(dforces_norm[sel_mask] ** 2))
+
+                if verbose:
+                    log.info("\tElement: {}, specie type: {}".format(symb, st))
+                    log.info("\t\tForce error upper bound: {:.3f} meV/A".format(1e3 * upper_bound))
+                    log.info("\t\tNumber/fraction of selected atoms: {} ({:.1f}%)".format(np.sum(sel_mask),
+                                                                                          1e2 * np.mean(sel_mask)))
+                    log.info("\t\tForce RMSE (before): {:.3f} meV/A".format(1e3 * f_rmse_before))
+                    log.info("\t\tForce RMSE (after) : {:.3f} meV/A".format(1e3 * f_rmse_after))
+                A0_projections_cropped_dict[st] = A0_proj_dict[st][sel_mask]
+
+            A0_proj_dict = A0_projections_cropped_dict
+
+        if verbose:
+            log.info("Compute active set (using MaxVol algorithm)")
+        A_active_set_dict = compute_active_set(A0_proj_dict, tol=gamma_tolerance, max_iters=maxvol_iters,
+                                               verbose=verbose)
+        if verbose:
+            log.info("Compute pseudoinversion of active set")
+        A_active_inverse_set = compute_A_active_inverse(A_active_set_dict)
+        if verbose:
+            log.info("Done")
+        gamma_dict = compute_extrapolation_grade(A0_proj_dict, A_active_inverse_set)
+        gamma_max = {k: gg.max() for k, gg in gamma_dict.items()}
+
+        if verbose:
+            for st, AS_inv in A_active_inverse_set.items():
+                log.info(
+                    "\tElement: {}, Active set inv. shape: {}, gamma_max: {:.3f}".format(elements_name[st],
+                                                                                         AS_inv.shape,
+                                                                                         gamma_max[st]))
+            log.info("Saving Active Set Inversion (ASI) to {}".format(active_set_inv_filename))
+        with open(active_set_inv_filename, "wb") as f:
+            np.savez(f, **{elements_name[st]: v for st, v in A_active_inverse_set.items()})
+        if verbose:
+            log.info("Saving  done to {} ({})".format(active_set_inv_filename, sizeof_fmt(active_set_inv_filename)))
+    else:
+        # multiple round maxvol
+        if verbose:
+            log.info("Approximated MaxVol by batches")
+            log.info("Batch size: {}".format(batch_size))
+        if not all_atoms:
+            log.error(
+                'WARNING! Error-based selection of atoms in batch mode is not implemented. Please use --all-atoms option')
+            sys.exit(1)
+        n_batches = len(atomic_env_list) // batch_size
+        if verbose:
+            log.info("Number of batches: {}".format(n_batches))
+
+        if verbose:
+            log.info("Compute approximate active set (using batched MaxVol algorithm)")
+        (best_gamma, best_active_sets_dict, _) = \
+            compute_active_set_by_batches(
+                bbasis,
+                atomic_env_list=atomic_env_list,
+                structure_ind_list=structure_ind_list,
+                n_batches=n_batches,
+                gamma_tolerance=gamma_tolerance,
+                maxvol_iters=maxvol_iters,
+                n_refinement_iter=maxvol_refinement,
+                save_interim_active_set=True,
+                is_full=is_full,
+                verbose=verbose
+            )
+        if verbose:
+            log.info("Compute pseudoinversion of active set")
+        A_active_inverse_set = compute_A_active_inverse(best_active_sets_dict)
+        if verbose:
+            for st, AS_inv in A_active_inverse_set.items():
+                log.info(
+                    "\tElement: {}, Active set inv. shape: {}, gamma_max: {:.3f}".format(elements_name[st],
+                                                                                         AS_inv.shape,
+                                                                                         best_gamma[st]))
+        if verbose:
+            log.info("Saving Active Set Inversion (ASI) to {}".format(active_set_inv_filename))
+        save_active_inverse_set(active_set_inv_filename, A_active_inverse_set, elements_name=elements_name)
+        if verbose:
+            log.info("Saving  done to {} ({})".format(active_set_inv_filename, sizeof_fmt(active_set_inv_filename)))
+
+
+if __name__ == "__main__":
+    main()
