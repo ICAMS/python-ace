@@ -233,7 +233,7 @@ def test_PyACEEnsembleCalculator():
 
 
 def test_ZBL_analytical_derivative():
-    calc = PyACECalculator("lib/ace/test/fitting/potentials/ZBL_rep.yaml")
+    calc = PyACECalculator("tests/ZBL_rep.yaml")
 
     def check(at, msg):
         at.set_calculator(calc)

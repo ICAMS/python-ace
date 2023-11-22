@@ -1,0 +1,28 @@
+global:
+  DeltaSplineBins: 0.001
+species:
+  - speciesblock: H
+    ndensityi: 1
+    npoti: FinnisSinclairShiftedScaled
+    parameters: [1, 1]
+    rho_core_cut: 0
+    drho_core_cut: 0
+    nradmaxi: 0
+    lmaxi: 0
+    rcutij: 5
+    dcutij: 0.01
+    NameOfCutoffFunctionij: ""
+    r_in: 3
+    delta_in: 1
+    inner_cutoff_type: zbl
+    nradbaseij: 5
+    radbase: SBessel
+    radparameters: [2]
+    radcoefficients: []
+    core-repulsion: [1, 1]
+    nbody:
+      - {type: H H, nr: [1], nl: [0], c: [0]}
+      - {type: H H, nr: [2], nl: [0], c: [0]}
+      - {type: H H, nr: [3], nl: [0], c: [0]}
+      - {type: H H, nr: [4], nl: [0], c: [0]}
+      - {type: H H, nr: [5], nl: [0], c: [0]}
