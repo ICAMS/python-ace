@@ -84,8 +84,7 @@ def build_parser():
                         default=10)
 
     parser.add_argument('--inner-cutoff',
-                        help="dictionary of inner cutoff `Al:-0.123 Cu-Cu:-0.456 Al-Cu:auto`,"
-                             " default is zero. If option is `auto`, then it will be extracted from dataset",
+                        help="dictionary of inner cutoff `Al:1.5 Cu-Cu:1.6 Al-Cu:1.55`, default is zero.",
                         nargs='*', dest="inner_cutoff_dict", default=defaultdict(lambda: 0), action=ParseKwargs)
 
     return parser
