@@ -43,7 +43,7 @@ add_subdirectory(${CNPY_PATH})
 #target_include_directories(test_extended PUBLIC ${WIGNER_INCLUDE_PATH})
 ## cnpy
 #target_include_directories(test_extended PUBLIC ${CNPY_INCLUDE_PATH})
-#target_link_libraries(test_extended cnpy-static)
+#target_link_libraries(test_extended cnpy)
 ##YAML
 #target_include_directories(test_extended PUBLIC ${YAML_INCLUDE_PATH})
 #target_link_libraries(test_extended yaml-cpp)

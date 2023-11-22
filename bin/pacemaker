@@ -169,7 +169,8 @@ def main(args):
     log.info("ace_evaluator   version: {}".format(get_ace_evaluator_version()))
     log.info("Loading {}... ".format(input_yaml_filename))
     with open(input_yaml_filename) as f:
-        args_yaml = yaml.safe_load(f)
+        yaml_loader = yaml.YAML(typ='safe', pure=True)
+        args_yaml = yaml_loader.load(f)
 
     assert isinstance(args_yaml, dict)
     if "cutoff" in args_yaml:
