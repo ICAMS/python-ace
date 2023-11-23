@@ -371,23 +371,6 @@ class GeneralACEFit:
             normalize_energy_forces_weights(self.test_data)
             save_dataset(self.test_data, TEST_DATA_INFO_FILENAME)
 
-        # automatic repulsion selection
-        if "repulsion" in self.fit_config and self.fit_config["repulsion"] == "auto":
-            log.info("Auto core-repulsion estimation. Minimal distance calculation...")
-            min_distance_per_bond = calculate_minimal_nn_distance_per_bond(self.fitting_data)
-            basis = ACEBBasisSet(self.target_bbasisconfig)
-
-            min_distance_per_bond = complement_min_dist_dict(min_distance_per_bond, min_distance_per_bond,
-                                                              basis.elements_name,
-                                                              verbose=True)
-            log.info("Minimal distance per bonds = {} A ".format(min_distance_per_bond))
-            setup_zbl_inner_core_repulsion(self.target_bbasisconfig, min_distance_per_bond)
-            if self.initial_bbasisconfig:
-                setup_zbl_inner_core_repulsion(self.initial_bbasisconfig, min_distance_per_bond)
-            log.info("Inner cutoff / core-repulsion initialized with ZBL")
-            # save target_potential.yaml
-            self.target_bbasisconfig.save(TARGET_POTENTIAL_YAML)
-
         # plot self.fitting_data, self.test_data
         if self.fitting_data is not None:
             log.info("Plotting train energy-forces distribution")
@@ -405,6 +388,20 @@ class GeneralACEFit:
             log.info("LossFunctionSpecification:kappa automatically selected: kappa = {:.3f}".format(kappa_auto))
 
         self.loss_spec = LossFunctionSpecification(**loss_spec_dict)
+
+    def set_core_rep(self, basis_conf):
+        # automatic repulsion selection
+        if "repulsion" in self.fit_config and self.fit_config["repulsion"] == "auto":
+            log.info("Auto core-repulsion estimation. Minimal distance calculation...")
+            min_distance_per_bond = calculate_minimal_nn_distance_per_bond(self.fitting_data)
+            basis = ACEBBasisSet(basis_conf)
+
+            min_distance_per_bond = complement_min_dist_dict(min_distance_per_bond, min_distance_per_bond,
+                                                             basis.elements_name,
+                                                             verbose=True)
+            log.info("Minimal distance per bonds = {} A ".format(min_distance_per_bond))
+            setup_zbl_inner_core_repulsion(basis_conf, min_distance_per_bond)
+            log.info("Inner cutoff / core-repulsion initialized with ZBL")
 
     def fit_metric_callback(self, metrics_dict, extended_display_step=None):
         metrics_dict["cycle_step"] = self.current_fit_cycle

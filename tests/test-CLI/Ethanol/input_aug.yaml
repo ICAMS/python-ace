@@ -31,7 +31,7 @@ potential:
     }
 
   functions:
-    number_of_functions_per_element: 50
+    number_of_functions_per_element: 200
     UNARY:   { nradmax_by_orders: [ 15, 6, 4, 3, 2, 2 ], lmax_by_orders: [ 0 , 3, 3, 2, 2, 1 ]}
     BINARY:  { nradmax_by_orders: [ 15, 6, 3, 2, 2, 1 ], lmax_by_orders: [ 0 , 3, 2, 1, 1, 0 ]}
     TERNARY: { nradmax_by_orders: [ 15, 3, 3, 2, 1 ],    lmax_by_orders: [ 0 , 2, 2, 1, 1 ], }
@@ -43,7 +43,7 @@ potential:
 #################################################################
 data:
   filename: [ethanol.pckl.gzip, aug_df.pkl.gz]       # force to read reference pickled dataframe from given file
-  
+  aug_factor: 1e-6 
 
 
 #################################################################
@@ -52,34 +52,18 @@ data:
 fit:
   loss: { kappa: 0.3, L1_coeffs: 1e-8,  L2_coeffs: 1e-8}
   # if kappa: auto, then it will be determined from the variation of energy per atom and forces norms in train set
-    ## DATA WEIGHTING OPTIONS ##
-  weighting: {
-      type: EnergyBasedWeightingPolicy,
-      nfit: 100,
-      DEup: 10.0,  ## eV, upper energy range (E_min + DElow, E_min + DEup)
-      DFup: 50.0, ## eV/A
-      DElow: 1.0,  ## eV
-      DE: 1.0,
-      DF: 1.0,
-      ##  "convex_hull" or "cohesive" : method to compute the E_min
-      energy: cohesive,
-      ## structures types: all (default), bulk or cluster
-      reftype: all,
-      ## random number seed
-      seed: 42
-    }
   
 
   optimizer: BFGS # or L-BFGS-B
 
   ## maximum number of minimize iterations
-  maxiter: 20
+  maxiter: 2000
 
   ## additional options for scipy.minimize
   #  options: {maxcor: 100}
 
   ## Automatically find the smallest interatomic distance in dataset  and set inner cutoff based on this
-  #  repulsion: auto
+  # repulsion: auto
 
   #  ladder_step: 100
   #  ladder_type: power_order
@@ -89,6 +73,6 @@ fit:
 #################################################################
 backend:
   evaluator: tensorpot
-  batch_size: 100
+  batch_size: 256
   display_step: 50
 

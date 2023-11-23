@@ -289,6 +289,7 @@ def main(args):
 
     if not args_parse.no_fit:
         general_fit.fit()
+        general_fit.set_core_rep(general_fit.target_bbasisconfig)
         general_fit.save_optimized_potential(output_file_name)
 
     if not args_parse.no_predict:
