@@ -11,7 +11,7 @@ pacemaker -p output_potential.yaml
 # active set
 pace_activeset -d fitting_data_info.pckl.gzip output_potential.yaml
 # data augmentation
-pace_augment -d fitting_data_info.pckl.gzip output_potential.yaml -a output_potential.asi
+pace_augment -d fitting_data_info.pckl.gzip output_potential.yaml -a output_potential.asi  -mss 5
 # upfit
 pacemaker input_aug.yaml -p output_potential.yaml
 # active set
