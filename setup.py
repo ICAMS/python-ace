@@ -209,7 +209,7 @@ setup(
     scripts=["bin/pacemaker", "bin/pace_yaml2yace",
              "bin/pace_timing", "bin/pace_info",
              "bin/pace_activeset", "bin/pace_select",
-             "bin/pace_collect"],
+             "bin/pace_collect", "bin/pace_augment", "bin/pace_corerep"],
 
     python_requires=">=3.8"
 )
