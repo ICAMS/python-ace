@@ -51,20 +51,18 @@ def analyse_potential_shape(ace_potential):
     print("=" * 40)
     print(" " * 10, "Bonds")
     print("=" * 40)
-    print("Bond\tradbasename\trcut\tr_in\tdelta_in prehc\tlambdahc")
+    print(
+        "{:^7} {:^10} {:^8} {:^8} {:^8} {:^8} {:^8} {:^8}".format("Bond", "radbase", "rcut",
+                                                                 "r_in", "delta_in", "prehc", "lambdahc", "core-rep"))
     print("=" * 40)
     for (mu_i, mu_j), bond_spec in map_bond_specifications.items():
         el_i = elements_name[mu_i]
         el_j = elements_name[mu_j]
         rc = bond_spec.rcut
-        print("{}-{}".format(el_i, el_j),
-              "\t", bond_spec.radbasename,
-              "\t", rc,
-              "\t", bond_spec.rcut_in,
-              "\t", bond_spec.dcut_in,
-              "\t", bond_spec.prehc,
-              "\t", bond_spec.lambdahc,
-              )
+        print(
+            f"{el_i:^3}-{el_j:^3} {bond_spec.radbasename:^10} {rc:^8.3f} {bond_spec.rcut_in:^8.3f}"
+            f" {bond_spec.dcut_in:^8.3f} {bond_spec.prehc:^8.3f} {bond_spec.lambdahc:^8.3f} {bond_spec.inner_cutoff_type:^8}",
+        )
 
     print("=" * 40)
 
