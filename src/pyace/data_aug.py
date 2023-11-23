@@ -181,7 +181,89 @@ def get_min_nn_dist(atoms, cutoff=7):
     return min_nn_dist
 
 
+def make_cell_for_non_periodic_structure(structure, wrapped=True, scale=None, alat=None, min_cell_len=10):
+    """
+    function to generate a cell with sides s_i; s_i = diameter_i + (alat*scale) adapted
+    from Minaam Quamar
+
+    structure: ase.Atoms object
+        must be an atoms object with pbc=False and cell=[0,0,0]
+        with both positive and negative cartesian positions.
+
+        In case `structure` is provided as a periodic structure,
+        set argument `wrapped=False` to wrap the positions around the
+        origin to resemble a non-periodic struc
+
+    alat: float
+        ground state equilibrium lattice constant for the element
+
+    scale: float
+        arbit but preferably > 5 to ensure minimal interaction
+        through pbc boundary
+
+    wrapped: bool
+        if input structure is periodic then set `wrapped=False`
+
+        This will manually wrap the atoms about (0,0,0). But may shift the
+        relative atomic positions slightly. So avoid unless necessary
+
+    """
+    if not wrapped:
+        structure.wrap(center=[0, 0, 0])
+
+    # get all the x,y,z positions
+    pos = structure.positions
+    x, y, z = pos.T
+
+    # get the diameter of the cluster in x,y,z
+    X = max(x) - min(x)
+    Y = max(y) - min(y)
+    Z = max(z) - min(z)
+
+    # to ensure minimum diameter=1 for very small clusters
+    if X < 1:
+        X = 1
+    if Y < 1:
+        Y = 1
+    if Z < 1:
+        Z = 1
+
+    # generate orthogonal cell
+    cell = [[max(X + (scale * alat), min_cell_len), 0, 0],
+            [0, max(Y + (scale * alat), min_cell_len), 0],
+            [0, 0, max(Z + (scale * alat), min_cell_len)]]
+
+    return cell
+
+
+def make_periodic_structure(structure, wrapped=True, scale=5.0, alat=2):
+    structure = structure.copy()
+    if not all(structure.get_pbc()):
+        orthogonal_cell = make_cell_for_non_periodic_structure(structure,
+                                                               wrapped=wrapped,
+                                                               scale=scale,
+                                                               alat=alat)
+        structure.set_cell(orthogonal_cell)
+        structure.set_pbc(True)
+    return structure
+
+
+def enforce_pbc_structure(basis_ref):
+    if not all(basis_ref.get_pbc()):
+        basis_ref = make_periodic_structure(basis_ref)
+        enforced_pbc = True
+    else:
+        enforced_pbc = False
+    return basis_ref, enforced_pbc
+
+
+def remove_pbc(atoms):
+    atoms.set_cell(None, scale_atoms=False)
+    atoms.set_pbc(False)
+
+
 def generate_nndist_atoms(original_atoms, nn_distances, cutoff=7):
+    original_atoms, enforced_pbc = enforce_pbc_structure(original_atoms)
     min_nn_dist = get_min_nn_dist(original_atoms, cutoff=cutoff)
 
     atoms_list = []
@@ -190,6 +272,8 @@ def generate_nndist_atoms(original_atoms, nn_distances, cutoff=7):
         cell = at.get_cell()
         cell *= z / min_nn_dist
         at.set_cell(cell, scale_atoms=True)
+        if enforced_pbc:
+            remove_pbc(at)
         atoms_list.append(at)
 
     return atoms_list
@@ -369,7 +453,7 @@ def augment_structure_eos(
 
         df_selected[EPA_CORRECTED_C] = df_selected[EPA_ZBL_C]
         df_selected[FORCES_C] = df_selected[FORCES_ZBL_C]
-        df_selected = df_selected[df_selected[EPA_ZBL_C] > epa_reliable_max].copy()
+        df_selected = df_selected[df_selected[EPA_ZBL_C] >= epa_reliable_max].copy()
     elif augmentation_type == EOS:
         df_selected[EPA_CORRECTED_C] = df_selected[EPA_EOS_C]
         df_selected[FORCES_C] = df_selected[FORCES_EOS_C]
@@ -377,7 +461,7 @@ def augment_structure_eos(
         raise NotImplementedError(f"Unknown augmentation_type=`{augmentation_type}`")
 
     # 1. Volume less than min reliable volume
-    df_selected = df_selected[df_selected[VPA_C] < vpa_reliable_min]
+    df_selected = df_selected[df_selected[VPA_C] <= vpa_reliable_min]
 
     # 2. Epa_aug max criteria
     if epa_aug_max is not None:
@@ -441,7 +525,10 @@ def compute_enn_df(atoms, calc, compute_zbl=False, nn_distance_range=(1, 5),
         # compute ACE energy
         curr_atoms.set_calculator(calc)
         epas.append(curr_atoms.get_potential_energy() / natoms)
-        vpas.append(curr_atoms.get_volume() / natoms)
+        try:
+            vpas.append(curr_atoms.get_volume() / natoms)
+        except Exception as e:
+            vpas.append(0)
         zs.append(z)
 
         if compute_gamma:
@@ -456,7 +543,7 @@ def compute_enn_df(atoms, calc, compute_zbl=False, nn_distance_range=(1, 5),
             fzbls.append(curr_atoms.get_forces())
     df = (
         pd.DataFrame({VPA_C: vpas, EPA_C: epas, Z_C: zs, ASE_ATOMS_C: structs})
-        .sort_values("vpa")
+        .sort_values(Z_C)
         .reset_index(drop=True)
     )
     if compute_gamma:

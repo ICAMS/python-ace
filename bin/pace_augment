@@ -21,7 +21,7 @@ from pyace.atomicenvironment import aseatoms_to_atomicenvironment
 from pyace.aceselect import load_multiple_datasets
 from pyace.data_aug import ZBLCalculator, augment_structure_eos, generate_nndist_atoms
 from pyace.aceselect import select_structures_maxvol
-
+from pyace.utils.utils import compute_nn_dist_per_bond
 
 def build_parser():
     parser = argparse.ArgumentParser(prog="pace_augment",
@@ -84,10 +84,6 @@ def build_parser():
 
     return parser
 
-
-def compute_nn_dist_per_bond(atoms, cutoff=3, elements_mapper_dict=None):
-    ae = aseatoms_to_atomicenvironment(atoms, cutoff, elements_mapper_dict=elements_mapper_dict)
-    return ae.get_minimal_nn_distance_per_bond()
 
 
 def generate_w_forces_mask(at, bond_quantile_dict, cutoff=3, elements_mapper_dict=None):
@@ -162,12 +158,10 @@ def main():
     bond_quantile_dict = {}
 
     for k, v in min_nn_dist_dd.items():
-        q_th = 0.001  # q_th = max(2. / len(v), 0.001)
-        log.info(f"Bond {k}: #{len(v)} nn_dists, quantile_threshold = {q_th:.3f}")
+        q_th = 0.001
         q = np.quantile(v, q=q_th)
         bond_quantile_dict[k] = q
-        # log.info(f"{elements_mapper_dict[k[0]]}-{elements_mapper_dict[k[1]]}: {q:.3f}")
-        log.info(f"{k}: {q:.3f}")
+        log.info(f"Bond {k}:  {q:.3f} (#{len(v)} nn_dists)")
 
     max_min_dist = max(bond_quantile_dict.values())
     min_min_dist = min(bond_quantile_dict.values())

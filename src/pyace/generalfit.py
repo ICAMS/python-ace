@@ -18,7 +18,7 @@ from pyace.fitadapter import FitBackendAdapter
 from pyace.preparedata import get_fitting_dataset, normalize_energy_forces_weights
 from pyace.lossfuncspec import LossFunctionSpecification
 from pyace.metrics_aggregator import MetricsAggregator
-
+from pyace.utils.utils import complement_min_dist_dict
 from pyace.atomicenvironment import calculate_minimal_nn_distance, calculate_minimal_nn_distance_per_bond
 
 log = logging.getLogger(__name__)
@@ -75,7 +75,7 @@ def setup_zbl_inner_core_repulsion(bconf, min_dist_per_bond_dict, dr_in=0.1, rho
         elif len(key) == 1:
             r_in = min_dist_per_bond_dict[(e_to_mu[key[0]], e_to_mu[key[0]])]
         else:
-            raise RuntimeError(f"Invalid block key: {key}")
+            continue
         sp.core_rep_parameters = core_rep_pars
         sp.r_in = r_in
         sp.delta_in = dr_in
@@ -375,6 +375,11 @@ class GeneralACEFit:
         if "repulsion" in self.fit_config and self.fit_config["repulsion"] == "auto":
             log.info("Auto core-repulsion estimation. Minimal distance calculation...")
             min_distance_per_bond = calculate_minimal_nn_distance_per_bond(self.fitting_data)
+            basis = ACEBBasisSet(self.target_bbasisconfig)
+
+            min_distance_per_bond = complement_min_dist_dict(min_distance_per_bond, min_distance_per_bond,
+                                                              basis.elements_name,
+                                                              verbose=True)
             log.info("Minimal distance per bonds = {} A ".format(min_distance_per_bond))
             setup_zbl_inner_core_repulsion(self.target_bbasisconfig, min_distance_per_bond)
             if self.initial_bbasisconfig:

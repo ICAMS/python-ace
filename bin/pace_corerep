@@ -12,6 +12,7 @@ from pyace.atomicenvironment import aseatoms_to_atomicenvironment
 from pyace.aceselect import load_multiple_datasets
 from pyace.generalfit import setup_zbl_inner_core_repulsion, setup_inner_core_repulsion
 from pyace.data_aug import ZBLCalculator, select_reliable_enn_part, compute_enn_df
+from pyace.utils.utils import get_vpa, compute_nn_dist_per_bond, complement_min_dist_dict
 
 import logging
 
@@ -169,9 +170,6 @@ def main():
     else:
         raise ValueError("Unrecognized --dataset (-d) argument: {}".format(dataset_filename))
 
-    df["NUMBER_OF_ATOMS"] = df["ase_atoms"].map(len)
-    df["volume_per_atom"] = df["ase_atoms"].map(lambda a: a.get_volume() / len(a))
-
     if verbose:
         log.info(f"Loading B-basis configuration from {potential_file}")
 
@@ -183,6 +181,26 @@ def main():
     if verbose:
         log.info("Loading active set")
     calc_orig.set_active_set(active_set_inv_fname)
+
+    elements_mapper_dict = calc_orig.basis.elements_to_index_map
+    df["nn_dist_per_bond"] = df["ase_atoms"].apply(compute_nn_dist_per_bond,
+                                                   cutoff=calc_orig.basis.cutoffmax,
+                                                   elements_mapper_dict=elements_mapper_dict)
+    df["NUMBER_OF_ATOMS"] = df["ase_atoms"].map(len)
+    df["volume_per_atom"] = df["ase_atoms"].map(get_vpa)
+
+    min_nn_dist_dd = defaultdict(list)
+    for nn_dist_per_bond in df['nn_dist_per_bond']:
+        for k, v in nn_dist_per_bond.items():
+            min_nn_dist_dd[k].append(v)
+    log.info("Minimal distance threshold (quantile=0.001) per bond (Ang):")
+    bond_quantile_dict = {}
+
+    for k, v in min_nn_dist_dd.items():
+        q_th = 0.001
+        q = np.quantile(v, q=q_th)
+        bond_quantile_dict[k] = q
+        log.info(f"Bond {k}:  {q:.3f} (#{len(v)} nn_dists)")
 
     nat_quant50 = int(df["NUMBER_OF_ATOMS"].quantile(q=0.5))
     candidate_list = df.query(f"NUMBER_OF_ATOMS<={nat_quant50}").sort_values("NUMBER_OF_ATOMS")["ase_atoms"]
@@ -205,12 +223,12 @@ def main():
             rel_kink_df = select_reliable_enn_part(enndf, reliability_criteria="kink")
             rel_gamma_df = select_reliable_enn_part(enndf, reliability_criteria="extrapolation", gamma_max=gamma_max)
 
-            enndf_zbl = enndf.query("epa<epa_zbl")
+            enndf_zbl = enndf.query("epa<=epa_zbl")
             zbl_rel_z = enndf_zbl["z"].min()
 
             rel_z = min(rel_kink_df["z"].min(), rel_gamma_df["z"].min())
             rel_z = max(zbl_rel_z, rel_z)
-            enndf = enndf[enndf["z"] < rel_z]
+            enndf = enndf[enndf["z"] <= rel_z]
 
             cur_map_bond_dist = defaultdict(list)
             for _, row in enndf.iterrows():
@@ -232,9 +250,13 @@ def main():
         k = tuple(sorted(k))
         min_dist_per_bond_dict[k] = max(min_dist_per_bond_dict[k], rin)
 
+    # TODO: fill remaining bond pairs with min_dist
     elements = calc_orig.basis.elements_name
+
+    min_dist_per_bond_dict = complement_min_dist_dict(min_dist_per_bond_dict, bond_quantile_dict, elements, verbose)
+
     if verbose:
-        log.info("Calculated inner cutoff (99% percentile): ")
+        log.info("Calculated inner cutoff (99% percentile or minimal distance): ")
         for k, v in min_dist_per_bond_dict.items():
             log.info(f" {elements[k[0]]}-{elements[k[1]]}: {v:.3f} Ang")
 
