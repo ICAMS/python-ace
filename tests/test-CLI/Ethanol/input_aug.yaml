@@ -57,7 +57,7 @@ fit:
   optimizer: BFGS # or L-BFGS-B
 
   ## maximum number of minimize iterations
-  maxiter: 2000
+  maxiter: 20
 
   ## additional options for scipy.minimize
   #  options: {maxcor: 100}

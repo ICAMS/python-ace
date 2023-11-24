@@ -21,7 +21,7 @@ from pyace.atomicenvironment import aseatoms_to_atomicenvironment
 from pyace.aceselect import load_multiple_datasets
 from pyace.data_aug import ZBLCalculator, augment_structure_eos, generate_nndist_atoms
 from pyace.aceselect import select_structures_maxvol
-from pyace.utils.utils import compute_nn_dist_per_bond
+from pyace.utils.utils import compute_nn_dist_per_bond, complement_min_dist_dict
 
 def build_parser():
     parser = argparse.ArgumentParser(prog="pace_augment",
@@ -130,6 +130,7 @@ def main():
     bconf = BBasisConfiguration(potential_file)
     bbasis = ACEBBasisSet(bconf)
     elements_mapper_dict = bbasis.elements_to_index_map
+    elements = bbasis.elements_name
 
     active_set_inv_fname = args_parse.active_set_inv_fname
     if active_set_inv_fname:
@@ -165,7 +166,7 @@ def main():
 
     max_min_dist = max(bond_quantile_dict.values())
     min_min_dist = min(bond_quantile_dict.values())
-
+    bond_quantile_dict = complement_min_dist_dict(bond_quantile_dict, bond_quantile_dict, elements, verbose)
     compute_compositions(df, compute_composition_tuples=True)
 
     if args_parse.max_num_at == -1:
@@ -219,13 +220,14 @@ def main():
     aug_df = pd.concat(all_aug_df_list).reset_index(drop=True)
     log.info(f"{len(aug_df)} augmented structures before filtering")
 
+    aug_df = compute_and_filter_w_forces_mask(aug_df, bond_quantile_dict,
+                                              elements_mapper_dict=elements_mapper_dict,
+                                              cutoff=aug_df["z"].max())
+
     if len(aug_df) == 0:
         log.error("No augmented structures found")
         sys.exit(1)
 
-    aug_df = compute_and_filter_w_forces_mask(aug_df, bond_quantile_dict,
-                                              elements_mapper_dict=elements_mapper_dict,
-                                              cutoff=aug_df["z"].max())
     log.info(f"{len(aug_df)} augmented structures after filtering")
 
     log.info("Optimal selection of augmented structures using D-optimality")
