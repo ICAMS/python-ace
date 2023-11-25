@@ -86,6 +86,7 @@ public:
 
 
     DOUBLE_TYPE e_atom = 0; ///< energy of current atom, including core-repulsion
+    DOUBLE_TYPE ace_fcut;
 
     /**
      * temporary array for the pair forces between current atom_i and its neighbours atom_k

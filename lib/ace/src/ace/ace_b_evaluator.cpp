@@ -743,6 +743,7 @@ ACEBEvaluator::compute_atom(int i, DOUBLE_TYPE **x, const SPECIES_TYPE *type, co
     //now, energies and forces are ready
     //energies(i) = evdwl + rho_core;
     e_atom = evdwl_cut;
+    ace_fcut = fcut;
 #ifdef EXTRA_C_PROJECTIONS
     if (this->compute_projections) {
         //check if active set is loaded

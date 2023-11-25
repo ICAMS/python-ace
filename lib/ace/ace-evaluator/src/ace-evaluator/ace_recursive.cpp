@@ -1409,7 +1409,7 @@ ACERecursiveEvaluator::compute_atom(int i, DOUBLE_TYPE **x, const SPECIES_TYPE *
     //now, energies and forces are ready
     //energies(i) = evdwl + rho_core;
     e_atom = evdwl_cut;
-
+    ace_fcut = fcut;
 #ifdef PRINT_INTERMEDIATE_VALUES
     printf("energies(i) = FS(...rho_p_accum...) = %f\n", evdwl);
 #endif
