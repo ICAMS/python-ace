@@ -45,11 +45,11 @@ def build_parser():
 
     parser.add_argument("-d", "--dataset", action='append',
                         help="Dataset file name(s), ex.: -d filename.pckl.gzip [-d filename2.pckl.gzip]", type=str,
-                        required=False)
+                        required=True)
 
     parser.add_argument("-a", "--active-set-inv",
                         help="Active Set Inverted (ASI) filename, considered as extra B-projections",
-                        default=None, type=str, dest="active_set_inv_fname")
+                        default=None, type=str, dest="active_set_inv_fname",  required=True)
 
     parser.add_argument("-o", "--output",
                         help="Output filename for auto-tuned core-rep potential. "
@@ -67,7 +67,7 @@ def build_parser():
     parser.add_argument("-nnmin", "--nn-dist-min", type=float,
                         dest="nn_distance_min",
                         help="Min. nearest-neighbour distance for data augmentation (default = 1)",
-                        default=1)
+                        default=0.5)
 
     parser.add_argument("-nnmax", "--nn-dist-max", type=float,
                         dest="nn_distance_max",

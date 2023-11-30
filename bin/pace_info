@@ -53,7 +53,7 @@ def analyse_potential_shape(ace_potential):
     print("=" * 40)
     print(
         "{:^7} {:^10} {:^8} {:^8} {:^8} {:^8} {:^8} {:^8}".format("Bond", "radbase", "rcut",
-                                                                 "r_in", "delta_in", "prehc", "lambdahc", "core-rep"))
+                                                                  "r_in", "delta_in", "prehc", "lambdahc", "core-rep"))
     print("=" * 40)
     for (mu_i, mu_j), bond_spec in map_bond_specifications.items():
         el_i = elements_name[mu_i]

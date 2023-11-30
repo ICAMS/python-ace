@@ -45,6 +45,7 @@ data:
   filename: {{DATAFILENAME}}       # force to read reference pickled dataframe from given file
   {{test_size}}
   #  aug_factor: 1e-4 # common prefactor for weights of augmented structures
+  # reference_energy: auto
 
 #################################################################
 ## Fit specification section

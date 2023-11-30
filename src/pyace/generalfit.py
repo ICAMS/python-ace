@@ -1,4 +1,5 @@
 import gc
+import json
 import logging
 
 from datetime import datetime
@@ -15,11 +16,11 @@ from pyace.multispecies_basisextension import extend_multispecies_basis, expand_
     compute_bbasisset_train_mask, clean_bbasisconfig, reset_bbasisconfig
 from pyace.const import *
 from pyace.fitadapter import FitBackendAdapter
-from pyace.preparedata import get_fitting_dataset, normalize_energy_forces_weights
+from pyace.preparedata import ACEDataset
 from pyace.lossfuncspec import LossFunctionSpecification
 from pyace.metrics_aggregator import MetricsAggregator
 from pyace.utils.utils import complement_min_dist_dict
-from pyace.atomicenvironment import calculate_minimal_nn_distance, calculate_minimal_nn_distance_per_bond
+from pyace.atomicenvironment import calculate_minimal_nn_distance_per_bond
 
 log = logging.getLogger(__name__)
 log.setLevel(logging.DEBUG)
@@ -110,29 +111,6 @@ def get_initial_potential(start_potential):
         raise ValueError("potential_config[`{}`] is neither str nor BBasisConfiguration".format(
             POTENTIAL_INITIAL_POTENTIAL_KW))
     return initial_bbasisconfig
-
-
-def train_test_split(df, test_size: Union[float, int]) -> Tuple[pd.DataFrame, pd.DataFrame]:
-    """
-    Split df into train and test
-    :param df: data frame
-    :param test_size:
-    :return:
-    """
-    n_samples = len(df)
-    if test_size >= 1:
-        train_size = n_samples - test_size
-    elif 0 < test_size and test_size < 1:
-        test_size = int(n_samples * test_size)
-        train_size = n_samples - test_size
-
-    inds = np.arange(len(df))
-    np.random.shuffle(inds)
-
-    train_inds = sorted(inds[:train_size])
-    test_inds = sorted(inds[train_size:])
-
-    return df.iloc[train_inds].copy(), df.iloc[test_inds].copy()
 
 
 def save_dataset(dataframe, fname):
@@ -334,41 +312,28 @@ class GeneralACEFit:
         self.fitting_data = None
         self.test_data = None
         if isinstance(self.data_config, (dict, str)):
-            ### TODO: augment dataset here
-            self.fitting_data = get_fitting_dataset(evaluator_name=self.evaluator_name,
-                                                    data_config=self.data_config,
-                                                    weighting_policy_spec=self.weighting_policy_spec,
-                                                    cutoff=self.cutoff, elements=self.elements
-                                                    )
-            if isinstance(self.data_config, dict):
-                if "test_size" in self.data_config:
-                    test_size = self.data_config["test_size"]
-                    log.info("Splitting test dataset (test_size = {}) from main dataset({} samples)".format(test_size,
-                                                                                                            len(self.fitting_data)))
-                    self.fitting_data, self.test_data = train_test_split(self.fitting_data, test_size=test_size)
-                elif "test_filename" in self.data_config:
-                    test_filename = self.data_config["test_filename"]
-                    log.info("Loading test dataset from {}".format(test_filename))
-                    self.test_data = get_fitting_dataset(evaluator_name=self.evaluator_name,
-                                                         data_config={"filename": test_filename,
-                                                                      "datapath": self.data_config.get("datapath"),
-                                                                      "force_rebuild": self.data_config.get(
-                                                                          "force_rebuild", False)
-                                                                      },
-                                                         weighting_policy_spec=self.weighting_policy_spec,
-                                                         cutoff=self.cutoff, elements=self.elements
-                                                         )
+            if REFERENCE_ENERGY in self.target_bbasisconfig.metadata and REFERENCE_ENERGY not in self.data_config:
+                self.data_config[REFERENCE_ENERGY] = json.loads(self.target_bbasisconfig.metadata[REFERENCE_ENERGY])
+                log.info(f"Loading '{REFERENCE_ENERGY}' from potential metadata")
+            self.ace_dataset = ACEDataset(data_config=self.data_config,
+                                          weighting_policy_spec=self.weighting_policy_spec,
+                                          cutoff=self.cutoff, elements=self.elements,
+                                          evaluator_name=self.evaluator_name, )
+            if self.ace_dataset.reference_energy is not None:
+                self.target_bbasisconfig.metadata[REFERENCE_ENERGY] = json.dumps(self.ace_dataset.reference_energy)
+                self.target_bbasisconfig.save(TARGET_POTENTIAL_YAML)
+                log.info(f"Saving '{REFERENCE_ENERGY}' to potential metadata")
+            self.fitting_data = self.ace_dataset.fitting_data
+            self.test_data = self.ace_dataset.test_data
         elif isinstance(self.data_config, pd.DataFrame):
             self.fitting_data = self.data_config
         else:
             raise ValueError("'data-config' should be dictionary or pd.DataFrame")
 
         if self.fitting_data is not None:
-            normalize_energy_forces_weights(self.fitting_data)
             save_dataset(self.fitting_data, FITTING_DATA_INFO_FILENAME)
 
         if self.test_data is not None:
-            normalize_energy_forces_weights(self.test_data)
             save_dataset(self.test_data, TEST_DATA_INFO_FILENAME)
 
         # plot self.fitting_data, self.test_data

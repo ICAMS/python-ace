@@ -7,11 +7,13 @@ import logging
 import os
 import pkg_resources
 import re
+
 try:
     import readline
-    no_readline=False
+
+    no_readline = False
 except ImportError:
-    no_readline=True
+    no_readline = True
 import shutil
 import socket
 import sys
@@ -28,12 +30,14 @@ log = logging.getLogger()
 
 from shutil import copyfile
 from pyace.generalfit import GeneralACEFit
-from pyace.preparedata import get_reference_dataset, sizeof_fmt
+from pyace.preparedata import sizeof_fmt
 from pyace import __version__, get_ace_evaluator_version
 from pyace.atomicenvironment import calculate_minimal_nn_atomic_env, calculate_minimal_nn_tp_atoms
 from pyace.validate import plot_analyse_error_distributions
 
-files_to_remove = ["fitting_data_info.csv", "fitting_data_info.pckl.gzip", "log.txt", "nohup.out",
+files_to_remove = ["fitting_data_info.csv", "fitting_data_info.pckl.gzip",
+                   "test_data_info.pckl.gzip",
+                   "log.txt", "nohup.out",
                    "target_potential.yaml", "current_extended_potential.yaml", "output_potential.yaml",
                    "ladder_metrics.txt", "cycle_metrics.txt", "metrics.txt",
                    "test_ladder_metrics.txt", "test_cycle_metrics.txt", "test_metrics.txt",
@@ -50,7 +54,7 @@ def main(args):
                                                                    "version: {}".format(__version__))
     parser.add_argument("input", help="input YAML file, default: input.yaml", nargs='?', type=str, default="input.yaml")
 
-    parser.add_argument("-c", "--clean", help="Remove all generated data",
+    parser.add_argument("-c", "--clean", help="Remove all generated data/files",
                         dest="clean", default=False,
                         action="store_true")
 
@@ -68,29 +72,10 @@ def main(args):
                         type=str,
                         default=argparse.SUPPRESS)
 
-    parser.add_argument("-b", "--backend",
-                        help="backend evaluator, will override section 'backend::evaluator' from input file",
-                        type=str,
-                        default=argparse.SUPPRESS)
-
     parser.add_argument("-d", "--data",
                         help="data file, will override section 'YAML:fit:filename' from input file",
                         type=str,
                         default=argparse.SUPPRESS)
-
-    parser.add_argument("--query-data", help="query the training data from database, prepare and save them",
-                        dest="query_data", default=False,
-                        action="store_true")
-
-    parser.add_argument("--prepare-data", help="prepare and save training data only", dest="prepare_data",
-                        default=False,
-                        action="store_true")
-
-    parser.add_argument("--rebuild", help="force to rebuild necessary neighbour lists",
-                        dest="force_rebuild",
-                        default=False,
-                        action="store_true"
-                        )
 
     parser.add_argument("-l", "--log", help="log filename, default: log.txt", type=str, default="log.txt")
 
@@ -227,34 +212,6 @@ def main(args):
         log.info("Default evaluator `{}` would be used, ".format(evaluator_name) +
                  " otherwise please specify in YAML:backend:evaluator or as -b <evaluator>")
 
-    if args_parse.force_rebuild:
-        if isinstance(data_config, str):
-            raise ValueError("Requires YAML input file with 'data' section")
-        data_config["force_rebuild"] = args_parse.force_rebuild
-        log.info("Set force_rebuild = {}".format(args_parse.force_rebuild))
-
-    if args_parse.query_data:
-        if isinstance(data_config, str):
-            raise ValueError("Requires YAML input file with 'data' section")
-        log.debug("data_config={}".format(str(data_config)))
-        log.debug("evaluator_name={}".format(evaluator_name))
-        log.debug("cutoff={}".format(cutoff))
-        get_reference_dataset(evaluator_name=evaluator_name, data_config=data_config, cutoff=cutoff, force_query=True,
-                              cache_ref_df=True)
-        log.info("Done, now stopping")
-        sys.exit(0)
-
-    if args_parse.prepare_data:
-        if isinstance(data_config, str):
-            raise ValueError("Requires YAML input file with 'data' section")
-        log.debug("data_config={}".format(str(data_config)))
-        log.debug("evaluator_name={}".format(evaluator_name))
-        log.debug("cutoff={}".format(cutoff))
-        get_reference_dataset(evaluator_name=evaluator_name, data_config=data_config, cutoff=cutoff, force_query=False,
-                              cache_ref_df=True)
-        log.info("Done, now stopping")
-        sys.exit(0)
-
     # potential section
     if "potential" in args_parse:
         potential_config = args_parse.potential
@@ -359,7 +316,6 @@ def generate_template_input():
             print("Saving upgraded dataset into {}...".format(train_filename), end="")
             df.to_pickle(train_filename, compression="gzip")
             print("done")
-
 
     print("Number of elements: ", len(elements))
     print("Elements: ", elements)
