@@ -35,6 +35,75 @@
 #define sqr(x) ((x)*(x))
 const DOUBLE_TYPE pi = 3.14159265358979323846264338327950288419; // pi
 
+namespace ACEZBL {
+
+    static char const *const elements_pace[] = {
+            "X", "H", "He", "Li", "Be", "B", "C", "N", "O", "F", "Ne", "Na", "Mg", "Al", "Si",
+            "P", "S", "Cl", "Ar", "K", "Ca", "Sc", "Ti", "V", "Cr", "Mn", "Fe", "Co", "Ni", "Cu",
+            "Zn", "Ga", "Ge", "As", "Se", "Br", "Kr", "Rb", "Sr", "Y", "Zr", "Nb", "Mo", "Tc", "Ru",
+            "Rh", "Pd", "Ag", "Cd", "In", "Sn", "Sb", "Te", "I", "Xe", "Cs", "Ba", "La", "Ce", "Pr",
+            "Nd", "Pm", "Sm", "Eu", "Gd", "Tb", "Dy", "Ho", "Er", "Tm", "Yb", "Lu", "Hf", "Ta", "W",
+            "Re", "Os", "Ir", "Pt", "Au", "Hg", "Tl", "Pb", "Bi", "Po", "At", "Rn", "Fr", "Ra", "Ac",
+            "Th", "Pa", "U", "Np", "Pu", "Am", "Cm", "Bk", "Cf", "Es", "Fm", "Md", "No", "Lr"};
+    static constexpr int elements_num_pace = sizeof(elements_pace) / sizeof(const char *);
+
+    static int AtomicNumberByName_pace(const char *elname) {
+        for (int i = 1; i < elements_num_pace; i++)
+            if (strcmp(elname, elements_pace[i]) == 0) return i;
+        return -1;
+    }
+
+
+    // transformation coefficients to eV,  K = _e**2 / (4 * np.pi * _eps0) / 1e-10 / _e
+    DOUBLE_TYPE K = 14.399645351950543;
+
+    // ZBL coefficients from https://docs.lammps.org/pair_zbl.html
+    static const double ZBL_phi_coefs[4] = {0.18175, 0.50986, 0.28022, 0.02817};
+    static const double ZBL_phi_exps[4] = {-3.19980, -0.94229, -0.40290, -0.20162};
+
+    inline DOUBLE_TYPE phi(DOUBLE_TYPE x) {
+        DOUBLE_TYPE phi = 0;
+        for (int k = 0; k < 4; k++) {
+            phi += ZBL_phi_coefs[k] * exp(ZBL_phi_exps[k] * x);
+        }
+        return phi;
+    }
+
+    std::tuple<DOUBLE_TYPE, DOUBLE_TYPE, DOUBLE_TYPE> phi_and_deriv2(DOUBLE_TYPE x) {
+        DOUBLE_TYPE phi = 0, dphi = 0, d2phi = 0;
+        DOUBLE_TYPE e, t;
+        for (int k = 0; k < 4; k++) {
+            e = exp(ZBL_phi_exps[k] * x);
+            t = ZBL_phi_coefs[k] * e;
+            phi += t;
+            t *= ZBL_phi_exps[k];
+            dphi += t;
+            t *= ZBL_phi_exps[k];
+            d2phi += t;
+        }
+        return {phi, dphi, d2phi};
+    }
+
+    inline DOUBLE_TYPE fun_E_ij(DOUBLE_TYPE r, DOUBLE_TYPE a) {
+        return 1 / r * phi(r / a);
+    }
+
+    std::tuple<DOUBLE_TYPE, DOUBLE_TYPE, DOUBLE_TYPE> fun_E_ij_and_deriv2(DOUBLE_TYPE r, DOUBLE_TYPE a) {
+        DOUBLE_TYPE phi, dphi, d2phi;
+        DOUBLE_TYPE E_ij, dE_ij, dE2_ij;
+
+        std::tie(phi, dphi, d2phi) = ACEZBL::phi_and_deriv2(r / a);
+
+        E_ij = 1 / r * phi;
+        dE_ij = (-1 / (r * r)) * phi + 1 / r * dphi / a;
+        dE2_ij = (2 / (r * r * r)) * phi + 2 * (-1 / (r * r)) * dphi / a + (1 / r) * d2phi / ((a * a));
+
+        return {E_ij, dE_ij, dE2_ij};
+    }
+
+} // namespace ACEZBL
+
+
 ACERadialFunctions::ACERadialFunctions(NS_TYPE nradb, LS_TYPE lmax, NS_TYPE nradial, DOUBLE_TYPE deltaSplineBins,
                                        SPECIES_TYPE nelements,
                                        vector<vector<string>> radbasename) {
@@ -51,7 +120,7 @@ void ACERadialFunctions::init(NS_TYPE nradb, LS_TYPE lmax, NS_TYPE nradial, DOUB
     this->radbasenameij = radbasename;
     auto shape = this->radbasenameij.get_shape();
 
-    if (shape.size() != 2 || shape.at(0) != (unsigned)nelements || shape.at(1) != (unsigned)nelements) {
+    if (shape.size() != 2 || shape.at(0) != (unsigned) nelements || shape.at(1) != (unsigned) nelements) {
         throw std::invalid_argument("`radbasename` array has wrong shape. It must be of shape (nelements, nelements)");
     }
 
@@ -172,6 +241,9 @@ Function that computes radial basis.
 void
 ACERadialFunctions::radbase(DOUBLE_TYPE lam, DOUBLE_TYPE cut, DOUBLE_TYPE dcut, string radbasename, DOUBLE_TYPE r,
                             DOUBLE_TYPE cut_in, DOUBLE_TYPE dcut_in) {
+    // rest inner cutoff for ZBL core-repulsion type
+    if (inner_cutoff_type == "zbl")
+        cut_in = dcut_in==0;
     /*lam is given by the formula (24), that contains cut */
     if (r <= cut_in - dcut_in || r >= cut) {
         gr.fill(0);
@@ -192,10 +264,13 @@ ACERadialFunctions::radbase(DOUBLE_TYPE lam, DOUBLE_TYPE cut, DOUBLE_TYPE dcut, 
         }
 
         //TODO: always take into account inner cutoff
-        if (inner_cutoff_type == "distance") {
+        if (inner_cutoff_type == "distance" || inner_cutoff_type == "zbl") {
+            //IMPORTANT!!! radial inner cutoff is shifted by dcut_in and
+            // is applied now in a range from cut_in-dcut_in to cut_in-2*dcut_in
             //multiply by cutoff poly gr and dgr
             DOUBLE_TYPE fc, dfc;
             cutoff_func_poly(r, cut_in, dcut_in, fc, dfc); // ascending inner cutoff
+            // cutoff_func_poly(r, 0, 0, fc, dfc) for ZBL
             fc = 1 - fc;
             dfc = -dfc;
             for (unsigned int i = 0; i < gr.get_dim(0); i++) {
@@ -448,16 +523,36 @@ void ACERadialFunctions::setuplookupRadspline() {
                                                  fr.get_data(),
                                                  dfr.get_data(), deltaSplineBins, r_cut);
 
+            if (inner_cutoff_type == "density" || inner_cutoff_type == "distance") {
+                pre = prehc(elei, elej);
+                lamhc = lambdahc(elei, elej);
+                //            radcore(r, pre, lamhc, cutoff, cr_c, dcr_c, r_cut_in, dr_cut_in);
+                splines_hc(elei, elej).setupSplines(1,
+                                                    std::bind(&ACERadialFunctions::radcore, this,
+                                                              _1, pre, lamhc, r_cut,
+                                                              std::ref(cr_c), std::ref(dcr_c),
+                                                              r_in, delta_in),
+                                                    &cr_c,
+                                                    &dcr_c, deltaSplineBins, r_cut);
+            } else if (inner_cutoff_type == "zbl") {
+                int Zi = ACEZBL::AtomicNumberByName_pace(elements[elei].c_str());
+                if (Zi == -1) throw runtime_error("Element `" + elements[elei] + "` is not recognized");
+                int Zj = ACEZBL::AtomicNumberByName_pace(elements[elej].c_str());
+                if (Zj == -1) throw runtime_error("Element `" + elements[elej] + "` is not recognized");
+                pre = prehc(elei, elej);
 
-            pre = prehc(elei, elej);
-            lamhc = lambdahc(elei, elej);
-            //            radcore(r, pre, lamhc, cutoff, cr_c, dcr_c, r_cut_in, dr_cut_in);
-            splines_hc(elei, elej).setupSplines(1,
-                                                std::bind(&ACERadialFunctions::radcore, this,
-                                                          _1, pre, lamhc, r_cut,
-                                                          std::ref(cr_c), std::ref(dcr_c), r_in, delta_in),
-                                                &cr_c,
-                                                &dcr_c, deltaSplineBins, r_cut);
+                //use OUTER cutoff, so ZBL always acts "on full force" by itself.
+                // Switching from ACE to ZBL happens in the inner cutoff
+                splines_hc(elei, elej).setupSplines(1,
+                                                    std::bind(&ACERadialFunctions::ZBL, _1, Zi, Zj,
+                                                              std::ref(cr_c), std::ref(dcr_c), r_cut, r_cut - dr_cut,
+                                                              pre),
+                                                    &cr_c,
+                                                    &dcr_c, deltaSplineBins, r_cut);
+            } else {
+                throw runtime_error("Not implemented core-repulsion:" + inner_cutoff_type);
+            }
+
         }
     }
 
@@ -498,6 +593,7 @@ ACERadialFunctions::evaluate(DOUBLE_TYPE r, NS_TYPE nradbase_c, NS_TYPE nradial_
     dcr = spline_hc.derivatives(0);
     if (calc_second_derivatives)
         d2cr = spline_hc.second_derivatives(0);
+
 }
 
 /**
@@ -543,18 +639,64 @@ ACERadialFunctions::radcore(DOUBLE_TYPE r, DOUBLE_TYPE pre, DOUBLE_TYPE lambda, 
     }
 
     if (inner_cutoff_type == "distance") {
-        // core repulsion became non-zero only within r < cut_in + dcut_in
+        // core repulsion became non-zero only within r < cut_in
         DOUBLE_TYPE fc, dfc;
         cutoff_func_poly(r, r_in, delta_in, fc, dfc);
-        //inverse cutoff
-//        fc = 1 - fc;
-//        dfc = -dfc;
-
         DOUBLE_TYPE new_cr = cr * fc;
         DOUBLE_TYPE new_dcr = dcr * fc + cr * dfc;
         cr = new_cr;
         dcr = new_dcr;
     }
+}
+
+
+void ACERadialFunctions::ZBL(DOUBLE_TYPE r, int Zi, int Zj, DOUBLE_TYPE &cr,
+                             DOUBLE_TYPE &dcr, DOUBLE_TYPE cut_out, DOUBLE_TYPE cut_in, DOUBLE_TYPE prefactor) {
+    // ZBL outer cutoff = cut_out
+    // ZBL inner cutoff = cut_in
+    DOUBLE_TYPE zbl_in = cut_in;
+    DOUBLE_TYPE zbl_out = cut_out;
+    if (r >= cut_out) {
+        cr = 0;
+        dcr = 0;
+        return;
+    }
+    DOUBLE_TYPE a = 0.46850 / (pow(Zi, 0.23) + pow(Zj, 0.23));
+
+    DOUBLE_TYPE E_ij, dE_ij, _t;
+    std::tie(E_ij, dE_ij, _t) = ACEZBL::fun_E_ij_and_deriv2(r, a);
+
+    DOUBLE_TYPE Ec, dEc, d2Ec;
+    std::tie(Ec, dEc, d2Ec) = ACEZBL::fun_E_ij_and_deriv2(zbl_out, a);
+
+    DOUBLE_TYPE drcut = zbl_out - zbl_in;
+
+    DOUBLE_TYPE A = (-3 * dEc + drcut * d2Ec) / (drcut * drcut);
+    DOUBLE_TYPE B = (2 * dEc - drcut * d2Ec) / (drcut * drcut * drcut);
+    DOUBLE_TYPE C = -Ec + 1. / 2 * drcut * dEc - 1. / 12 * (drcut * drcut) * d2Ec;
+
+    DOUBLE_TYPE S;
+    if (r <= zbl_in) S = C;
+    else if (r >= zbl_out) S = 0;
+    else S = A / 3 * pow(r - zbl_in, 3) + B / 4 * pow(r - zbl_in, 4) + C;
+
+    cr = prefactor * ACEZBL::K / 2 * Zi * Zj * (E_ij + S);
+
+    // forces:
+    // dS_dr = A * (d - self.cut_in) ** 2 + B * (d - self.cut_in) ** 3
+    DOUBLE_TYPE dS_dr = 0;
+    if (zbl_in < r && r < zbl_out) dS_dr = A * pow(r - zbl_in, 2) + B * pow(r - zbl_in, 3);
+
+    dcr = prefactor * ACEZBL::K / 2 * Zi * Zj * (dE_ij + dS_dr);
+
+    //poly cutoff
+    DOUBLE_TYPE delta_in = cut_out - cut_in;
+    DOUBLE_TYPE fc, dfc;
+    cutoff_func_poly(r, cut_out, delta_in, fc, dfc);
+    DOUBLE_TYPE new_cr = cr * fc;
+    DOUBLE_TYPE new_dcr = dcr * fc + cr * dfc;
+    cr = new_cr;
+    dcr = new_dcr;
 }
 
 void
@@ -595,7 +737,6 @@ ACERadialFunctions::evaluate_range(vector<DOUBLE_TYPE> r_vec, NS_TYPE nradbase_c
             }
         }
     }
-
 }
 
 void SplineInterpolator::setupSplines(int num_of_functions, RadialFunctions func,

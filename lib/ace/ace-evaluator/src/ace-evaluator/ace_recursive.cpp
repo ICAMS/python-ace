@@ -815,7 +815,7 @@ ACERecursiveEvaluator::compute_atom(int i, DOUBLE_TYPE **x, const SPECIES_TYPE *
 //    ACECTildeBasisFunction *basis = basis_set->basis[mu_i];
 
     DOUBLE_TYPE rho_cut, drho_cut, fcut, dfcut;
-    DOUBLE_TYPE dF_drho_core;
+    DOUBLE_TYPE dF_drho_core, dF_dfcut;
 
     //TODO: lmax -> lmaxi (get per-species type)
     const LS_TYPE lmaxi = basis_set->lmax;
@@ -859,9 +859,14 @@ ACERecursiveEvaluator::compute_atom(int i, DOUBLE_TYPE **x, const SPECIES_TYPE *
     int jj_actual = 0;
     SPECIES_TYPE type_j = 0;
     Array1D<int> neighbour_index_mapping(jnum); // jj_actual -> jj
+    // minimal distance, nearest neighbour
+    int jj_min_actual = -1, j_min = -1;
+    DOUBLE_TYPE d, dmin = basis_set->cutoffmax;
+    bool is_zbl = basis_set->radial_functions->inner_cutoff_type == "zbl";
+    const auto& cut_in = basis_set->radial_functions->cut_in;
+    const auto& dcut_in = basis_set->radial_functions->dcut_in;
     //loop over neighbours, compute distance, consider only atoms within with r<cutoff(mu_i, mu_j)
     for (jj = 0; jj < jnum; ++jj) {
-
         j = jlist[jj];
         xn = x[j][0] - xtmp;
         yn = x[j][1] - ytmp;
@@ -877,7 +882,14 @@ ACERecursiveEvaluator::compute_atom(int i, DOUBLE_TYPE **x, const SPECIES_TYPE *
 
         if (r_xyz >= current_cutoff)
             continue;
-
+        if (is_zbl) {
+            d = r_xyz - (cut_in(mu_i, mu_j) - dcut_in(mu_i, mu_j));
+            if (d < dmin) {
+                dmin = d;
+                jj_min_actual = jj_actual;
+                j_min = j;
+            }
+        }
         inv_r_norm = 1 / r_xyz;
 
         r_norms(jj_actual) = r_xyz;
@@ -889,8 +901,8 @@ ACERecursiveEvaluator::compute_atom(int i, DOUBLE_TYPE **x, const SPECIES_TYPE *
         neighbour_index_mapping(jj_actual) = jj;
         jj_actual++;
     }
-
     int jnum_actual = jj_actual;
+
 
     //ALGORITHM 1: Atomic base A
     for (jj = 0; jj < jnum_actual; ++jj) {
@@ -945,7 +957,6 @@ ACERecursiveEvaluator::compute_atom(int i, DOUBLE_TYPE **x, const SPECIES_TYPE *
         //hard-core repulsion
         rho_core += basis_set->radial_functions->cr;
         DCR_cache(jj) = basis_set->radial_functions->dcr;
-
     } //end loop over neighbours
 
     //complex conjugate A's (for NEGATIVE (-m) terms)
@@ -1102,13 +1113,33 @@ ACERecursiveEvaluator::compute_atom(int i, DOUBLE_TYPE **x, const SPECIES_TYPE *
     rho_cut = basis_set->map_embedding_specifications.at(mu_i).rho_core_cutoff;
     drho_cut = basis_set->map_embedding_specifications.at(mu_i).drho_core_cutoff;
 
-    basis_set->inner_cutoff(rho_core, rho_cut, drho_cut, fcut, dfcut);
     basis_set->FS_values_and_derivatives(rhos, evdwl, dF_drho, mu_i);
 
-    dF_drho_core = evdwl * dfcut + 1;
+    if (is_zbl) {
+        DOUBLE_TYPE transition_coordinate = 0;
+        if (j_min != -1) {
+            SPECIES_TYPE mu_jmin = type[j_min];
+            if (is_element_mapping)
+                mu_jmin = element_type_mapping(mu_jmin);
+            DOUBLE_TYPE dcutin = basis_set->radial_functions->dcut_in(mu_i, mu_jmin);
+            transition_coordinate =  dcutin  - dmin; // == cutin - r_min
+            cutoff_func_poly(transition_coordinate, dcutin, dcutin, fcut, dfcut);
+            dfcut = -dfcut; // invert, because rho_core = cutin - r_min
+        } else {
+            // no neighbours
+            fcut = 1;
+            dfcut = 0;
+        }
+        evdwl_cut = evdwl * fcut + rho_core * (1 - fcut); // evdwl * fcut + rho_core_uncut  - rho_core_uncut* fcut
+        dF_drho_core = 1 - fcut;
+        dF_dfcut = evdwl * dfcut - rho_core * dfcut;
+    } else {
+        basis_set->inner_cutoff(rho_core, rho_cut, drho_cut, fcut, dfcut);
+        evdwl_cut = evdwl * fcut + rho_core;
+        dF_drho_core = evdwl * dfcut + 1;
+    }
     for (DENSITY_TYPE p = 0; p < ndensity; ++p)
         dF_drho(p) *= fcut;
-    evdwl_cut = evdwl * fcut + rho_core;
 
     // E0 shift
     evdwl_cut += basis_set->E0vals(mu_i);
@@ -1350,6 +1381,14 @@ ACERecursiveEvaluator::compute_atom(int i, DOUBLE_TYPE **x, const SPECIES_TYPE *
         f_ji[0] += dF_drho_core * DCR * r_hat[0];
         f_ji[1] += dF_drho_core * DCR * r_hat[1];
         f_ji[2] += dF_drho_core * DCR * r_hat[2];
+        if (basis_set->radial_functions->inner_cutoff_type == "zbl") {
+            if(jj==jj_min_actual) {
+                // DCRU = 1.0
+                f_ji[0] += dF_dfcut * r_hat[0];
+                f_ji[1] += dF_dfcut * r_hat[1];
+                f_ji[2] += dF_dfcut * r_hat[2];
+            }
+        }
 #ifdef PRINT_INTERMEDIATE_VALUES
         printf("with core-repulsion\n");
         printf("f_ji(jj=%d, i=%d)=(%f, %f, %f)\n", jj, i,
@@ -1370,7 +1409,7 @@ ACERecursiveEvaluator::compute_atom(int i, DOUBLE_TYPE **x, const SPECIES_TYPE *
     //now, energies and forces are ready
     //energies(i) = evdwl + rho_core;
     e_atom = evdwl_cut;
-
+    ace_fcut = fcut;
 #ifdef PRINT_INTERMEDIATE_VALUES
     printf("energies(i) = FS(...rho_p_accum...) = %f\n", evdwl);
 #endif

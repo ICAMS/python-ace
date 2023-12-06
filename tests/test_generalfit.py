@@ -9,6 +9,7 @@ from pyace import *
 from pyace.generalfit import GeneralACEFit, active_import
 from pyace.basisextension import construct_bbasisconfiguration
 import pandas as pd
+
 TENSORPOTENTIAL_IMPORTED = True
 # TENSORPOTENTIAL_IMPORTED = False
 
@@ -189,7 +190,8 @@ def test_GeneralACEFit_pyace_fit_func_coefs_init_random():
     print("all_coeffs=", block.radcoefficients)
 
     compare_coefficients(all_coeffs,
-                         [4.967141530112327e-05, -1.3826430117118467e-05, 6.476885381006925e-05, 0.00015230298564080253],
+                         [4.967141530112327e-05, -1.3826430117118467e-05, 6.476885381006925e-05,
+                          0.00015230298564080253],
                          abs_threshold=2e-6,
                          rel_threshold=None)
 
@@ -306,7 +308,7 @@ def test_GeneralACEFit_save_fitting_data_info():
         "parallel_mode": "serial",
     }
     fit_config_cycles = test_fit_config_L1_L2.copy()
-    expected_filename="fitting_data_info.pckl.gzip"
+    expected_filename = "fitting_data_info.pckl.gzip"
     if os.path.isfile(expected_filename):
         os.remove(expected_filename)
     assert not os.path.isfile(expected_filename)
@@ -318,8 +320,8 @@ def test_GeneralACEFit_save_fitting_data_info():
 
     fitace.fit()
     assert os.path.isfile(expected_filename)
-    fit_df=pd.read_pickle(expected_filename, compression="gzip")
-    columns=sorted(fit_df.columns)
+    fit_df = pd.read_pickle(expected_filename, compression="gzip")
+    columns = sorted(fit_df.columns)
 
     assert "ase_atoms" in columns
     assert "energy" in columns
@@ -328,6 +330,7 @@ def test_GeneralACEFit_save_fitting_data_info():
     assert "forces" in columns
 
     os.remove(expected_filename)
+
 
 def test_GeneralACEFit_fit_cycles_relative_noise():
     backend_config = {
@@ -390,7 +393,7 @@ def test_GeneralACEFit_dataset_with_weights_column():
     # fit_config_cycles["fit_cycles"] = 2
     # fit_config_cycles["noise_absolute_sigma"] = 0.1
     fitace = GeneralACEFit(potential_config=fitcyles_potential_config,
-                           data_config="tests/df_weights.pckl.gzip",
+                           data_config={"filename": "tests/df_weights.pckl.gzip"},
                            fit_config=fit_config_cycles,
                            backend_config=backend_config, seed=42)
     fitace.fit()
@@ -485,6 +488,7 @@ def test_GeneralACEFit_pyace_loss_rad():
     print("block.radcoefficients=", block.radcoefficients)
     all_coeffs = fitace.target_bbasisconfig.get_all_coeffs()
     compare_coefficients(all_coeffs, all_coeffs_rad_smoothness, abs_threshold=2e-6, rel_threshold=1e-2)
+
 
 @pytest.mark.tensorpot
 def test_GeneralACEFit_tensorpot_core_rep():
@@ -680,44 +684,6 @@ all_coeffs_ref_query = [1.0253271106342696, 7.0057278638726315, 0.28288478464604
                         10.0, 5.0, 11.0, 6.0, 12.0, 0.9999867378951081, 0.999996530192606, 2.0006053956850787,
                         3.0218397754095827, 3.67733950790798]
 
-
-def test_GeneralACEFit_pyace_query():
-    backend_config = {
-        'evaluator': 'pyace',  # pyace, tensorpot
-        "parallel_mode": "serial",
-    }
-    bbasis = ACEBBasisSet("tests/Al-r1234l12_crad_dif_2.yaml")
-    fitace = GeneralACEFit(bbasis, test_fit_config_query, data_config=test_data_config_query,
-                           backend_config=backend_config)
-    fitace.fit()
-
-    bbasisconfig = fitace.target_bbasisconfig
-    print(bbasisconfig)
-    bbasisconfig.save("test_pyace_pot4.yaml")
-    all_coeffs = bbasisconfig.get_all_coeffs()
-    compare_coefficients(all_coeffs, all_coeffs_ref_query, abs_threshold=2e-6, rel_threshold=6e-6)
-
-
-@pytest.mark.tensorpot
-def test_GeneralACEFit_tensorpot_query():
-    if not TENSORPOTENTIAL_IMPORTED:
-        pytest.fail()
-
-    backend_config = {
-        'evaluator': 'tensorpot',  # pyace, tensorpot
-    }
-    bbasis = ACEBBasisSet("tests/Al-r1234l12_crad_dif_2.yaml")
-    fitace = GeneralACEFit(bbasis, test_fit_config_query, data_config=test_data_config_query,
-                           backend_config=backend_config)
-    fitace.fit()
-
-    bbasisconfig = fitace.target_bbasisconfig
-    print(bbasisconfig)
-    bbasisconfig.save("test_tensorpot_pot4.yaml")
-    all_coeffs = bbasisconfig.get_all_coeffs()
-    compare_coefficients(all_coeffs, all_coeffs_ref_query, abs_threshold=2e-6, rel_threshold=5e-6)
-
-
 test_fit_config_weighting = {
     'optimizer': 'L-BFGS-B',  # Nelder-Mead #BFGS
     'maxiter': 5,
@@ -885,6 +851,8 @@ def test_GeneralACEFit_pyace_ladderscheme_initial_potential():
                          rel_threshold=None,
 
                          )
+
+
 @pytest.mark.tensorpot
 def test_GeneralACEFit_tensorpot_ladderscheme_initial_potential():
     backend_config = {
@@ -924,7 +892,7 @@ def test_GeneralACEFit_save_interim_potentials_callback():
     assert len(interim_pots_before_fit) == 0
     fit_config_cycles["fit_cycles"] = 2
     fitace = GeneralACEFit(potential_config=fitcyles_potential_config,
-                           data_config="tests/df_weights.pckl.gzip",
+                           data_config={"filename": "tests/df_weights.pckl.gzip"},
                            fit_config=fit_config_cycles,
                            backend_config=backend_config, seed=42)
     fitace.fit()
@@ -950,7 +918,7 @@ def test_GeneralACEFit_callback():
 
     fit_config_cycles["fit_cycles"] = 2
     fitace = GeneralACEFit(potential_config=fitcyles_potential_config,
-                           data_config="tests/df_weights.pckl.gzip",
+                           data_config={"filename": "tests/df_weights.pckl.gzip"},
                            fit_config=fit_config_cycles,
                            backend_config=backend_config, seed=42, callbacks=[test_callback])
     fitace.fit()
@@ -975,7 +943,7 @@ def test_GeneralACEFit_external_callback():
     cb = active_import(cb_name)
     print("cb=", cb)
     fitace = GeneralACEFit(potential_config=fitcyles_potential_config,
-                           data_config="tests/df_weights.pckl.gzip",
+                           data_config={"filename": "tests/df_weights.pckl.gzip"},
                            fit_config=fit_config_cycles,
                            backend_config=backend_config, seed=42, callbacks=[cb_name])
     fitace.fit()

@@ -59,7 +59,8 @@ potential:
 #################################################################
 data:
 ### Option 1: pandas dataframe in pckl.gzip
-  filename: Cu_df1_A1_A2_A3_EV_elast_phon.pckl.gzip  # force to read reference pickled dataframe from given file
+  filename: [Cu_df1_A1_A2_A3_EV_elast_phon.pckl.gzip, aug_df.pkl.gz]  # force to read reference pickled dataframe from given file
+  aug_factor: 1e-4
 
 
 #################################################################

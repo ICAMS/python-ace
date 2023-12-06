@@ -178,7 +178,8 @@ def main(args):
                         type=str, default="collected.pckl.gzip", dest="output_dataset_filename")
 
     parser.add_argument('--free-atom-energy',
-                        help="dictionary of reference energies (auto for extraction from dataset), i.e. `Al:-0.123 Cu:-0.456 Zn:auto`,"
+                        help="dictionary of reference energies (auto for extraction from dataset), i.e. `Al:-0.123 "
+                             "Cu:-0.456 Zn:auto`,"
                              " default is zero. If option is `auto`, then it will be extracted from dataset",
                         nargs='*', dest="free_atom_energy", default=defaultdict(lambda: 0), action=ParseKwargs)
 

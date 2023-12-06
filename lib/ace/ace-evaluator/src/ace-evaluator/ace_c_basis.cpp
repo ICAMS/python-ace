@@ -755,6 +755,10 @@ void ACECTildeBasisSet::load(const string filename) {
     fclose(fptr);
 
 //    radial_functions->radbasename = radbasename;
+    // pass elements to radial functions (for ZBL basis)
+    for(int i=0;i<nelements;++i)
+        radial_functions->elements.push_back(elements_name[i]);
+
     radial_functions->setuplookupRadspline();
     pack_flatten_basis();
 }
@@ -1340,6 +1344,9 @@ void ACECTildeBasisSet::load_yaml(const string &yaml_file_name) {
 
     //setup spherical_harmonics and  radialBasis
     spherical_harmonics.init(lmax);
+    // pass elements to radial functions (for ZBL basis)
+    for(int i=0;i<nelements;++i)
+        radial_functions->elements.push_back(elements_name[i]);
     radial_functions->setuplookupRadspline();
 
     //reading ACECTildeBasisFunctions

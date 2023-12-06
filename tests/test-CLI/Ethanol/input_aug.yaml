@@ -1,4 +1,4 @@
-cutoff: {{CUTOFF}} # cutoff for neighbour list construction
+cutoff: 5.0 # cutoff for neighbour list construction
 seed: 42  # random seed
 
 #################################################################
@@ -12,7 +12,7 @@ metadata:
 #################################################################
 potential:
   deltaSplineBins: 0.001
-  elements: {{ELEMENTS}}
+  elements: ['C', 'H', 'O']
 
   embeddings:
     ALL: {
@@ -25,13 +25,13 @@ potential:
     ALL: {
       radbase: SBessel,
       radparameters: [ 5.25 ],
-      rcut: {{CUTOFF}},
+      rcut: 5.0,
       dcut: 0.01,
       NameOfCutoffFunction: cos,
     }
 
   functions:
-    {{number_of_functions_per_element}}
+    number_of_functions_per_element: 200
     UNARY:   { nradmax_by_orders: [ 15, 6, 4, 3, 2, 2 ], lmax_by_orders: [ 0 , 3, 3, 2, 2, 1 ]}
     BINARY:  { nradmax_by_orders: [ 15, 6, 3, 2, 2, 1 ], lmax_by_orders: [ 0 , 3, 2, 1, 1, 0 ]}
     TERNARY: { nradmax_by_orders: [ 15, 3, 3, 2, 1 ],    lmax_by_orders: [ 0 , 2, 2, 1, 1 ], }
@@ -42,10 +42,9 @@ potential:
 ## Dataset specification section
 #################################################################
 data:
-  filename: {{DATAFILENAME}}       # force to read reference pickled dataframe from given file
-  {{test_size}}
-  #  aug_factor: 1e-4 # common prefactor for weights of augmented structures
-  # reference_energy: auto
+  filename: [ethanol.pckl.gzip, aug_df.pkl.gz]       # force to read reference pickled dataframe from given file
+  aug_factor: 1e-6 
+
 
 #################################################################
 ## Fit specification section
@@ -53,19 +52,18 @@ data:
 fit:
   loss: { kappa: 0.3, L1_coeffs: 1e-8,  L2_coeffs: 1e-8}
   # if kappa: auto, then it will be determined from the variation of energy per atom and forces norms in train set
-
-  {{WEIGHTING}}
+  
 
   optimizer: BFGS # or L-BFGS-B
 
   ## maximum number of minimize iterations
-  maxiter: 2000
+  maxiter: 20
 
   ## additional options for scipy.minimize
   #  options: {maxcor: 100}
 
-  ## Automatically find the smallest interatomic distance in dataset  and set inner cutoff for ZBL to it
-  repulsion: auto
+  ## Automatically find the smallest interatomic distance in dataset  and set inner cutoff based on this
+  # repulsion: auto
 
   #  ladder_step: 100
   #  ladder_type: power_order
@@ -75,5 +73,6 @@ fit:
 #################################################################
 backend:
   evaluator: tensorpot
-  batch_size: 100
+  batch_size: 256
   display_step: 50
+

@@ -1,109 +1,119 @@
-import os
-import pandas as pd
 import numpy as np
-import pytest
+import pandas as pd
 from pyace import *
-from pyace.pyacefit import LossFunctionSpecification
-from pyace.pyacefit import PyACEFit
-from pyace.preparedata import generate_atomic_env_column, get_reference_dataset
-from pyace.linearacefit import LinearACEDataset, LinearACEFit
-from pyace.const import PYACE_EVAL
+from pyace.linearacefit import LinearACEFit, LinearACEDataset
 
-TESTS_DF_PCKL = "tests/representative_df.pckl.gzip"
-COMPRESSION = "gzip"
+df_name = 'tests/representative_df.pckl.gzip'
+df2_name = "tests/df_AlNi(murn).pckl.gzip"
+# Create empty bbasis configuration
+bconf = create_multispecies_basis_config(potential_config={
+    "deltaSplineBins": 0.001,
+    "elements": ['Al'],
 
+    "embeddings": {
+        "ALL": {
+            "npot": 'FinnisSinclairShiftedScaled',
+            "fs_parameters": [1, 1],
+            "ndensity": 1,
+        },
+    },
 
-def create_block(NLMAX, NRADMAX, NRADBASE, NDENS):
-    block = BBasisFunctionsSpecificationBlock()
-    block.block_name = "Al"
-    block.nradmaxi = NRADMAX
-    block.lmaxi = NLMAX
-    block.npoti = "FinnisSinclair"
-    if NDENS == 2:
-        block.fs_parameters = [1, 1, 1, 0.5]
-    else:
-        block.fs_parameters = [1, 1]
-    block.rcutij = 8.7
-    block.dcutij = 0.01
-    block.NameOfCutoffFunctionij = "cos"
-    block.nradbaseij = NRADBASE
-    block.radbase = "ChebExpCos"
-    block.radparameters = [3.0]
-    # radcoefficients_len = (NLMAX + 1) * NRADBASE * NRADMAX
-    block.radcoefficients = np.ones((NRADMAX, NLMAX + 1, NRADBASE))
-    # self.bBasisSpecificationBlock = block
-    return block
+    "bonds": {
+        "ALL": {
+            "radbase": "SBessel",
+            "radparameters": [5.25],
+            "rcut": 6,
+            "dcut": 0.01,
+        }
+    },
 
+    "functions": {
+        # "number_of_functions_per_element": 1000,
+        "ALL": {
+            "nradmax_by_orders": [6, 5, 4, 3, 2],
+            "lmax_by_orders": [0, 4, 3, 2, 1]}
+    }
+}
+)
 
-def prepare_test_basis_configuration():
-    NLMAX = 0
-    NRANKMAX = 1
-    NRADBASE = 1
-    NRADMAX = 0
-    NDENS = 1
-    bBasisConfiguration = BBasisConfiguration()
-    bBasisConfiguration.deltaSplineBins = 0.001
-    block = create_block(NLMAX=NLMAX, NRADMAX=NRADMAX, NRADBASE=NRADBASE, NDENS=NDENS)
-    block.funcspecs = [
-        BBasisFunctionSpecification(elements=["Al", "Al"], ns=[1], ls=[0], coeffs=[1.] * NDENS)
-    ]
-    bBasisConfiguration.funcspecs_blocks = [block]
-    return bBasisConfiguration
+bconf2 = create_multispecies_basis_config(potential_config={
+    "deltaSplineBins": 0.001,
+    "elements": ['Al', 'Ni'],
 
+    "embeddings": {
+        "ALL": {
+            "npot": 'FinnisSinclairShiftedScaled',
+            "fs_parameters": [1, 1],
+            "ndensity": 1,
+        },
+    },
 
-def prepare_test_basis_configuration_extended():
-    NLMAX = 1
-    NRADBASE = 2
-    # NRADMAX = 1
-    NRADMAX = 2
+    "bonds": {
+        "ALL": {
+            "radbase": "SBessel",
+            "radparameters": [5.25],
+            "rcut": 6,
+            "dcut": 0.01,
+        }
+    },
 
-    bBasisConfiguration = BBasisConfiguration()
-    bBasisConfiguration.deltaSplineBins = 0.001
-    block = create_block(NLMAX=NLMAX, NRADMAX=NRADMAX, NRADBASE=NRADBASE, NDENS=1)
-    block.funcspecs = [
-        BBasisFunctionSpecification(elements=["Al", "Al"], ns=[1], ls=[0], coeffs=[1.]),
-        BBasisFunctionSpecification(elements=["Al", "Al"], ns=[2], ls=[0], coeffs=[1.]),
-
-        BBasisFunctionSpecification(elements=["Al", "Al", "Al"], ns=[1, 1], ls=[0], coeffs=[0.01]),
-        BBasisFunctionSpecification(elements=["Al", "Al", "Al"], ns=[1, 2], ls=[1], coeffs=[0.01]),
-        BBasisFunctionSpecification(elements=["Al", "Al", "Al"], ns=[2, 2], ls=[0], coeffs=[0.01]),
-    ]
-    bBasisConfiguration.funcspecs_blocks = [block]
-    return bBasisConfiguration
+    "functions": {
+        # "number_of_functions_per_element": 1000,
+        "ALL": {
+            "nradmax_by_orders": [6, 2, 1],
+            "lmax_by_orders": [0, 2, 1]}
+    }
+}
+)
 
 
-def test_linear_fit():
-    df_train = get_reference_dataset(PYACE_EVAL, TESTS_DF_PCKL)
+def test_LinearACEDataset_singlespecie():
+    df = pd.read_pickle(df_name, compression='gzip')
+    print("df.shape=", df.shape)
+    assert len(df) == 6
+    linear_ds = LinearACEDataset(bconf, df)
+    dm = linear_ds.get_design_matrix(max_workers=2, verbose=True)
+    print("dm.shape=", dm.shape)
+    assert dm.shape == (462, 715)
 
-    bconf = prepare_test_basis_configuration()
 
-    train_ds = LinearACEDataset(bconf, df_train)
-    train_ds.construct_design_matrix(verbose=True, max_workers=2)
-    linear_fit = LinearACEFit(train_dataset=train_ds)
+def test_LinearACEDataset_multispecie():
+    print("bconf2.total_number_of_functions=", bconf2.total_number_of_functions)
+    assert bconf2.total_number_of_functions == 104
+    df = pd.read_pickle(df2_name, compression='gzip')
+    # df = df.sample(n=10, random_state=42)
+    print("df.shape=", df.shape)
+    assert len(df) == 174
+    linear_ds = LinearACEDataset(bconf2, df)
+    dm = linear_ds.get_design_matrix(max_workers=2, verbose=True)
+    print("dm.shape=", dm.shape)
+    assert dm.shape == (1521, 104)
+
+
+def test_LinearACEFit():
+    print("bconf2.total_number_of_functions=", bconf2.total_number_of_functions)
+    assert bconf2.total_number_of_functions == 104
+    df = pd.read_pickle(df2_name, compression='gzip')
+    print("df.shape=", df.shape)
+    assert len(df) == 174
+    ds = LinearACEDataset(bconf2, df)
+
+    linear_fit = LinearACEFit(train_dataset=ds)
     linear_fit.fit()
-    errors = linear_fit.compute_errors(train_ds)
-    print(errors)
-    errors_ref = {'epa_mae': 1.8672420164907269, 'epa_rmse': 2.161275544266956, 'f_comp_mae': 0.9338507863298846,
-                  'f_comp_rmse': 1.8036620237453211}
-    for k, ref_e in errors_ref.items():
-        assert np.allclose(errors[k], ref_e), k
+    errors = linear_fit.compute_errors(ds)
+    print("errors=", errors)
+    ref_errors = {'epa_mae': 0.003831128214766918, 'epa_rmse': 0.005182476661323097,
+                  'f_comp_mae': 0.0012976990221506717, 'f_comp_rmse': 0.0035144969263983432}
+    for k, v in ref_errors.items():
+        assert np.isclose(errors[k], v)
 
+    # get basis
     basis = linear_fit.get_bbasis()
     calc = PyACECalculator(basis)
-
-    e_pred, f_pred = linear_fit.predict(train_ds, reshape_forces=True)
-    print("e_pred=", e_pred)
-    print("f_pred=", f_pred)
-    e_pred_ref = [0.21383798, 0.16503755, 0.01162006, 0.2028525, 0.21184446, 0.01921261]
-    f_pred0_ref = [-1.37039297e-02,  3.71525064e-02,  4.82533231e-03]
-    assert np.allclose(e_pred, e_pred_ref)
-    assert np.allclose(f_pred[0], f_pred0_ref)
+    e_pred, f_pred = linear_fit.predict(ds, reshape_forces=True)
     # take first  ase_atoms
-    at = df_train.iloc[0]["ase_atoms"].copy()
+    at = df.iloc[0]["ase_atoms"].copy()
     at.set_calculator(calc)
-
-    e_pred_calc = at.get_potential_energy()
-    print(e_pred_calc)
-
-    assert np.allclose(e_pred_calc / len(at), e_pred[0])
+    at.get_potential_energy()
+    assert np.allclose(at.get_potential_energy() / len(at), e_pred[0])
     assert np.allclose(at.get_forces(), f_pred[:len(at)])

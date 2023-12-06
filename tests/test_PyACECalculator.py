@@ -72,7 +72,7 @@ def test_load_ace():
     print(f1)
 
     e0 = 89.15966867577228
-    f0 = np.array([[0., 0.,-193.82052454], [   0., 0., 193.82052454]])
+    f0 = np.array([[0., 0., -193.82052454], [0., 0., 193.82052454]])
 
     assert np.allclose(e0, e1)
     assert np.allclose(f0, f1)
@@ -89,10 +89,11 @@ def test_load_ace_recursive():
     print(f1)
 
     e0 = 89.15966867577228
-    f0 = np.array([[0., 0.,-193.82052454], [   0., 0., 193.82052454]])
+    f0 = np.array([[0., 0., -193.82052454], [0., 0., 193.82052454]])
 
     assert np.allclose(e0, e1)
     assert np.allclose(f0, f1)
+
 
 def test_dimer_r1_energy_forces():
     a = create_dimer(1)
@@ -167,6 +168,7 @@ def test_non_supported_element():
         a.set_calculator(calc)
         e1 = a.get_potential_energy()
 
+
 def test_fcc_stress():
     a = bulk("Al", "fcc", a=4.03, cubic=True) * (1, 1, 1)
     print("a=", a)
@@ -228,3 +230,23 @@ def test_PyACEEnsembleCalculator():
     f1 = a.get_forces()
     print(e1)
     print(f1)
+
+
+def test_ZBL_analytical_derivative():
+    calc = PyACECalculator("tests/ZBL_rep.yaml")
+
+    def check(at, msg):
+        at.set_calculator(calc)
+        num_forces = calc.calculate_numerical_forces(at, d=1e-6)
+        an_forces = at.get_forces()
+        print(f"{num_forces=}, {an_forces=}")
+        assert np.allclose(num_forces, an_forces), msg+f": {num_forces=}, {an_forces=}"
+
+    at = Atoms("H2", positions=[[0, 0, 0], [0, 0, 4]])  # ACE
+    check(at, "ACE forces are inconsistent")
+
+    at = Atoms("H2", positions=[[0, 0, 0], [0, 0, 2.5]])  # ACE-ZBL
+    check(at, "ACE-ZBL forces are inconsistent")
+
+    at = Atoms("H2", positions=[[0, 0, 0], [0, 0, 1.5]])  # ZBL
+    check(at, "ZBL forces are inconsistent")

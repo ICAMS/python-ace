@@ -132,7 +132,7 @@ def test_calculator_bbasis_projections():
     calculator = ACECalculator()
     calculator.set_evaluator(evaluator)
 
-    calculator.compute(chain_z)
+    calculator.compute(chain_z, compute_projections=True)
     z_projs = np.array(calculator.projections)
 
     z_rhos = np.array(calculator.rhos)
@@ -161,7 +161,7 @@ def test_calculator_bbasis_projections():
 
     assert chain_z.n_atoms_real == len(z_projs)
 
-    assert len(z_projs[0]) == 187+10
+    assert len(z_projs[0]) == 187 + 10
 
     assert chain_z.n_atoms_real == len(z_rhos)
     assert chain_z.n_atoms_real == len(z_dF_drhos)

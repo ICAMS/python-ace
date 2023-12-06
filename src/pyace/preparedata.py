@@ -1,41 +1,21 @@
 import logging
-from collections import Counter
+from collections import defaultdict
 
 import numpy as np
 import os
 import pandas as pd
 import time
 
-from typing import Dict
+from typing import Dict, Union, Tuple, Optional
 
-from ase import Atoms
 from ase.calculators.singlepoint import SinglePointCalculator
 
-from pyace.atomicenvironment import aseatoms_to_atomicenvironment
+from pyace.atomicenvironment import aseatoms_to_atomicenvironment, generate_tp_atoms
 from pyace.const import *
-from scipy.spatial import ConvexHull
-
-DMIN_COLUMN = "dmin"
-ATOMIC_ENV_COLUMN = "atomic_env"
-FORCES_COLUMN = "forces"
-E_CORRECTED_PER_ATOM_COLUMN = "energy_corrected_per_atom"
-WEIGHTS_FORCES_COLUMN = "w_forces"
-WEIGHTS_ENERGY_COLUMN = "w_energy"
-WEIGHTS_FACTOR = "w_factor"
-REF_ENERGY_KW = "ref_energy"
-E_CHULL_DIST_PER_ATOM = "e_chull_dist_per_atom"
-E_FORMATION_PER_ATOM = "e_formation_per_atom"
-EFFECTIVE_ENERGY = "effective_energy"
+from pyace.process_df import compute_convexhull_dist, compute_corrected_energy, SINGLE_ATOM_ENERGY_DICT, \
+    compute_shifted_scaled_corrected_energy
 
 log = logging.getLogger(__name__)
-
-REF_PROP_NAME = '1-body-000001:static'
-REF_GENERIC_PROTOTYPE_NAME = '1-body-000001'
-
-# ## QUERY DATA
-LATTICE_COLUMNS = ["_lat_ax", "_lat_ay", "_lat_az",
-                   "_lat_bx", "_lat_by", "_lat_bz",
-                   "_lat_cx", "_lat_cy", "_lat_cz"]
 
 
 def sizeof_fmt(file_name_or_size, suffix='B'):
@@ -46,185 +26,6 @@ def sizeof_fmt(file_name_or_size, suffix='B'):
             return "%3.1f%s%s" % (file_name_or_size, unit, suffix)
         file_name_or_size /= 1024.0
     return "%.1f%s%s" % (file_name_or_size, 'Yi', suffix)
-
-
-class DataFrameWithMetadata(pd.DataFrame):
-    # normal properties
-    _metadata = ["metadata"]
-
-    @property
-    def _constructor(self):
-        return DataFrameWithMetadata
-
-    @property
-    def metadata_dict(self):
-        if not hasattr(self, "metadata") or self.metadata is None:
-            self.metadata = {}
-        return self.metadata
-
-    @metadata_dict.setter
-    def metadata_dict(self, value):
-        self.metadata = value
-
-
-def attach_single_point_calculator(row):
-    atoms = row["ase_atoms"]
-    energy = row["energy_corrected"]
-    forces = row["forces"]
-    calc = SinglePointCalculator(atoms, energy=energy, forces=forces)
-    atoms.set_calculator(calc)
-    return atoms
-
-
-# ### preprocess and store
-
-
-def create_ase_atoms(row):
-    pbc = row["pbc"]
-    if pbc:
-        cell = row["cell"]
-        if row['COORDINATES_TYPE'] == 'relative':
-            atoms = Atoms(symbols=row["_OCCUPATION"], scaled_positions=row["_COORDINATES"], cell=cell, pbc=pbc)
-        else:
-            atoms = Atoms(symbols=row["_OCCUPATION"], positions=row["_COORDINATES"], cell=cell, pbc=pbc)
-    else:
-        atoms = Atoms(symbols=row["_OCCUPATION"], positions=row["_COORDINATES"], pbc=pbc)
-    e = row["energy_corrected"]
-    f = row["_VALUE"]['forces']
-    calc = SinglePointCalculator(atoms, energy=np.array(e).reshape(-1, ), forces=np.array(f))
-    atoms.set_calculator(calc)
-    return atoms
-
-
-# define safe_min function, that return None of input is empty
-def safe_min(val):
-    try:
-        return min((v for v in val if v is not None))
-    except (ValueError, TypeError):
-        return None
-
-
-# define function that compute minimal distance
-def calc_min_distance(ae):
-    atpos = np.array(ae.x)
-    nlist = ae.neighbour_list
-    return safe_min(safe_min(np.linalg.norm(atpos[nlist[nat]] - atpos[nat], axis=1)) for nat in range(ae.n_atoms_real))
-
-
-def query_data(config: Dict, seed=None, query_limit=None, db_conn_string=None):
-    from structdborm import StructSQLStorage, CalculatorType, StructureEntry, StaticProperty, GenericEntry, Property
-    from sqlalchemy.orm.exc import NoResultFound
-
-    # validate config
-    if "calculator" not in config:
-        raise ValueError("'calculator' is not in YAML:data:config, couldn't query")
-    if "element" not in config:
-        raise ValueError("'element' is not in YAML:data:config, couldn't query")
-
-    log.info("Connecting to database")
-    with StructSQLStorage(db_conn_string) as storage:
-        log.info("Querying database -- please be patient")
-        reference_calculator = storage.query(CalculatorType).filter(
-            CalculatorType.NAME == config["calculator"]).one()
-
-        structure_entry_cell = [StructureEntry._lat_ax, StructureEntry._lat_ay, StructureEntry._lat_az,
-                                StructureEntry._lat_bx, StructureEntry._lat_by, StructureEntry._lat_bz,
-                                StructureEntry._lat_cx, StructureEntry._lat_cy, StructureEntry._lat_cz]
-        if REF_ENERGY_KW not in config:
-            try:
-                # TODO: generalize query of reference property
-                ref_energy = query_reference_energy(config["element"], reference_calculator, storage)
-            except NoResultFound as e:
-                log.error(("No reference energy for {} was found in database. " +
-                           "Either add property named `{}` with generic named `{}` to database or use `{}` " +
-                           "keyword in data config ").format(config["element"], REF_PROP_NAME,
-                                                             REF_GENERIC_PROTOTYPE_NAME, REF_ENERGY_KW))
-                raise e
-        else:
-            ref_energy = config[REF_ENERGY_KW]
-        # TODO: join with query with generic-parent-absent structures/properties
-        q = storage.query(StaticProperty.id.label("prop_id"),
-                          StructureEntry.id.label("structure_id"),
-                          GenericEntry.id.label("gen_id"),
-                          GenericEntry.PROTOTYPE_NAME,
-                          *structure_entry_cell,
-                          StructureEntry.COORDINATES_TYPE,
-                          StructureEntry._COORDINATES,
-                          StructureEntry._OCCUPATION,
-                          StructureEntry.NUMBER_OF_ATOMS,
-                          StaticProperty._VALUE) \
-            .join(StaticProperty.ORIGINAL_STRUCTURE).join(StructureEntry.GENERICPARENT) \
-            .filter(Property.CALCULATOR == reference_calculator,
-                    StructureEntry.NUMBER_OF_ATOMTYPES == 1,
-                    StructureEntry.COMPOSITION.like(config["element"] + "-%"),
-                    ).order_by(StaticProperty.id)
-        if query_limit is not None:
-            q = q.limit(query_limit)
-        log.info("Querying entries with defined generic prototype...")
-        tot_data = q.all()
-        log.info("Queried: {} entries".format(len(tot_data)))
-
-        q_none = storage.query(StaticProperty.id.label("prop_id"),
-                               StructureEntry.id.label("structure_id"),
-                               StaticProperty.NAME.label("property_name"),
-                               *structure_entry_cell,
-                               StructureEntry.COORDINATES_TYPE,
-                               StructureEntry._COORDINATES,
-                               StructureEntry._OCCUPATION,
-                               StructureEntry.NUMBER_OF_ATOMS,
-                               StaticProperty._VALUE) \
-            .join(StaticProperty.ORIGINAL_STRUCTURE) \
-            .filter(Property.CALCULATOR == reference_calculator,
-                    StructureEntry.NUMBER_OF_ATOMTYPES == 1,
-                    StructureEntry.COMPOSITION.like(config["element"] + "-%"),
-                    StructureEntry.GENERICPARENT == None
-                    ).order_by(StaticProperty.id)
-
-        if query_limit is not None:
-            q_none = q_none.limit(query_limit)
-
-        log.info("Querying entries without defined generic prototype...")
-        no_generic_tot_data = q_none.all()
-        log.info("Queried: {} entries".format(len(no_generic_tot_data)))
-
-        df = DataFrameWithMetadata(tot_data)
-        df_no_generic = DataFrameWithMetadata(no_generic_tot_data)
-
-        log.info("Combining both queries together")
-        df_total = pd.concat([df, df_no_generic], axis=0)
-        log.info("Reseting indices")
-        df_total.reset_index(inplace=True, drop=True)
-
-        # shuffle notebook for randomizing parallel processing
-        if seed is not None:
-            log.info("set numpy random seed = {}".format(seed))
-            np.random.seed(seed)
-            log.info("Shuffle dataset")
-            # pandas should do it inplace, not extra memory allocation
-            df_total = df_total.sample(frac=1, random_state=seed)  # .reset_index(drop=True)
-        else:
-            log.info("Seed is not provided, no shuffling")
-        log.info("Total entries obtained from database:" + str(df_total.shape[0]))
-        return df_total, ref_energy
-
-
-def query_reference_energy(element, reference_calculator, storage):
-    from structdborm import StructureEntry, StaticProperty, GenericEntry, Property
-    ref_prop = storage.query(StaticProperty).join(StructureEntry, GenericEntry).filter(
-        Property.CALCULATOR == reference_calculator,
-        Property.NAME == REF_PROP_NAME,
-        StructureEntry.COMPOSITION.like(element + "-%"),
-        StructureEntry.NUMBER_OF_ATOMS == 1,
-        GenericEntry.PROTOTYPE_NAME == REF_GENERIC_PROTOTYPE_NAME
-    ).one()
-    # free atom reference energy
-    ref_energy = ref_prop.energy / ref_prop.n_atom
-    return ref_energy
-
-
-class StructuresDatasetWeightingPolicy:
-    def generate_weights(self, df):
-        raise NotImplementedError
 
 
 def save_dataframe(df: pd.DataFrame, filename: str, protocol: int = 4):
@@ -252,402 +53,77 @@ def load_dataframe(filename: str, compression: str = "infer") -> pd.DataFrame:
     return df
 
 
-class StructuresDatasetSpecification:
-    """
-    Object to query or load from cache the fitting dataset
+def attach_single_point_calculator(row):
+    atoms = row["ase_atoms"]
+    energy = row["energy_corrected"]
+    forces = row["forces"]
+    calc = SinglePointCalculator(atoms, energy=energy, forces=forces)
+    atoms.set_calculator(calc)
+    return atoms
 
-        :param config:  dictionary with "element" - the element for which the data will be collected
-                                        "calculator" - calculator and
-                                        "seed" - random seed
-        :param cutoff:
-        :param filename:
-        :param datapath:
-        :param db_conn_string:
-        :param force_query:
-        :param query_limit:
-        :param seed:
-        :param cache_ref_df:
-    """
 
-    FHI_AIMS_PBE_TIGHT = 'FHI-aims/PBE/tight'
+# define safe_min function, that return None of input is empty
+def safe_min(val):
+    try:
+        return min((v for v in val if v is not None))
+    except (ValueError, TypeError):
+        return None
 
-    def __init__(self,
-                 config: Dict = None,
-                 cutoff: float = 10,
-                 filename: str = None,
-                 datapath: str = "",
-                 db_conn_string: str = None,
-                 force_query: bool = False,
-                 ignore_weights: bool = False,
-                 query_limit: int = None,
-                 seed: int = None,
-                 cache_ref_df: bool = False,
-                 progress_bar: bool = False,
-                 df: pd.DataFrame = None,
-                 force_rebuild: bool = False,
-                 **kwargs
-                 ):
-        """
 
-        :param config:
-        :param cutoff:
-        :param filename:
-        :param datapath:
-        :param db_conn_string:
-        :param force_query:
-        :param query_limit:
-        :param seed:
-        :param cache_ref_df:
-        """
+# define function that compute minimal distance
+def calc_min_distance(ae):
+    atpos = np.array(ae.x)
+    nlist = ae.neighbour_list
+    return safe_min(safe_min(np.linalg.norm(atpos[nlist[nat]] - atpos[nat], axis=1)) for nat in range(ae.n_atoms_real))
 
-        # data config
-        self.query_limit = query_limit
-        if config is None:
-            config = {}
 
-        self.config = config
-        self.force_query = force_query
-        self.force_rebuild = force_rebuild
-        self.ignore_weights = ignore_weights
-        self.filename = filename
-        # ### Path where pickle files will be stored
-        self.datapath = datapath
+def check_df_non_empty(df: pd.DataFrame):
+    if len(df) == 0:
+        raise RuntimeError("Couldn't operate with empty dataset. Try to reduce filters and constraints")
 
-        # if self.datapath is not None and self.filename is not None:
-        #     self.filename = os.path.join(self.datapath, self.filename)
 
-        # random seed
-        self.seed = seed
-        if self.seed is not None:
-            np.random.seed(self.seed)
+def normalize_energy_forces_weights(df: pd.DataFrame):
+    if df is None:
+        return
+    if WEIGHTS_ENERGY_COLUMN not in df.columns:
+        raise ValueError("`{}` column not in dataframe".format(WEIGHTS_ENERGY_COLUMN))
+    if WEIGHTS_FORCES_COLUMN not in df.columns:
+        raise ValueError("`{}` column not in dataframe".format(WEIGHTS_FORCES_COLUMN))
 
-        # neighbour list cutoff
-        self.cutoff = cutoff
+    assert (df[WEIGHTS_FORCES_COLUMN].map(len) == df[FORCES_COL].map(len)).all()
 
-        # result column name : tuple(mapper function,  kwargs)
-        self.ase_atoms_transformers = {}
+    df[WEIGHTS_ENERGY_COLUMN] = df[WEIGHTS_ENERGY_COLUMN] / df[WEIGHTS_ENERGY_COLUMN].sum()
+    # df[WEIGHTS_FORCES_COLUMN] = df[WEIGHTS_FORCES_COLUMN] * df[WEIGHTS_ENERGY_COLUMN]
+    w_forces_norm = df[WEIGHTS_FORCES_COLUMN].map(sum).sum()
+    df[WEIGHTS_FORCES_COLUMN] = df[WEIGHTS_FORCES_COLUMN] / w_forces_norm
 
-        self.db_conn_string = db_conn_string
-        self.progress_bar = progress_bar
+    assert np.allclose(df[WEIGHTS_ENERGY_COLUMN].sum(), 1)
+    assert np.allclose(df[WEIGHTS_FORCES_COLUMN].map(sum).sum(), 1)
 
-        self.raw_df = df
-        self.df = None
-        self.ref_energy = None
-        self.weights_policy = None
 
-        self.ref_df_changed = False
-        self.cache_ref_df = cache_ref_df
+class StructuresDatasetWeightingPolicy:
+    def generate_weights(self, df):
+        raise NotImplementedError
 
-    def set_weights_policy(self, weights_policy):
-        self.weights_policy = weights_policy
 
-    def add_ase_atoms_transformer(self, result_column_name, transformer_func, **kwargs):
-        self.ase_atoms_transformers[result_column_name] = (transformer_func, kwargs)
+# DataFrameWithMetadata is left for backward compatibility only
+class DataFrameWithMetadata(pd.DataFrame):
+    # normal properties
+    _metadata = ["metadata"]
 
-    def get_default_ref_filename(self):
-        try:
-            return "df-{calculator}-{element}-{suffix}.pckl.gzip".format(
-                calculator=self.config["calculator"],
-                element=self.config["element"],
-                suffix="ref").replace("/", "_")
-        except KeyError as e:
-            log.warning("Couldn't generate default name: " + str(e))
-            return None
-        except Exception as e:
-            raise
+    @property
+    def _constructor(self):
+        return DataFrameWithMetadata
 
-    def process_ref_dataframe(self, ref_df: pd.DataFrame, e0_per_atom: float) -> pd.DataFrame:
-        if not isinstance(ref_df, DataFrameWithMetadata):
-            log.info("Transforming to DataFrameWithMetadata")
-            ref_df = DataFrameWithMetadata(ref_df)
-            self.ref_df_changed = True
+    @property
+    def metadata_dict(self):
+        if not hasattr(self, "metadata") or self.metadata is None:
+            self.metadata = {}
+        return self.metadata
 
-        log.info("Setting up structures dataframe - please be patient...")
-        if "NUMBER_OF_ATOMS" not in ref_df.columns:
-            if "ase_atoms" in ref_df.columns:
-                ref_df["NUMBER_OF_ATOMS"] = ref_df["ase_atoms"].map(len)
-                self.ref_df_changed = True
-            else:
-                raise ValueError("Dataframe is corrupted: neither 'NUMBER_OF_ATOMS' nor 'ase_atoms' columns are found")
-
-        tot_atoms_num = ref_df["NUMBER_OF_ATOMS"].sum()
-        mean_atoms_num = ref_df["NUMBER_OF_ATOMS"].mean()
-        log.info("Processing structures dataframe. Shape: " + str(ref_df.shape))
-        log.info("Total number of atoms: " + str(tot_atoms_num))
-        log.info("Mean number of atoms per structure: {:.1f}".format(mean_atoms_num))
-
-        # Extract energies and forces into separate columns
-        if "energy" not in ref_df.columns and "energy_corrected" not in ref_df.columns:
-            log.info("'energy' columns extraction from '_VALUE'")
-            ref_df["energy"] = ref_df["_VALUE"].map(lambda d: d["energy"])
-            self.ref_df_changed = True
-        else:
-            log.info("'energy' columns found")
-
-        if FORCES_COLUMN not in ref_df.columns:
-            log.info("'forces' columns extraction from '_VALUE'")
-            ref_df[FORCES_COLUMN] = ref_df["_VALUE"].map(lambda d: np.array(d[FORCES_COLUMN]))
-            self.ref_df_changed = True
-        else:
-            log.info("'forces' columns found")
-
-        if "pbc" not in ref_df.columns:
-            if "ase_atoms" not in ref_df.columns:
-                log.info("'pbc' columns extraction from lattice columns")
-                # check the periodicity of coordinates
-                ref_df["pbc"] = (ref_df[LATTICE_COLUMNS] != 0).any(axis=1)
-            else:
-                # check the periodicity from ASE atoms
-                log.info("'pbc' columns extraction from 'ase_atoms'")
-                ref_df["pbc"] = ref_df["ase_atoms"].map(lambda atoms: np.all(atoms.pbc))
-            self.ref_df_changed = True
-        else:
-            log.info("'pbc' columns found")
-
-        if "cell" not in ref_df.columns and "ase_atoms" not in ref_df.columns:
-            log.info("'cell' column extraction from lattice columns")
-            ref_df["cell"] = ref_df[LATTICE_COLUMNS].apply(lambda row: row.values.reshape(-1, 3), axis=1)
-            ref_df.drop(columns=LATTICE_COLUMNS, inplace=True)
-            # ref_df.reset_index(drop=True, inplace=True)
-            self.ref_df_changed = True
-        else:
-            log.info("'cell' column found")
-
-        if "energy_corrected" not in ref_df.columns:
-            log.info("'energy_corrected' column extraction from 'energy'")
-            if e0_per_atom is not None:
-                ref_df["energy_corrected"] = ref_df["energy"] - ref_df["NUMBER_OF_ATOMS"] * e0_per_atom
-            else:
-                raise ValueError("e0_per_atom is not specified, please re-query the data from database")
-            self.ref_df_changed = True
-        else:
-            log.info("'energy_corrected' column found")
-
-        if E_CORRECTED_PER_ATOM_COLUMN not in ref_df.columns:
-            log.info("'{}' column extraction".format(E_CORRECTED_PER_ATOM_COLUMN))
-            ref_df[E_CORRECTED_PER_ATOM_COLUMN] = ref_df["energy_corrected"] / ref_df["NUMBER_OF_ATOMS"]
-            self.ref_df_changed = True
-        else:
-            log.info("'{}' column found".format(E_CORRECTED_PER_ATOM_COLUMN))
-
-        log.info("Min energy per atom: {:.3f} eV/atom".format(ref_df[E_CORRECTED_PER_ATOM_COLUMN].min()))
-        log.info("Max energy per atom: {:.3f} eV/atom".format(ref_df[E_CORRECTED_PER_ATOM_COLUMN].max()))
-        log.info("Min abs energy per atom: {:.3f} eV/atom".format(ref_df[E_CORRECTED_PER_ATOM_COLUMN].abs().min()))
-        log.info("Max abs energy per atom: {:.3f} eV/atom".format(ref_df[E_CORRECTED_PER_ATOM_COLUMN].abs().max()))
-
-        if "ase_atoms" not in ref_df.columns:
-            log.info("ASE Atoms construction...")
-            start = time.time()
-            self.apply_create_ase_atoms(ref_df)
-            end = time.time()
-            time_elapsed = end - start
-            log.info("ASE Atoms construction...done within {} sec ({} ms/at)".
-                     format(time_elapsed, time_elapsed / tot_atoms_num * 1e3))
-            self.ref_df_changed = True
-        else:
-            log.info("ASE atoms ('ase_atoms' column) are already in dataframe")
-
-        # for tp_atoms: check, that energies and forces in SinglePointCalculator and in energy_corrected,
-        # forces are identical
-
-        if self.force_rebuild:
-            attach_spc = True
-            log.info("Force-rebuild is set, SinglePointCalculator will be reattached")
-        else:
-            attach_spc = False
-        # check ref_df has SinglePointCalculator attached
-        test_atoms = ref_df["ase_atoms"].iloc[0]
-        if test_atoms.get_calculator() is not None:
-            try:
-                log.info("Checking stored energies...")
-                e = ref_df["energy_corrected"];
-                espc = ref_df["ase_atoms"].map(lambda at: at.get_potential_energy())
-                de = (e - espc).abs().max()
-                if de > 1e-15:
-                    log.warning("WARNING! 'energy_corrected' and ase_atoms.SinglePointCalculator.get_potential_energy "
-                                "are inconsistent")
-                    attach_spc = True
-
-                # check forces
-                log.info("Checking stored forces...")
-                fspc = np.vstack(ref_df["ase_atoms"].map(lambda at: at.get_forces()))
-                f = np.vstack(ref_df["forces"])
-                if np.abs(f - fspc).max() > 1e-15:
-                    log.warning("WARNING! 'forces' and ase_atoms.SinglePointCalculator.get_forces "
-                                "are inconsistent")
-                    attach_spc = True
-            except KeyboardInterrupt:
-                raise
-            except Exception as e:
-                log.error("Couldn't check ase_atoms.SinglePointCalculator energies/forces, reattaching calculator...")
-                attach_spc = True
-        else:  # no SinglePointCalculaotr
-            attach_spc = True
-
-        # check ref_df has SinglePointCalculator attached
-
-        if attach_spc:
-            log.info("Attaching SinglePointCalculator to ASE atoms...")
-            start = time.time()
-            ref_df["ase_atoms"] = ref_df.apply(attach_single_point_calculator, axis=1)
-            end = time.time()
-            time_elapsed = end - start
-            log.info("Attaching SinglePointCalcualtor to ASE atoms...done within {:.6} sec ({:.6} ms/at)".
-                     format(time_elapsed, time_elapsed / tot_atoms_num * 1e3))
-            self.ref_df_changed = True
-
-        log.info("Atomic environment representation construction...")
-        start = time.time()
-        self.apply_ase_atoms_transformers(ref_df)
-        end = time.time()
-        time_elapsed = end - start
-        log.info("Atomic environment representation construction...done within {:.5g} sec ({:.3g} ms/atom)".
-                 format(time_elapsed, time_elapsed / tot_atoms_num * 1e3))
-        return ref_df
-
-    def apply_create_ase_atoms(self, df):
-        df["ase_atoms"] = df.apply(create_ase_atoms, axis=1)
-
-    def apply_ase_atoms_transformers(self, df):
-        apply_function = df["ase_atoms"].apply
-
-        for res_column_name, (transformer, kwargs) in self.ase_atoms_transformers.items():
-            if res_column_name in df.columns and not self.force_rebuild:
-                log.info("'{}' already in dataframe".format(res_column_name))
-                # check if cutoff is not smaller than requested now
-                try:
-                    metadata_kwargs = df.metadata_dict[res_column_name + "_kwargs"]
-                    metadata_cutoff = metadata_kwargs["cutoff"]
-                    cur_cutoff = kwargs["cutoff"]
-                    if metadata_cutoff < cur_cutoff:
-                        log.warning("WARNING! Column {} was constructed with smaller cutoff ({}A) "
-                                    "that necessary now ({}A). "
-                                    "Neighbourlists will be re-built".format(res_column_name, metadata_cutoff,
-                                                                             cur_cutoff))
-                    else:
-                        log.info("Column '{}': existing cutoff ({}A) >= "
-                                 "requested  cutoff ({}A), skipping...".format(res_column_name, metadata_cutoff,
-                                                                               cur_cutoff))
-
-                        continue
-                except KeyboardInterrupt as e:
-                    raise e
-                except Exception as e:
-                    log.info("Could not extract cutoff metadata "
-                             "for column '{}' (error: {}). Please ensure the valid cutoff for "
-                             "precomputed neighbourlists".format(res_column_name, e))
-                    continue
-
-            l1 = len(df)
-            cur_cutoff = kwargs["cutoff"]
-            log.info("Building '{}' (dataset size {}, cutoff={}A)...".format(res_column_name, l1, cur_cutoff))
-            df[res_column_name] = apply_function(transformer, **kwargs)
-            df.dropna(subset=[res_column_name], inplace=True)
-            # df.reset_index(drop=True, inplace=True)
-            l2 = len(df)
-            log.info("Dataframe size after transform: " + str(l2))
-            df.metadata_dict[res_column_name + "_kwargs"] = kwargs
-            self.ref_df_changed = True
-
-    def load_or_query_ref_structures_dataframe(self, force_query=None):
-        self.ref_df_changed = False
-        if force_query is None:
-            force_query = self.force_query
-
-        file_to_load = self.get_actual_filename()
-
-        log.info("Search for cache ref-file: " + str(file_to_load))
-        ref_energy = None
-        if self.raw_df is not None and not force_query:
-            self.df = self.raw_df
-        elif file_to_load is not None and os.path.isfile(file_to_load) and not force_query:
-            log.info(file_to_load + " found, try to load")
-            self.df = load_dataframe(file_to_load, compression="infer")
-        else:  # if ref_df is still not loaded, try to query from DB
-            if not force_query:
-                log.info("Cache not found, querying database")
-            else:
-                log.info("Forcing query database")
-            self.df, ref_energy = query_data(config=self.config, seed=self.seed, query_limit=self.query_limit,
-                                             db_conn_string=self.db_conn_string)
-            self.ref_df_changed = True
-
-        if not isinstance(self.df, DataFrameWithMetadata):
-            log.info("Transforming to DataFrameWithMetadata")
-            self.df = DataFrameWithMetadata(self.df)
-            self.ref_df_changed = True
-        # check, that all necessary columns are there
-        self.df = self.process_ref_dataframe(self.df, ref_energy)
-
-        return self.df
-
-    def get_actual_filename(self):
-        """
-        Get actual filename to load dataframe:
-        1. If filename is provided
-            - try to find file locally
-            - else try to find in datapath. If no datapath - switch back to local
-        2. If filename is not provided
-            - generate standard filename based on element and calculator name (prepend with datapath, if provided)
-        :return: filename of dataframe
-        """
-        if self.filename is not None:
-            if os.path.isfile(self.filename) or self.datapath is None:
-                file_to_load = self.filename
-            else:
-                file_to_load = os.path.join(self.datapath, self.filename)
-        else:
-            file_to_load = self.get_default_ref_filename()
-            file_to_load = os.path.join(self.datapath, file_to_load) if self.datapath is not None else file_to_load
-        return file_to_load
-
-    def get_ref_dataframe(self, force_query=None, cache_ref_df=False):
-        self.ref_df_changed = False
-        if force_query is None:
-            force_query = self.force_query
-        if self.df is None:
-            self.df = self.load_or_query_ref_structures_dataframe(force_query=force_query)
-        if cache_ref_df or self.cache_ref_df:
-            if self.ref_df_changed:
-                # generate filename to save df: if name is provided - try to put it into datapath
-                filename = self.get_actual_filename() or "df_ref.pckl.gzip"
-                log.info("Saving processed raw dataframe into " + filename)
-                save_dataframe(self.df, filename=filename)
-            else:
-                log.info("Reference dataframe was not changed, nothing to save")
-        return self.df
-
-    def get_fit_dataframe(self, force_query=None, weights_policy=None, ignore_weights=None):
-        if force_query is None:
-            force_query = self.force_query
-        self.df = self.get_ref_dataframe(force_query=force_query)
-
-        if ignore_weights is None:
-            ignore_weights = self.ignore_weights
-
-        if WEIGHTS_ENERGY_COLUMN in self.df.columns and WEIGHTS_FORCES_COLUMN in self.df.columns and not ignore_weights:
-            log.info("Both weighting columns ({} and {}) are found, no another weighting policy will be applied".format(
-                WEIGHTS_ENERGY_COLUMN, WEIGHTS_FORCES_COLUMN))
-        else:
-            if ignore_weights and (
-                    WEIGHTS_ENERGY_COLUMN in self.df.columns or WEIGHTS_FORCES_COLUMN in self.df.columns):
-                log.info("Existing weights are ignored, weighting policy calculation is forced")
-
-            if weights_policy is not None:
-                self.set_weights_policy(weights_policy)
-
-            if self.weights_policy is None:
-                log.info("No weighting policy is specified, setting default weighting policy")
-                self.set_weights_policy(UniformWeightingPolicy())
-
-            log.info("Apply weights policy: " + str(self.weights_policy))
-            self.df = self.weights_policy.generate_weights(self.df)
-        if WEIGHTS_FACTOR in self.df.columns:
-            log.info("Weights factor column `{}` is found, multiplying energy anf forces weights by this factor".format(
-                WEIGHTS_FACTOR))
-            self.df[WEIGHTS_ENERGY_COLUMN] *= self.df[WEIGHTS_FACTOR]
-            self.df[WEIGHTS_FORCES_COLUMN] *= self.df[WEIGHTS_FACTOR]
-        return self.df
+    @metadata_dict.setter
+    def metadata_dict(self, value):
+        self.metadata = value
 
 
 class EnergyBasedWeightingPolicy(StructuresDatasetWeightingPolicy):
@@ -710,8 +186,8 @@ class EnergyBasedWeightingPolicy(StructuresDatasetWeightingPolicy):
 
     def __str__(self):
         return (
-                "EnergyBasedWeightingPolicy(nfit={nfit}, n_lower={n_lower}, n_upper={n_upper}, energy={energy}," + \
-                " DElow={DElow}, DEup={DEup}, DFup={DFup}, DE={DE}, " + \
+                "EnergyBasedWeightingPolicy(nfit={nfit}, n_lower={n_lower}, n_upper={n_upper}, energy={energy}," +
+                " DElow={DElow}, DEup={DEup}, DFup={DFup}, DE={DE}, " +
                 "DF={DF}, wlow={wlow}, reftype={reftype},seed={seed})").format(nfit=self.nfit,
                                                                                n_lower=self.n_lower,
                                                                                n_upper=self.n_upper,
@@ -735,17 +211,6 @@ class EnergyBasedWeightingPolicy(StructuresDatasetWeightingPolicy):
                 log.info("Set nfit ({}) = n_lower ({}) + n_upper ({})".format(self.nfit, self.n_lower, self.n_upper))
             else:  # nfit=None, one of n_upper or n_lower not None
                 raise ValueError("nfit is None. Please provide both n_lower and n_upper")
-                # self.nfit = len(df)
-                # if self.n_upper is not None:
-                #     self.n_lower = self.nfit - self.n_upper
-                #     if self.n_lower < 0:
-                #         self.n_lower = 0
-                #         self.nfit = self.n_upper
-                # if self.n_lower is not None:
-                #     self.n_upper = self.nfit - self.n_lower
-                #     if self.n_upper < 0:
-                #         self.n_upper = 0
-                #         self.nfit = self.n_lower
         else:  # nfit is not None
             if self.n_upper is not None or self.n_lower is not None:
                 raise ValueError("nfit is not None. No n_lower or n_upper is expected")
@@ -761,7 +226,7 @@ class EnergyBasedWeightingPolicy(StructuresDatasetWeightingPolicy):
         else:
             log.info("Keeping bulk and cluster data")
 
-        self.check_df_non_empty(df)
+        check_df_non_empty(df)
 
         if self.cutoff is not None:
             log.info("EnergyBasedWeightingPolicy::cutoff is provided but will be ignored")
@@ -773,7 +238,8 @@ class EnergyBasedWeightingPolicy(StructuresDatasetWeightingPolicy):
 
         if self.energy == "convex_hull":
             log.info("EnergyBasedWeightingPolicy: energy reference frame - convex hull distance (if possible)")
-            compute_convexhull_dist(df)  # generate "e_chull_dist_per_atom" column
+            # generate "e_chull_dist_per_atom" column
+            compute_convexhull_dist(df, energy_per_atom_column=E_CORRECTED_PER_ATOM_COLUMN)
             df[EFFECTIVE_ENERGY] = df[E_CHULL_DIST_PER_ATOM]
         elif self.energy == "cohesive":
             log.info("EnergyBasedWeightingPolicy: energy reference frame - cohesive energy")
@@ -793,12 +259,12 @@ class EnergyBasedWeightingPolicy(StructuresDatasetWeightingPolicy):
             log.info("{} structures with higher than dFup forces are removed. Current size: {} structures".format(
                 size_before - size_after, size_after))
 
-        self.check_df_non_empty(df)
+        check_df_non_empty(df)
 
         # remove high energy structures
         df = df[df[EFFECTIVE_ENERGY] < self.DEup]  # .reset_index(drop=True)
 
-        self.check_df_non_empty(df)
+        check_df_non_empty(df)
 
         elow_mask = df[EFFECTIVE_ENERGY] < self.DElow
         eup_mask = df[EFFECTIVE_ENERGY] >= self.DElow
@@ -841,7 +307,7 @@ class EnergyBasedWeightingPolicy(StructuresDatasetWeightingPolicy):
         np.random.shuffle(takelist)
 
         df = df.loc[takelist]  # .reset_index(drop=True)
-        self.check_df_non_empty(df)
+        check_df_non_empty(df)
 
         elow_mask = df[EFFECTIVE_ENERGY] < self.DElow
         eup_mask = df[EFFECTIVE_ENERGY] >= self.DElow
@@ -896,10 +362,10 @@ class EnergyBasedWeightingPolicy(StructuresDatasetWeightingPolicy):
         # ### force weights
         log.info("Setting up force weights")
         DF = abs(self.DF)
-        df[FORCES_COLUMN] = df[FORCES_COLUMN].map(np.array)
+        df[FORCES_COL] = df[FORCES_COL].map(np.array)
         assert (df["forces"].map(len) == df["ase_atoms"].map(len)).all(), ValueError(
             "Number of atoms doesn't corresponds to shape of forces")
-        df[WEIGHTS_FORCES_COLUMN] = df[FORCES_COLUMN].map(lambda forces: 1 / (np.sum(forces ** 2, axis=1) + DF))
+        df[WEIGHTS_FORCES_COLUMN] = df[FORCES_COL].map(lambda forces: 1 / (np.sum(forces ** 2, axis=1) + DF))
         assert (df[WEIGHTS_FORCES_COLUMN].map(len) == df["NUMBER_OF_ATOMS"]).all()
         df[WEIGHTS_FORCES_COLUMN] = df[WEIGHTS_FORCES_COLUMN] * df[WEIGHTS_ENERGY_COLUMN]
         w_forces_norm = df[WEIGHTS_FORCES_COLUMN].map(sum).sum()
@@ -912,10 +378,6 @@ class EnergyBasedWeightingPolicy(StructuresDatasetWeightingPolicy):
         assert np.allclose(forces_weights_sum, 1), "Forces weights sum differs from one and equal to {}".format(
             forces_weights_sum)
         return df
-
-    def check_df_non_empty(self, df: pd.DataFrame):
-        if len(df) == 0:
-            raise RuntimeError("Couldn't operate with empty dataset. Try to reduce filters and constraints")
 
     def plot(self, df):
         import matplotlib.pyplot as plt
@@ -941,87 +403,6 @@ class EnergyBasedWeightingPolicy(StructuresDatasetWeightingPolicy):
         plt.show()
 
 
-def compute_convexhull_dist(df):
-    df["comp_dict"] = df["ase_atoms"].map(lambda atoms: Counter(atoms.get_chemical_symbols()))
-    df["elements"] = df["comp_dict"].map(lambda cnt: tuple(sorted(cnt.keys())))
-
-    elements_set = set()
-    for els in df["elements"].unique():
-        elements_set.update(els)
-    elements = sorted(elements_set)
-
-    for el in elements:
-        df[el] = df["comp_dict"].map(lambda dct: dct.get(el, 0))
-        df["c_" + el] = df[el] / df["NUMBER_OF_ATOMS"]
-    c_elements = ["c_" + el for el in elements]
-    df["comp_tuple"] = df[c_elements].apply(lambda r: tuple(r), axis=1)
-
-    element_min_energy_dict = {}
-    for el in elements:
-        pure_element_df = df[df["elements"] == (el,)]
-        e_min = pure_element_df["energy_corrected_per_atom"].min()
-        if np.isnan(e_min):
-            e_min = 0
-            log.warning("No pure element energy for {} is available, assuming 0  eV/atom".format(el))
-        else:
-            log.info("Pure element lowest energy for {} = {:5f} eV/atom".format(el, e_min))
-        element_min_energy_dict[el] = e_min
-
-    element_emin_array = np.array([element_min_energy_dict[el] for el in elements])
-
-    c_conc = df[c_elements].values
-    e_formation_ideal = np.dot(c_conc, element_emin_array)
-    df[E_FORMATION_PER_ATOM] = df["energy_corrected_per_atom"] - e_formation_ideal
-
-    # check if more than one uniq compositions
-    uniq_compositions = df["comp_tuple"].unique()
-
-    if len(uniq_compositions) > 1:
-        log.info("Structure dataset: multiple unique compositions found, trying to construct convex hull")
-        chull_values = df[c_elements[:-1] + [E_FORMATION_PER_ATOM]].values
-        hull = ConvexHull(chull_values)
-        ok = hull.equations[:, -2] < 0
-        selected_simplices = hull.simplices[ok]
-        selected_equations = hull.equations[ok]
-
-        norms = selected_equations[:, :-1]
-        offsets = selected_equations[:, -1]
-
-        norms_c = norms[:, :-1]
-        norms_e = norms[:, -1]
-
-        e_chull_dist_list = []
-        for p in chull_values:
-            p_c = p[:-1]
-            p_e = p[-1]
-            e_simplex_projections = []
-            for nc, ne, b, simplex in zip(norms_c, norms_e, offsets, selected_simplices):
-                if ne != 0:
-                    e_simplex = (-b - np.dot(nc, p_c)) / ne
-                    e_simplex_projections.append(e_simplex)
-                elif np.abs(b + np.dot(nc, p_c)) < 2e-15:  # ne*e_simplex + b + np.dot(nc,p_c), ne==0
-                    e_simplex = p_e
-                    e_simplex_projections.append(e_simplex)
-
-            e_simplex_projections = np.array(e_simplex_projections)
-
-            mask = e_simplex_projections < p_e + 1e-15
-
-            e_simplex_projections = e_simplex_projections[mask]
-
-            e_dist_to_chull = np.min(p_e - e_simplex_projections)
-
-            e_chull_dist_list.append(e_dist_to_chull)
-
-        e_chull_dist_list = np.array(e_chull_dist_list)
-    else:
-        log.info("Structure dataset: only single unique composition found, switching to cohesive energy reference")
-        emin = df[E_CORRECTED_PER_ATOM_COLUMN].min()
-        e_chull_dist_list = df[E_CORRECTED_PER_ATOM_COLUMN] - emin
-
-    df[E_CHULL_DIST_PER_ATOM] = e_chull_dist_list
-
-
 class UniformWeightingPolicy(StructuresDatasetWeightingPolicy):
 
     def __init__(self):
@@ -1032,35 +413,31 @@ class UniformWeightingPolicy(StructuresDatasetWeightingPolicy):
 
     def generate_weights(self, df):
         df[WEIGHTS_ENERGY_COLUMN] = 1. / len(df)
-
-        df[WEIGHTS_FORCES_COLUMN] = df[FORCES_COLUMN].map(lambda forces: np.ones(len(forces)))
-
-        # assert (df[WEIGHTS_FORCES_COLUMN].map(len) == df["NUMBER_OF_ATOMS"]).all()
+        df[WEIGHTS_FORCES_COLUMN] = df[FORCES_COL].map(lambda forces: np.ones(len(forces)))
         df[WEIGHTS_FORCES_COLUMN] = df[WEIGHTS_FORCES_COLUMN] * df[WEIGHTS_ENERGY_COLUMN]
-
-        # w_forces_norm = df[WEIGHTS_FORCES_COLUMN].map(sum).sum()
-        # df[WEIGHTS_FORCES_COLUMN] = df[WEIGHTS_FORCES_COLUMN] / w_forces_norm
-
-        # assert np.allclose(df[WEIGHTS_ENERGY_COLUMN].sum(), 1)
-        # assert np.allclose(df[WEIGHTS_FORCES_COLUMN].map(sum).sum(), 1)
         normalize_energy_forces_weights(df)
         return df
 
 
 class ExternalWeightingPolicy(StructuresDatasetWeightingPolicy):
 
-    def __init__(self, filename: str):
+    def __init__(self, filename_or_df: str):
         """
         :param filename: .pckl.gzip filename of dataframe with index and  `w_energy` and `w_forces` columns
         """
-        self.filename = filename
+        self.filename_or_df = filename_or_df
+        self.weights_df = None
 
     def __str__(self):
-        return "ExternalWeightingPolicy(filename={filename})".format(filename=self.filename)
+        return "ExternalWeightingPolicy(filename={filename})".format(
+            filename=self.filename_or_df if isinstance(self.filename_or_df, str) else "[pd.DataFrame]")
 
     def generate_weights(self, df):
-        log.info("Loading external weights dataframe {}".format(self.filename))
-        self.weights_df = pd.read_pickle(self.filename, compression="gzip")
+        if isinstance(self.filename_or_df, str):
+            log.info("Loading external weights dataframe {}".format(self.filename_or_df))
+            self.weights_df = pd.read_pickle(self.filename_or_df, compression="gzip")
+        else:
+            self.weights_df = self.filename_or_df
         log.info("External weights dataframe loaded, it contains {} entries".format(len(self.weights_df)))
 
         # check that columns are presented
@@ -1079,7 +456,7 @@ class ExternalWeightingPolicy(StructuresDatasetWeightingPolicy):
 
         mdf = pd.merge(df, self.weights_df[[WEIGHTS_ENERGY_COLUMN, WEIGHTS_FORCES_COLUMN]], left_index=True,
                        right_index=True)
-        if not (mdf[FORCES_COLUMN].map(len) == mdf[WEIGHTS_FORCES_COLUMN].map(len)).all():
+        if not (mdf[FORCES_COL].map(len) == mdf[WEIGHTS_FORCES_COLUMN].map(len)).all():
             error_msg = ("Shape of the `{}` column doesn't correspond to the shape of "
                          "`forces` column in original dataframe").format(WEIGHTS_FORCES_COLUMN)
             log.error(error_msg)
@@ -1097,28 +474,32 @@ class ExternalWeightingPolicy(StructuresDatasetWeightingPolicy):
         return mdf
 
 
-def normalize_energy_forces_weights(df: pd.DataFrame) -> pd.DataFrame:
-    if WEIGHTS_ENERGY_COLUMN not in df.columns:
-        raise ValueError("`{}` column not in dataframe".format(WEIGHTS_ENERGY_COLUMN))
-    if WEIGHTS_FORCES_COLUMN not in df.columns:
-        raise ValueError("`{}` column not in dataframe".format(WEIGHTS_FORCES_COLUMN))
+def train_test_split(df, test_size: Union[float, int]) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    """
+    Split df into train and test
+    :param df: data frame
+    :param test_size:
+    :return:
+    """
+    n_samples = len(df)
+    if test_size >= 1:
+        train_size = n_samples - test_size
+    elif 0 < test_size and test_size < 1:
+        test_size = int(n_samples * test_size)
+        train_size = n_samples - test_size
 
-    assert (df[WEIGHTS_FORCES_COLUMN].map(len) == df[FORCES_COLUMN].map(len)).all()
+    inds = np.arange(len(df))
+    np.random.shuffle(inds)
 
-    df[WEIGHTS_ENERGY_COLUMN] = df[WEIGHTS_ENERGY_COLUMN] / df[WEIGHTS_ENERGY_COLUMN].sum()
-    # df[WEIGHTS_FORCES_COLUMN] = df[WEIGHTS_FORCES_COLUMN] * df[WEIGHTS_ENERGY_COLUMN]
-    w_forces_norm = df[WEIGHTS_FORCES_COLUMN].map(sum).sum()
-    df[WEIGHTS_FORCES_COLUMN] = df[WEIGHTS_FORCES_COLUMN] / w_forces_norm
+    train_inds = sorted(inds[:train_size])
+    test_inds = sorted(inds[train_size:])
 
-    assert np.allclose(df[WEIGHTS_ENERGY_COLUMN].sum(), 1)
-    assert np.allclose(df[WEIGHTS_FORCES_COLUMN].map(sum).sum(), 1)
-    return df
+    return df.iloc[train_inds].copy(), df.iloc[test_inds].copy()
 
 
 def get_weighting_policy(weighting_policy_spec: Dict) -> StructuresDatasetWeightingPolicy:
-    weighting_policy = None
     if weighting_policy_spec is None:
-        return weighting_policy
+        return UniformWeightingPolicy()
     elif isinstance(weighting_policy_spec, StructuresDatasetWeightingPolicy):
         return weighting_policy_spec
     elif not isinstance(weighting_policy_spec, dict):
@@ -1127,7 +508,6 @@ def get_weighting_policy(weighting_policy_spec: Dict) -> StructuresDatasetWeight
             "or StructuresDatasetWeightingPolicy but got " + str(type(weighting_policy_spec)))
 
     weighting_policy_spec = weighting_policy_spec.copy()
-    log.debug("weighting_policy_spec: " + str(weighting_policy_spec))
 
     if WEIGHTING_TYPE_KW not in weighting_policy_spec:
         raise ValueError("Weighting 'type' is not specified")
@@ -1142,55 +522,6 @@ def get_weighting_policy(weighting_policy_spec: Dict) -> StructuresDatasetWeight
         raise ValueError("Unknown weighting 'type': " + weighting_policy_spec[WEIGHTING_TYPE_KW])
 
     return weighting_policy
-
-
-def get_dataset_specification(evaluator_name, data_config: Dict,
-                              cutoff=10, elements=None) -> StructuresDatasetSpecification:
-    if isinstance(data_config, str):
-        spec = StructuresDatasetSpecification(filename=data_config, cutoff=cutoff)
-    elif isinstance(data_config, dict):
-        spec = StructuresDatasetSpecification(**data_config, cutoff=cutoff)
-    else:
-        raise ValueError("Unknown data specification type: " + str(type(data_config)))
-
-    # add the transformer depending on the evaluator
-    if evaluator_name == PYACE_EVAL:
-        elements_mapper_dict = None
-        if elements is not None:
-            elements_mapper_dict = {el: i for i, el in enumerate(sorted(elements))}
-            log.info("Elements-to-indices mapping for 'atomic_env' construction: {}".format(elements_mapper_dict))
-        if elements_mapper_dict is None:
-            log.info("Elements-to-indices mapping for 'atomic_env' construction is NOT provided")
-        spec.add_ase_atoms_transformer(ATOMIC_ENV_DF_COLUMN, aseatoms_to_atomicenvironment, cutoff=cutoff,
-                                       elements_mapper_dict=elements_mapper_dict)
-    elif evaluator_name == TENSORPOT_EVAL:
-        # from tensorpotential.utils.utilities import generate_tp_atoms
-        from pyace.atomicenvironment import generate_tp_atoms
-        spec.add_ase_atoms_transformer(TP_ATOMS_DF_COLUMN, generate_tp_atoms, cutoff=cutoff, verbose=False)
-
-    return spec
-
-
-def get_reference_dataset(evaluator_name, data_config: Dict, cutoff=10, elements=None, force_query=False,
-                          cache_ref_df=True):
-    if isinstance(data_config, dict) and "config" in data_config and elements is None:
-        conf = data_config["config"]
-        elements = [conf["element"]]
-
-    spec = get_dataset_specification(evaluator_name=evaluator_name, data_config=data_config,
-                                     cutoff=cutoff, elements=elements)
-    return spec.get_ref_dataframe(force_query=force_query, cache_ref_df=cache_ref_df)
-
-
-def get_fitting_dataset(evaluator_name, data_config: Dict, weighting_policy_spec: Dict = None,
-                        cutoff=10, elements=None, force_query=False, force_weighting=None) -> pd.DataFrame:
-    spec = get_dataset_specification(evaluator_name=evaluator_name, data_config=data_config,
-                                     cutoff=cutoff, elements=elements)
-    spec.set_weights_policy(get_weighting_policy(weighting_policy_spec))
-
-    df = spec.get_fit_dataframe(force_query=force_query, ignore_weights=force_weighting)
-    normalize_energy_forces_weights(df)
-    return df
 
 
 def get_elements_mapper_dict(df):
@@ -1209,3 +540,302 @@ def generate_atomic_env_column(df, cutoff=9, elements_mapper_dict=None, ase_atom
     df[ATOMIC_ENV_COLUMN] = df[ase_atoms_column].map(
         lambda at: aseatoms_to_atomicenvironment(at, cutoff=cutoff,
                                                  elements_mapper_dict=elements_mapper_dict))
+
+
+def get_reference_dataset(evaluator_name, dataframe_fname):
+    return ACEDataset(data_config={"filename": dataframe_fname}, evaluator_name=evaluator_name).fitting_data
+
+
+def apply_weights(df: Optional[pd.DataFrame], weighting_policy_spec, ignore_weights=False) -> Optional[pd.DataFrame]:
+    if df is None:
+        return
+    if WEIGHTS_ENERGY_COLUMN in df.columns and WEIGHTS_FORCES_COLUMN in df.columns and not ignore_weights:
+        log.info("Both weighting columns ({} and {}) are found, no another weighting policy will be applied".format(
+            WEIGHTS_ENERGY_COLUMN, WEIGHTS_FORCES_COLUMN))
+    else:
+        if ignore_weights and (WEIGHTS_ENERGY_COLUMN in df.columns or WEIGHTS_FORCES_COLUMN in df.columns):
+            log.info("Existing weights are ignored, weighting policy calculation is forced")
+
+        if weighting_policy_spec is None:
+            log.info("No weighting policy is specified, setting default weighting policy")
+        weighting_policy = get_weighting_policy(weighting_policy_spec)
+
+        log.info("Apply weights policy: " + str(weighting_policy))
+        df = weighting_policy.generate_weights(df)
+    if WEIGHTS_FACTOR in df.columns:
+        log.info("Weights factor column `{}` is found, multiplying energy anf forces weights by this factor".format(
+            WEIGHTS_FACTOR))
+        df[WEIGHTS_ENERGY_COLUMN] *= df[WEIGHTS_FACTOR]
+        df[WEIGHTS_FORCES_COLUMN] *= df[WEIGHTS_FACTOR]
+    return df
+
+
+def adjust_aug_weights(df: Optional[pd.DataFrame], aug_factor) -> Optional[pd.DataFrame]:
+    if df is None:
+        return
+    if "name" in df.columns:
+        aug_mask = df["name"].str.startswith("augmented")
+        if aug_mask.sum() > 0:
+            log.info(f"{aug_mask.sum()} augmented structures found in dataset")
+
+            #  if weights are NAN - fallback to const(median) * aug_factor
+            if df.loc[aug_mask, WEIGHTS_ENERGY_COLUMN].isna().any() or df.loc[
+                aug_mask, WEIGHTS_FORCES_COLUMN].isna().any():
+                log.info(
+                    "Augmented weights are not set, probably because real data weights are provided already")
+                we_const = df.loc[~aug_mask, WEIGHTS_ENERGY_COLUMN].median()
+                wf_const = np.median(np.hstack(df.loc[~aug_mask, WEIGHTS_FORCES_COLUMN]))
+                log.info(f"Estimating median weights for real data: {we_const=:.5g}, {wf_const=:.5g}")
+                df.loc[aug_mask, WEIGHTS_ENERGY_COLUMN] = we_const
+                df.loc[aug_mask, WEIGHTS_FORCES_COLUMN] = wf_const * df.loc[aug_mask, "ase_atoms"].map(
+                    lambda at: np.ones((len(at),)))
+                if "w_forces_mask" in df.columns:
+                    df.loc[aug_mask, WEIGHTS_FORCES_COLUMN] = df.loc[aug_mask, WEIGHTS_FORCES_COLUMN] * df.loc[
+                        aug_mask, "w_forces_mask"]
+            log.info(f"Decreasing augmented weights by factor {aug_factor:.3g}")
+            df.loc[aug_mask, WEIGHTS_ENERGY_COLUMN] *= aug_factor
+            df.loc[aug_mask, WEIGHTS_FORCES_COLUMN] *= aug_factor
+    return df
+
+
+def big_warning(msg):
+    tot_msg = ""
+    lines = msg.split("\n")
+    max_len = max(map(len, lines))
+    for m in lines:
+        tot_msg += f"# " + m + " " * (max_len - len(m)) + " #\n"
+    tot_msg = ("\n" + "#" * (max_len + 4) + "\n" +  # first ### line
+               "#" + " " * (max_len + 2) + "#\n" +
+               tot_msg +
+               "#" + " " * (max_len + 2) + "#\n" +
+               "#" * (max_len + 4)  # last ### line
+               )
+    log.warning(tot_msg)
+
+
+class ACEDataset:
+    def __init__(self,
+                 data_config,
+                 weighting_policy_spec=None,
+                 cutoff=10, elements=None,
+                 evaluator_name="tensorpot"):
+        self.data_config = data_config
+        self.weighting_policy_spec = weighting_policy_spec
+        self.cutoff = cutoff
+        self.elements = elements
+        self.evaluator_name = evaluator_name
+        self.fitting_data = None
+        self.test_data = None
+        self.weighting_policy = None
+
+        self.datapath = self.data_config.get("datapath")
+        self.reference_energy = self.data_config.get("reference_energy")
+        self.ignore_weights = self.data_config.get("ignore_weights")
+
+        # result column name : tuple(mapper function,  kwargs)
+        self.ase_atoms_transformers = {}
+
+        # add the transformer depending on the evaluator
+        if evaluator_name == PYACE_EVAL:
+            elements_mapper_dict = None
+            if elements is not None:
+                elements_mapper_dict = {el: i for i, el in enumerate(sorted(elements))}
+                log.info("Elements-to-indices mapping for 'atomic_env' construction: {}".format(elements_mapper_dict))
+            if elements_mapper_dict is None:
+                log.info("Elements-to-indices mapping for 'atomic_env' construction is NOT provided")
+            self.add_ase_atoms_transformer(ATOMIC_ENV_DF_COLUMN, aseatoms_to_atomicenvironment, cutoff=cutoff,
+                                           elements_mapper_dict=elements_mapper_dict)
+        elif evaluator_name == TENSORPOT_EVAL:
+            self.add_ase_atoms_transformer(TP_ATOMS_DF_COLUMN, generate_tp_atoms, cutoff=cutoff, verbose=False)
+        else:
+            raise ValueError(f"Unknown evaluator type '{evaluator_name}', only '{TENSORPOT_EVAL}' is supported")
+
+        self.prepare_datasets()
+
+    def prepare_datasets(self):
+
+        train_filenames = self.data_config["filename"]
+        self.fitting_data = self.load_dataset(train_filenames)
+        # self.reference_energy will be updated for 'auto' option in self.process_dataset
+        self.fitting_data = self.process_dataset(self.fitting_data)
+
+        if "test_filename" in self.data_config:
+            test_filenames = self.data_config["test_filename"]
+            self.test_data = self.load_dataset(test_filenames)
+        elif "test_size" in self.data_config:
+            test_size = self.data_config["test_size"]
+            log.info("Splitting out test dataset (test_size = {}) from main dataset({} samples)".
+                     format(test_size, len(self.fitting_data)))
+            self.fitting_data, self.test_data = train_test_split(self.fitting_data, test_size=test_size)
+        self.test_data = self.process_dataset(self.test_data)
+
+        # apply weights (TODO: for joint train+test?)
+        self.fitting_data = apply_weights(self.fitting_data, self.weighting_policy_spec, self.ignore_weights)
+        self.test_data = apply_weights(self.test_data, self.weighting_policy_spec, self.ignore_weights)
+
+        # decrease augmented weights
+        aug_factor = self.data_config.get("aug_factor", 1e-4)
+        self.fitting_data = adjust_aug_weights(self.fitting_data, aug_factor)
+        self.test_data = adjust_aug_weights(self.test_data, aug_factor)
+
+        # normalize
+        normalize_energy_forces_weights(self.fitting_data)
+        normalize_energy_forces_weights(self.test_data)
+
+    def load_dataset(self, filenames):
+        """Load multiple dataframes and concatenate it into one"""
+        files_to_load = self.get_actual_filenames(filenames)
+        log.info("Search for dataset file(s): " + str(files_to_load))
+        if files_to_load is not None:
+            dfs = []
+            for i, fname in enumerate(files_to_load):
+                log.info(f"#{i + 1}/{len(files_to_load)}: try to load {fname}")
+                df = load_dataframe(fname)
+                log.info(f" {len(df)} structures found")
+                if "name" not in df.columns:
+                    df["name"] = fname + ":" + df.index.map(str)
+                dfs.append(df)
+            tot_df = pd.concat(dfs, axis=0).reset_index(drop=True)
+        else:  # if ref_df is still not loaded, try to query from DB
+            raise RuntimeError("No files to load")
+        return tot_df
+
+    def get_actual_filenames(self, filenames):
+        """Return list of dataset filenames (with attached datapath)"""
+        if filenames is not None:
+            if isinstance(filenames, str):
+                filename_list = [filenames]
+            elif isinstance(filenames, list):
+                filename_list = filenames
+            else:
+                raise ValueError(f"Non-supported type of filename: `{filenames}` (type: {type(filenames)})")
+
+            files_to_load = []
+            for f in filename_list:
+                if os.path.isfile(f) or self.datapath is None:
+                    files_to_load.append(f)
+                else:
+                    files_to_load.append(os.path.join(self.datapath, f))
+
+        else:
+            raise ValueError("Dataset filename is not provided")
+        return files_to_load
+
+    def process_dataset(self, df: Optional[pd.DataFrame]) -> Optional[pd.DataFrame]:
+        if df is None:
+            return
+        # check for "ase_atoms", "energy" or "energy_corrected", "forces" columns
+
+        # check for ASE_ATOMS
+        if ASE_ATOMS not in df.columns:
+            raise ValueError(f"Dataframe is corrupted: no '{ASE_ATOMS}' column found")
+        # check for 'energy' or 'energy_corrected'
+        if ENERGY not in df.columns and ENERGY_CORRECTED_COL not in df.columns:
+            raise ValueError("Column `energy` or `energy_corrected` not found in dataset")
+        # check for 'forces'
+        if FORCES_COL not in df.columns:
+            raise ValueError("Column `forces` not found in dataset")
+
+        df[NUMBER_OF_ATOMS] = df[ASE_ATOMS].map(len)
+
+        # check force shapes [nat,3]
+        assert df.apply(lambda row: np.shape(row[FORCES_COL]) == (row[NUMBER_OF_ATOMS], 3),
+                        axis=1).all(), f"{FORCES_COL} has wrong shape. It should be [nat,3]"
+
+        tot_atoms_num = df[NUMBER_OF_ATOMS].sum()
+        mean_atoms_num = df[NUMBER_OF_ATOMS].mean()
+        log.info(f"Processing structures dataframe. Shape: {df.shape}")
+        log.info(f"Total number of atoms: {tot_atoms_num}")
+        log.info(f"Mean number of atoms per structure: {mean_atoms_num:.1f}")
+        df[PBC] = df[ASE_ATOMS].map(lambda atoms: np.all(atoms.pbc))
+
+        if self.reference_energy is not None:  # use ENERGY column to generate
+            # possible options in self.config
+            # 1. reference_energy: VASP_PBE_500_NM  #, etc...
+            # 2. reference_energy: {Al: -0.123, Cu: -0.456, shift: -0.123}
+            # 3. reference_energy: auto
+            # 3. reference_energy: 0
+            log.info("Reference energy is provided, constructing 'energy_corrected'")
+
+            if isinstance(self.reference_energy, str):
+                if self.reference_energy in SINGLE_ATOM_ENERGY_DICT:
+                    log.info(f"Using {self.reference_energy} as presets calculator name")
+                    compute_corrected_energy(df, calculator_name=self.reference_energy)
+                elif self.reference_energy == "auto":
+                    log.info(f"Computing least-square energy shift and correction")
+                    self.reference_energy = compute_shifted_scaled_corrected_energy(df)
+                    log.info(
+                        f"Computed single-atom reference energy: {self.reference_energy}")
+                else:
+                    raise ValueError(f"Unsupported data::reference_energy option ('{self.reference_energy}')."
+                                     "Must be dict like {Al: -0.123, Cu: -0.456} or one of "
+                                     f"{['auto'] + list(SINGLE_ATOM_ENERGY_DICT.keys())}")
+            elif isinstance(self.reference_energy, dict):
+                log.info(f"Using {self.reference_energy} as single-atom energies")
+                compute_corrected_energy(df, esa_dict=self.reference_energy)
+            elif isinstance(self.reference_energy, (float, int)):  # just copy energy to energy_corrected
+                log.info(f"Using constant reference energy {self.reference_energy}")
+                self.reference_energy = defaultdict(lambda: self.reference_energy)
+                compute_corrected_energy(df, esa_dict=self.reference_energy)
+        elif ENERGY_CORRECTED_COL not in df.columns:
+            raise ValueError(f"Neither '{ENERGY_CORRECTED_COL}' column nor 'data::reference_energy' option provided")
+
+        # check ENERGY_CORRECTED_COL is not NAN
+        assert not df[ENERGY_CORRECTED_COL].isna().any(), f"{ENERGY_CORRECTED_COL} contains NaNs"
+
+        # enforce calculation of E_CORRECTED_PER_ATOM_COLUMN to avoid mistakes
+        df[E_CORRECTED_PER_ATOM_COLUMN] = df[ENERGY_CORRECTED_COL] / df[NUMBER_OF_ATOMS]
+
+        assert not df[
+            E_CORRECTED_PER_ATOM_COLUMN].isna().any(), f"{E_CORRECTED_PER_ATOM_COLUMN} column contains NaN"
+        assert not df[FORCES_COL].map(lambda f: np.any(np.isnan(f))).any(), f"{FORCES_COL} column contains NaN"
+
+        epa_min = df[E_CORRECTED_PER_ATOM_COLUMN].min()
+        epa_max = df[E_CORRECTED_PER_ATOM_COLUMN].max()
+
+        epa_abs_min = df[E_CORRECTED_PER_ATOM_COLUMN].abs().min()
+        epa_abs_max = df[E_CORRECTED_PER_ATOM_COLUMN].abs().max()
+
+        log.info(f"Min/max energy per atom: [{epa_min:.3f}, {epa_max:.3f}] eV/atom")
+        log.info(f"Min/max abs energy per atom: [{epa_abs_min:.3f}, {epa_abs_max:.3f}] eV/atom")
+
+        # check energy and forces range!
+        if epa_min < -20 or epa_max > 250:
+            # re-run with self.reference_energy='auto'
+            if self.reference_energy is None:
+                big_warning(f"Some values of corrected energy {epa_min:.3g} eV/atom are too extreme,\n" +
+                            "i.e. <-20 eV/atom or >250 eV/atom\n" +
+                            "`reference_energy` will be computed automatically.")
+                self.reference_energy = 'auto'
+                return self.process_dataset(df)
+            big_warning(f"Some values of corrected energy {epa_min:.3g} eV/atom are too extreme,\n" +
+                        "i.e. <-20 eV/atom or >250 eV/atom\n" +
+                        "Correct your energy or use data::reference_energy: auto option !!!")
+        # enforce attach single point calculator to avoid mistakes
+        df[ASE_ATOMS] = df.apply(attach_single_point_calculator, axis=1)
+        log.info("Attaching SinglePointCalculator to ASE atoms...done")
+
+        log.info("Construction of neighbour lists...")
+        start = time.time()
+        self.apply_ase_atoms_transformers(df)
+        end = time.time()
+        time_elapsed = end - start
+        log.info("Construction of neighbour lists...done within {:.3g} sec ({:.3g} ms/atom)".
+                 format(time_elapsed, time_elapsed / tot_atoms_num * 1e3))
+
+        return df
+
+    def add_ase_atoms_transformer(self, result_column_name, transformer_func, **kwargs):
+        self.ase_atoms_transformers[result_column_name] = (transformer_func, kwargs)
+
+    def apply_ase_atoms_transformers(self, df):
+        apply_function = df["ase_atoms"].apply
+
+        for res_column_name, (transformer, kwargs) in self.ase_atoms_transformers.items():
+            l1 = len(df)
+            cur_cutoff = kwargs["cutoff"]
+            log.info(f"Building '{res_column_name}' (dataset size {l1}, cutoff={cur_cutoff:.3f}A)...")
+            df[res_column_name] = apply_function(transformer, **kwargs)
+            df.dropna(subset=[res_column_name], inplace=True)
+            l2 = len(df)
+            log.info("Dataframe size after transform: " + str(l2))

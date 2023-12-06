@@ -1053,6 +1053,8 @@ void ACEBBasisSet::initialize_basis(BBasisConfiguration &basisSetup) {
         }
     } // end loop over pairs_species_blocks
 
+    // pass elements to radial functions (for ZBL basis)
+    radial_functions->elements = element_names;
     radial_functions->setuplookupRadspline();
 
     //invert "elements_to_index_map" to index->element array "elements_name"

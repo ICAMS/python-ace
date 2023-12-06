@@ -1,0 +1,277 @@
+#!/usr/bin/env python
+import os.path
+import sys
+import argparse
+from collections import defaultdict
+
+import numpy as np
+from pyace import BBasisConfiguration, PyACECalculator
+from pyace.process_df import tqdm
+
+from pyace.atomicenvironment import aseatoms_to_atomicenvironment
+from pyace.aceselect import load_multiple_datasets
+from pyace.generalfit import setup_zbl_inner_core_repulsion, setup_inner_core_repulsion
+from pyace.data_aug import ZBLCalculator, select_reliable_enn_part, compute_enn_df
+from pyace.utils.utils import get_vpa, compute_nn_dist_per_bond, complement_min_dist_dict
+
+import logging
+
+LOG_FMT = '%(asctime)s %(levelname).1s - %(message)s'
+logging.basicConfig(level=logging.INFO, format=LOG_FMT, datefmt="%Y/%m/%d %H:%M:%S")
+log = logging.getLogger()
+
+
+class ParseKwargs(argparse.Action):
+    def __call__(self, parser, namespace, values, option_string=None):
+        setattr(namespace, self.dest, dict())
+        for value in values:
+            if value == "auto":
+                key = 'auto'
+                val = True
+            else:
+                splt = value.split(':')
+                key = splt[0]
+                try:
+                    val = float(splt[1])
+                except ValueError:
+                    val = splt[1]
+            getattr(namespace, self.dest)[key] = val
+
+
+def build_parser():
+    parser = argparse.ArgumentParser(prog="pace_corerep",
+                                     description="Utility to (auto)tune potential and add ZBL core-repulsion ZBL")
+    parser.add_argument("potential_file", help="B-basis file name (.yaml)", type=str)
+
+    parser.add_argument("-d", "--dataset", action='append',
+                        help="Dataset file name(s), ex.: -d filename.pckl.gzip [-d filename2.pckl.gzip]", type=str,
+                        required=True)
+
+    parser.add_argument("-a", "--active-set-inv",
+                        help="Active Set Inverted (ASI) filename, considered as extra B-projections",
+                        default=None, type=str, dest="active_set_inv_fname",  required=True)
+
+    parser.add_argument("-o", "--output",
+                        help="Output filename for auto-tuned core-rep potential. "
+                             "default=none - same as `potential_file`. If `auto` - 'corerep' suffix will be added",
+                        default=None, type=str, dest="output_file")
+
+    parser.add_argument("-V", help="suppress verbosity of numerical procedures",
+                        dest="not_verbose", default=False, action="store_true")
+
+    parser.add_argument("-nnstep", "--nn-dist-step", type=float,
+                        dest="nn_distance_step",
+                        help="Nearest-neighbour distance step for data augmentation (default = 0.05)",
+                        default=0.05)
+
+    parser.add_argument("-nnmin", "--nn-dist-min", type=float,
+                        dest="nn_distance_min",
+                        help="Min. nearest-neighbour distance for data augmentation (default = 1)",
+                        default=0.5)
+
+    parser.add_argument("-nnmax", "--nn-dist-max", type=float,
+                        dest="nn_distance_max",
+                        help="Max. nearest-neighbour distance for data augmentation (default = 2.5)",
+                        default=2.5)
+
+    parser.add_argument("-n", "--num-of-structures", type=int,
+                        dest="num_of_structures",
+                        help="Number of structures selected to compress (default = 50)",
+                        default=50)
+
+    parser.add_argument("-g", "--gamma-max", type=float,
+                        dest="gamma_max",
+                        help="Max. extrapolation grade gamma for reliable atomic env. (default = 10)",
+                        default=10)
+
+    parser.add_argument('--inner-cutoff',
+                        help="dictionary of inner cutoff `Al:1.5 Cu-Cu:1.6 Al-Cu:1.55`, default is zero.",
+                        nargs='*', dest="inner_cutoff_dict", default=defaultdict(lambda: 0), action=ParseKwargs)
+
+    return parser
+
+
+def main():
+    args_parse = build_parser().parse_args()
+    potential_file = args_parse.potential_file
+    output_file = args_parse.output_file
+    verbose = not args_parse.not_verbose
+    active_set_inv_fname = args_parse.active_set_inv_fname
+    num_of_structures = args_parse.num_of_structures
+    nn_distance_step = args_parse.nn_distance_step
+    nn_distance_min = args_parse.nn_distance_min
+    nn_distance_max = args_parse.nn_distance_max
+    gamma_max = args_parse.gamma_max
+    inner_cutoff_dict = args_parse.inner_cutoff_dict
+
+    if verbose:
+        logging.info(f"Loading potential {potential_file}")
+    bconf_orig_norep = BBasisConfiguration(potential_file)
+
+    if output_file is None:
+        output_file = potential_file  # .replace(".yaml", "-corerep.yaml")
+    elif output_file == "auto":
+        output_file = potential_file.replace(".yaml", "-corerep.yaml")
+
+    if len(inner_cutoff_dict) > 0:
+        if verbose:
+            log.info('Inner cutoff options: {}'.format(
+                ', '.join([f"{k}:{v}" for k, v in inner_cutoff_dict.items()])))
+
+        calc = PyACECalculator(bconf_orig_norep)
+        elements_to_index_map = calc.basis.elements_to_index_map
+        elements = calc.basis.elements_name
+
+        min_dist_per_bond_dict = defaultdict(float)
+        for kk, rin in inner_cutoff_dict.items():
+            rin = float(rin)
+            kksplt = kk.split("-")
+            if len(kksplt) == 1:
+                el0 = elements_to_index_map[kksplt[0]]
+                el1 = el0
+            elif len(kksplt) == 2:
+                el0 = elements_to_index_map[kksplt[0]]
+                el1 = elements_to_index_map[kksplt[1]]
+            else:
+                raise ValueError(f"Can't process user-defined cutoffs: {kk}:{rin}")
+            bond = tuple(sorted([el0, el1]))
+            min_dist_per_bond_dict[bond] = rin
+
+        if verbose:
+            log.info("User-defined inner cutoff: ")
+            for k, v in min_dist_per_bond_dict.items():
+                log.info(f" {elements[k[0]]}-{elements[k[1]]}: {v:.3f} Ang")
+
+        setup_zbl_inner_core_repulsion(bconf_orig_norep,
+                                       min_dist_per_bond_dict=min_dist_per_bond_dict,
+                                       dr_in=0.1)
+
+        save_potential(bconf_orig_norep, output_file, verbose)
+        sys.exit(0)
+
+    if active_set_inv_fname is None:
+        active_set_inv_fname = potential_file.replace(".yaml", ".asi")
+        if not os.path.isfile(active_set_inv_fname):
+            raise ValueError(
+                f"Active set file {active_set_inv_fname} neither set nor found, " +
+                "but it is required for correct core-rep autotune")
+
+    dataset_filename = args_parse.dataset
+    if isinstance(dataset_filename, list):
+        df = load_multiple_datasets(dataset_filename, verbose=verbose)
+        if verbose:
+            log.info(f"{len(df['ase_atoms'])} structures in candidate list")
+        if "name" in df.columns:
+            size_before = len(df)
+            df = df.query("not name.str.startswith('augmented')").reset_index(drop=True)
+            ndrop = size_before - len(df)
+            if verbose and ndrop > 0:
+                log.info(f"AUGMENTED STRUCTURES: {ndrop} structure(s) were dropped, new dataset size: {len(df)}")
+    else:
+        raise ValueError("Unrecognized --dataset (-d) argument: {}".format(dataset_filename))
+
+    if verbose:
+        log.info(f"Loading B-basis configuration from {potential_file}")
+
+    # remove core-rep
+    if verbose:
+        log.info("Removing core-rep from potential")
+    setup_inner_core_repulsion(bconf_orig_norep, r_in=0, delta_in=0, core_rep_parameters=(0, 1))
+    calc_orig = PyACECalculator(bconf_orig_norep)
+    if verbose:
+        log.info("Loading active set")
+    calc_orig.set_active_set(active_set_inv_fname)
+
+    elements_mapper_dict = calc_orig.basis.elements_to_index_map
+    df["nn_dist_per_bond"] = df["ase_atoms"].apply(compute_nn_dist_per_bond,
+                                                   cutoff=calc_orig.basis.cutoffmax,
+                                                   elements_mapper_dict=elements_mapper_dict)
+    df["NUMBER_OF_ATOMS"] = df["ase_atoms"].map(len)
+    df["volume_per_atom"] = df["ase_atoms"].map(get_vpa)
+
+    min_nn_dist_dd = defaultdict(list)
+    for nn_dist_per_bond in df['nn_dist_per_bond']:
+        for k, v in nn_dist_per_bond.items():
+            min_nn_dist_dd[k].append(v)
+    log.info("Minimal distance threshold (quantile=0.001) per bond (Ang):")
+    bond_quantile_dict = {}
+
+    for k, v in min_nn_dist_dd.items():
+        q_th = 0.001
+        q = np.quantile(v, q=q_th)
+        bond_quantile_dict[k] = q
+        log.info(f"Bond {k}:  {q:.3f} (#{len(v)} nn_dists)")
+
+    nat_quant50 = int(df["NUMBER_OF_ATOMS"].quantile(q=0.5))
+    candidate_list = df.query(f"NUMBER_OF_ATOMS<={nat_quant50}").sort_values("NUMBER_OF_ATOMS")["ase_atoms"]
+    candidate_list = candidate_list.sample(n=min(num_of_structures, len(candidate_list)), random_state=42)
+    max_at = max(map(len, candidate_list))
+    if verbose:
+        log.info(f"Candidate list contains {len(candidate_list)} structures with up-to {max_at} atoms")
+
+    nn_distance_range = (nn_distance_min, nn_distance_max)
+
+    map_bond_dist = defaultdict(list)
+
+    for at in tqdm(candidate_list):
+        try:
+            enndf = compute_enn_df(at, calc=calc_orig, compute_zbl=True,
+                                   compute_gamma=True,
+                                   nn_distance_range=nn_distance_range,
+                                   nn_distance_step=nn_distance_step)
+
+            rel_kink_df = select_reliable_enn_part(enndf, reliability_criteria="kink")
+            rel_gamma_df = select_reliable_enn_part(enndf, reliability_criteria="extrapolation", gamma_max=gamma_max)
+
+            enndf_zbl = enndf.query("epa<=epa_zbl")
+            zbl_rel_z = enndf_zbl["z"].min()
+
+            rel_z = min(rel_kink_df["z"].min(), rel_gamma_df["z"].min())
+            rel_z = max(zbl_rel_z, rel_z)
+            enndf = enndf[enndf["z"] <= rel_z]
+
+            cur_map_bond_dist = defaultdict(list)
+            for _, row in enndf.iterrows():
+                at = row["ase_atoms"]
+                ae = aseatoms_to_atomicenvironment(at, cutoff=calc_orig.basis.cutoffmax,
+                                                   elements_mapper_dict=calc_orig.basis.elements_to_index_map)
+                gamma_per_atom = row["gamma_per_atom"]
+                for gamma, (mu_i, mu_j, dist) in zip(gamma_per_atom, ae.get_nearest_atom_type_and_distance()):
+                    if gamma >= gamma_max:
+                        cur_map_bond_dist[(mu_i, mu_j)].append(dist)
+            for k, v in cur_map_bond_dist.items():
+                map_bond_dist[k].append(max(v))
+        except Exception as e:
+            log.error(f"ERROR for structure {at.get_chemical_formula()}:", e)
+
+    min_dist_per_bond_dict = defaultdict(float)
+    for k, v in map_bond_dist.items():
+        rin = np.quantile(v, q=0.99)
+        k = tuple(sorted(k))
+        min_dist_per_bond_dict[k] = max(min_dist_per_bond_dict[k], rin)
+
+    # TODO: fill remaining bond pairs with min_dist
+    elements = calc_orig.basis.elements_name
+
+    min_dist_per_bond_dict = complement_min_dist_dict(min_dist_per_bond_dict, bond_quantile_dict, elements, verbose)
+
+    if verbose:
+        log.info("Calculated inner cutoff (99% percentile or minimal distance): ")
+        for k, v in min_dist_per_bond_dict.items():
+            log.info(f" {elements[k[0]]}-{elements[k[1]]}: {v:.3f} Ang")
+
+    setup_zbl_inner_core_repulsion(bconf_orig_norep,
+                                   min_dist_per_bond_dict=min_dist_per_bond_dict,
+                                   dr_in=0.1)
+
+    save_potential(bconf_orig_norep, output_file, verbose)
+
+
+def save_potential(bconf_orig_norep, output_file, verbose):
+    bconf_orig_norep.save(output_file)
+    if verbose:
+        log.info(f"Auto-tuned potential is saved into {output_file}")
+
+
+if __name__ == "__main__":
+    main()

@@ -74,11 +74,11 @@ vector<vector<int>> ACEAtomicEnvironment::get_neighbour_list() const {
 
 DOUBLE_TYPE ACEAtomicEnvironment::get_minimal_nn_distance() const {
     DOUBLE_TYPE nn_min_distance = 1e3;
-    for (int i = 0; i < this->n_atoms_real; i++) {
+    for (int i = 0; i < this->n_atoms_real; ++i) {
         auto r_i = this->x[i];
         auto num_neighbours = this->num_neighbours[i];
         auto cur_neighbour_list = this->neighbour_list[i];
-        for (int j = 0; j < num_neighbours; j++) {
+        for (int j = 0; j < num_neighbours; ++j) {
             auto r_j = this->x[cur_neighbour_list[j]];
             DOUBLE_TYPE r = sqrt(sqr(r_j[0] - r_i[0]) + sqr(r_j[1] - r_i[1]) + sqr(r_j[2] - r_i[2]));
             if (r < nn_min_distance)
@@ -88,6 +88,67 @@ DOUBLE_TYPE ACEAtomicEnvironment::get_minimal_nn_distance() const {
     return nn_min_distance;
 }
 
+std::map<std::pair<SPECIES_TYPE, SPECIES_TYPE>, DOUBLE_TYPE>
+ACEAtomicEnvironment::get_minimal_nn_distance_per_bond() const {
+    std::map<std::pair<SPECIES_TYPE, SPECIES_TYPE>, DOUBLE_TYPE> nn_min_distance_map;
+    int i, j, jj;
+    SPECIES_TYPE type_i, type_j;
+    int cur_num_neighbours;
+
+    for (i = 0; i < this->n_atoms_real; ++i) {
+        auto r_i = this->x[i];
+        type_i = this->species_type[i];
+        cur_num_neighbours = this->num_neighbours[i];
+        auto cur_neighbour_list = this->neighbour_list[i];
+        for (jj = 0; jj < cur_num_neighbours; ++jj) {
+            j = cur_neighbour_list[jj];
+            auto r_j = this->x[j];
+            type_j = this->species_type[j];
+            DOUBLE_TYPE dist = sqrt(sqr(r_j[0] - r_i[0]) + sqr(r_j[1] - r_i[1]) + sqr(r_j[2] - r_i[2]));
+            auto bond_pair = make_pair(type_i, type_j);
+            if (nn_min_distance_map.find(bond_pair) != nn_min_distance_map.end()) {
+                // if bond-pair exists
+                auto bond_nn_min_dist = nn_min_distance_map.at(bond_pair);
+                if (dist < bond_nn_min_dist)
+                    nn_min_distance_map[bond_pair] = dist;
+            } else {
+                // if bond-pair not exists - add
+                nn_min_distance_map[bond_pair] = dist;
+            }
+        }
+    }
+    return nn_min_distance_map;
+}
+
+
+std::vector<std::tuple<SPECIES_TYPE, SPECIES_TYPE, DOUBLE_TYPE>>
+ACEAtomicEnvironment::get_nearest_atom_type_and_distance() const {
+    std::vector<std::tuple<SPECIES_TYPE, SPECIES_TYPE, DOUBLE_TYPE>> result{};
+
+    for (int i = 0; i < this->n_atoms_real; ++i) {
+        auto r_i = this->x[i];
+        SPECIES_TYPE type_i = this->species_type[i];
+        int cur_num_neighbours = this->num_neighbours[i];
+        auto cur_neighbour_list = this->neighbour_list[i];
+        DOUBLE_TYPE nearest_neighbour_dist = 100;
+        SPECIES_TYPE nearest_atom_type = -1;
+        for (int jj = 0; jj < cur_num_neighbours; ++jj) {
+            int j = cur_neighbour_list[jj];
+            auto r_j = this->x[j];
+            DOUBLE_TYPE dist = sqrt(sqr(r_j[0] - r_i[0]) + sqr(r_j[1] - r_i[1]) + sqr(r_j[2] - r_i[2]));
+            if (dist < nearest_neighbour_dist) {
+                nearest_neighbour_dist = dist;
+                SPECIES_TYPE type_j = this->species_type[j];
+                nearest_atom_type = type_j;
+            }
+        }
+        if (nearest_atom_type != -1)
+            result.emplace_back(type_i, nearest_atom_type, nearest_neighbour_dist);
+        else
+            result.emplace_back(type_i, type_i, nearest_neighbour_dist);
+    }
+    return result;
+}
 
 /**
  * Read the structure from the file. File format is:

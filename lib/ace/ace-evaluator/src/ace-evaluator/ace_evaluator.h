@@ -86,6 +86,7 @@ public:
 
 
     DOUBLE_TYPE e_atom = 0; ///< energy of current atom, including core-repulsion
+    DOUBLE_TYPE ace_fcut;
 
     /**
      * temporary array for the pair forces between current atom_i and its neighbours atom_k
@@ -116,6 +117,7 @@ public:
     virtual void resize_neighbours_cache(int max_jnum) = 0;
 
 #ifdef EXTRA_C_PROJECTIONS
+    bool compute_projections = false;
     /* 1D array to store projections of basis function (all ranks), shape: [func_ind] */
     Array1D<DOUBLE_TYPE> projections = Array1D<DOUBLE_TYPE>("projections");
 
@@ -130,6 +132,10 @@ public:
     // Array to hold the descriptor decomposed force contributions per neighbour
     //shape: [total_basis_size_rank1 + total_basis_size, jnum, 3]
     Array3D<DOUBLE_TYPE> neighbours_dB = Array3D<DOUBLE_TYPE>("neighbours_dB");
+
+    // for B-derivatives
+    Array3D<DOUBLE_TYPE> weights_rank1_dB = Array3D<DOUBLE_TYPE>("weights_rank1_dB");
+    Array5DLM<ACEComplex> weights_dB = Array5DLM<ACEComplex>("weights_dB");
 #endif
 
     virtual vector<int> get_func_ind_shift() = 0;

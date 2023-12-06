@@ -4,12 +4,15 @@
 
 #include "extra/ace_calculator.h"
 
-void ACECalculator::compute(ACEAtomicEnvironment &atomic_environment, bool compute_b_grad, bool verbose) {
+void ACECalculator::compute(ACEAtomicEnvironment &atomic_environment,  bool compute_projections, bool compute_b_grad, bool verbose){
     if (evaluator == nullptr) {
         throw std::invalid_argument("Evaluator is not set");
     }
     evaluator->init_timers();
     evaluator->total_time_calc_timer.start();
+#ifdef EXTRA_C_PROJECTIONS
+    evaluator->compute_projections = compute_projections;
+#endif
 #ifdef COMPUTE_B_GRAD
     evaluator->compute_b_grad = compute_b_grad;
 #endif
@@ -40,11 +43,13 @@ void ACECalculator::compute(ACEAtomicEnvironment &atomic_environment, bool compu
     evaluator->resize_neighbours_cache(max_jnum);
 
 #ifdef EXTRA_C_PROJECTIONS
-    projections.resize(atomic_environment.n_atoms_real);
-    rhos.resize(atomic_environment.n_atoms_real);
-    dF_drhos.resize(atomic_environment.n_atoms_real);
-    dE_dc.resize(atomic_environment.n_atoms_real);
-    gamma_grade.resize(atomic_environment.n_atoms_real);
+    if(evaluator->compute_projections) {
+        projections.resize(atomic_environment.n_atoms_real);
+        rhos.resize(atomic_environment.n_atoms_real);
+        dF_drhos.resize(atomic_environment.n_atoms_real);
+        dE_dc.resize(atomic_environment.n_atoms_real);
+        gamma_grade.resize(atomic_environment.n_atoms_real);
+    }
 #endif
 
 #ifdef COMPUTE_B_GRAD
@@ -77,11 +82,13 @@ void ACECalculator::compute(ACEAtomicEnvironment &atomic_environment, bool compu
                                 atomic_environment.neighbour_list[i]);
         //this will also update the e_atom and neighbours_forces(jj, alpha) array
 #ifdef EXTRA_C_PROJECTIONS
-        projections[i] = evaluator->projections.to_vector();
-        rhos[i] = evaluator->rhos.to_vector();
-        dF_drhos[i] = evaluator->dF_drho.to_vector();
-        dE_dc[i] = evaluator->dE_dc.to_vector();
-        gamma_grade[i] = evaluator->max_gamma_grade;
+        if(evaluator->compute_projections) {
+            projections[i] = evaluator->projections.to_vector();
+            rhos[i] = evaluator->rhos.to_vector();
+            dF_drhos[i] = evaluator->dF_drho.to_vector();
+            dE_dc[i] = evaluator->dE_dc.to_vector();
+            gamma_grade[i] = evaluator->max_gamma_grade;
+        }
 #endif
 
 #ifdef DEBUG_FORCES_CALCULATIONS
@@ -104,8 +111,12 @@ void ACECalculator::compute(ACEAtomicEnvironment &atomic_environment, bool compu
         const DOUBLE_TYPE ytmp = atomic_environment.x[i][1];
         const DOUBLE_TYPE ztmp = atomic_environment.x[i][2];
 #ifdef COMPUTE_B_GRAD
-        SPECIES_TYPE mu = atomic_environment.species_type[i];
-        int func_ind_shift = func_ind_shift_vec[mu];
+        int func_ind_shift;
+        SPECIES_TYPE mu;
+        if(evaluator->compute_b_grad) {
+            mu = atomic_environment.species_type[i];
+            func_ind_shift = func_ind_shift_vec[mu];
+        }
 #endif
         for (jj = 0; jj < atomic_environment.num_neighbours[i]; jj++) {
             j = atomic_environment.neighbour_list[i][jj];

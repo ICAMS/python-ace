@@ -85,6 +85,7 @@ PyACE ASE calculator
         self.extrapolative_structures_gamma = []
         self.ace = ACECalculator()
         self.ace.set_evaluator(self.evaluator)
+        self.compute_projections = True
 
     def _create_evaluator(self):
 
@@ -150,7 +151,7 @@ PyACE ASE calculator
         self.forces = np.empty((len(atoms), 3))
 
         self.get_atomic_env(atoms)
-        self.ace.compute(self.ae)
+        self.ace.compute(self.ae, compute_projections=self.compute_projections)
 
         self.energy, self.forces = np.array(self.ace.energy), np.array(self.ace.forces)
         nat = len(atoms)
@@ -169,7 +170,7 @@ PyACE ASE calculator
             'energies': self.energies.astype(np.float64),
             'gamma': np.array(self.ace.gamma_grade, dtype=np.float64)
         }
-        if self.atoms.number_of_lattice_vectors == 3:
+        if self.atoms.cell.rank == 3:
             self.volume = atoms.get_volume()
             self.virial = np.array(self.ace.virial)  # order is: xx, yy, zz, xy, xz, yz
             # swap order of the virials to fullfill ASE Voigt stresses order:  (xx, yy, zz, yz, xz, xy)
