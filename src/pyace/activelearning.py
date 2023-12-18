@@ -3,6 +3,7 @@ import os
 
 from collections import Counter, defaultdict
 
+import pandas as pd
 from ase import Atoms
 from ase.io.lammpsrun import read_lammps_dump_text
 from maxvolpy.maxvol import maxvol
@@ -14,11 +15,17 @@ from pyace.calculator import ACECalculator
 from pyace.evaluator import ACEBEvaluator
 from typing import Dict, List, Optional, Union, Tuple
 
+
+def simple_tqdm(iterable, **kwargs):
+    return iterable
+
+
 try:
     from tqdm import tqdm
 except ImportError:
-    def tqdm(iterable, **kwargs):
-        return iterable
+    tqdm = simple_tqdm
+
+EPSILON = 1e-16
 
 
 def save_active_inverse_set(filename, A_active_inverse_set, elements_name=None):
@@ -26,6 +33,13 @@ def save_active_inverse_set(filename, A_active_inverse_set, elements_name=None):
         elements_name = list(map(str, range(len(A_active_inverse_set))))
     with open(filename, "wb") as f:
         np.savez(f, **{elements_name[st]: v for st, v in A_active_inverse_set.items()})
+
+
+def load_active_inverse_set(filename):
+    asi_data = np.load(filename)
+    elements = sorted(asi_data.keys())
+    asi_dict = {i: asi_data[el] for i, el in enumerate(elements)}
+    return asi_dict
 
 
 def count_number_total_atoms_per_species_type(atomic_env_list: List[ACEAtomicEnvironment]) -> Dict[int, int]:
@@ -39,6 +53,22 @@ def count_number_total_atoms_per_species_type(atomic_env_list: List[ACEAtomicEnv
     n_total_atoms_per_species_type = Counter()
     for ae in atomic_env_list:
         n_total_atoms_per_species_type.update(ae.species_type[:ae.n_atoms_real])
+    return n_total_atoms_per_species_type
+
+
+def count_number_total_atoms_per_species_type_aseatom(atomic_env_list: List[Atoms],
+                                                      elements_mapper_dict: Dict[str, int]) -> Dict[int, int]:
+    """
+    Helper function to count total number of atoms of each type in dataset
+
+    :param atomic_env_list: List[ACEAtomicEnvironment] -  list of ACEAtomicEnvironment
+    :param elements_mapper_dict:
+
+    :return dictionary: species_type => number
+    """
+    n_total_atoms_per_species_type = Counter()
+    for ae in atomic_env_list:
+        n_total_atoms_per_species_type.update([elements_mapper_dict[s] for s in ae.get_chemical_symbols()])
     return n_total_atoms_per_species_type
 
 
@@ -62,57 +92,57 @@ def count_number_total_atoms_per_species_type_by_batches(atomic_env_batches: Lis
 def compute_B_projections(bconf: Union[BBasisConfiguration, ACEBBasisSet, PyACECalculator],
                           atomic_env_list: Union[List[Atoms], List[ACEAtomicEnvironment]],
                           structure_ind_list: Optional[List[int]] = None,
-                          is_full=False) -> Tuple[Dict[int, np.array],
-                                                  Optional[Dict[int, np.array]]]:
+                          is_full=False,
+                          compute_forces_dict=False,
+                          return_structure_ind_dict=False,
+                          verbose=False
+                          ) -> Tuple[Dict[int, np.array], Optional[Dict[int, np.array]]]:
     """
     Function to compute the B-basis projection using basis configuration
     `bconf` for list of atomic environments `atomic_env_list`.
     :param bconf: BBasisConfiguration
-    :param atomic_env_list: list of ACEAtomicEnvironment
+    :param atomic_env_list: list of ACEAtomicEnvironment or ASE atoms
     :param structure_ind_list: optional, list of corresponding indices of structures/atomic envs.
     :param is_full: MaxVol on linear B-projections (false, default) or on full non-linear atomic energy (True)
-    :return A0_projections_dict, structure_ind_dict
+    :param compute_forces_dict: (bool) whether to return predictions of forces
+    :param return_structure_ind_dict: (bool) whether to return structure_ind_dict.
+            If structure_ind_list is provided, then return_structure_ind_dict=True
+    :param verbose: verbosity level
+
+    :return A0_projections_dict, structure_ind_dict, forces_dict
 
         A0_projections_dict:
             dictionary {species_type => B-basis projections}
             B-basis projections shape = [n_atoms[species_type], n_funcs[species_type]]
 
         structure_ind_dict:
-            dictionary {species_type => indices of correcponding structure}
+            dictionary {species_type => indices of corresponding structure}
             shape = [n_atoms[species_type]]
+
+        forces_dict:
+            dictionary {species_type => forces for each atom of given type}
+            shape = [n_atoms[species_type], 3]
     """
     if structure_ind_list is None:
         tmp_structure_ind_list = range(len(atomic_env_list))
     else:
         tmp_structure_ind_list = structure_ind_list
+        return_structure_ind_dict = True
 
     # create BBasis configuration
-    if isinstance(bconf, BBasisConfiguration):
-        pot = ACEBBasisSet(bconf)
-    elif isinstance(bconf, ACEBBasisSet):
-        pot = bconf
-    elif isinstance(bconf, PyACECalculator):
-        pot = bconf.basis
+    bbasis = convert_to_bbasis(bconf)
 
-    n_projections = compute_number_of_functions(pot)
+    n_projections = compute_number_of_functions(bbasis)
     if is_full:
-        n_projections = [p * pot.map_embedding_specifications[st].ndensity for st, p in enumerate(n_projections)]
+        n_projections = [p * bbasis.map_embedding_specifications[st].ndensity for st, p in enumerate(n_projections)]
 
-    elements_mapper_dict = pot.elements_to_index_map
-
-    if isinstance(atomic_env_list[0], Atoms):
-        atomic_env_list = [
-            aseatoms_to_atomicenvironment(at,
-                                          cutoff=pot.cutoffmax,
-                                          elements_mapper_dict=pot.elements_to_index_map)
-            for at in atomic_env_list]
-    elif not isinstance(atomic_env_list[0], ACEAtomicEnvironment):
-        raise ValueError("atomic_env_list should be list of ASE.Atoms or ACEAtomicEnvironment")
+    elements_mapper_dict = bbasis.elements_to_index_map
+    atomic_env_list = convert_to_atomic_env_list(atomic_env_list, bbasis)
 
     # count total number of atoms of each species type in whole dataset atomiv_env_list
     n_total_atoms_per_species_type = count_number_total_atoms_per_species_type(atomic_env_list)
 
-    beval = ACEBEvaluator(pot)
+    beval = ACEBEvaluator(bbasis)
 
     calc = ACECalculator(beval)
 
@@ -121,12 +151,17 @@ def compute_B_projections(bconf: Union[BBasisConfiguration, ACEBBasisSet, PyACEC
                                          n_projections[st]
                                          ), dtype=np.float64) for _, st in elements_mapper_dict.items()}
 
-    structure_ind_dict = {st: np.zeros(n_total_atoms_per_species_type[st], dtype=np.int)
+    if compute_forces_dict:
+        forces_dict = {st: np.zeros((n_total_atoms_per_species_type[st], 3),
+                                    dtype=np.float64) for _, st in elements_mapper_dict.items()}
+
+    structure_ind_dict = {st: np.zeros(n_total_atoms_per_species_type[st], dtype=int)
                           for _, st in elements_mapper_dict.items()}
 
     cur_inds = [0] * len(elements_mapper_dict)
-    for struct_ind, ae in tqdm(zip(tmp_structure_ind_list, atomic_env_list), total=len(atomic_env_list)):
-        calc.compute(ae)
+    progress_wrapper = tqdm if verbose else simple_tqdm
+    for struct_ind, ae in progress_wrapper(zip(tmp_structure_ind_list, atomic_env_list), total=len(atomic_env_list)):
+        calc.compute(ae, compute_projections=True)
         if is_full:
             basis_projections = calc.dE_dc
         else:
@@ -137,11 +172,64 @@ def compute_B_projections(bconf: Union[BBasisConfiguration, ACEBBasisSet, PyACEC
             structure_ind_dict[atom_type][cur_ind] = struct_ind
             cur_basis_proj = np.reshape(basis_projections[atom_ind], (-1,))
             A0_projections_dict[atom_type][cur_ind] = cur_basis_proj
+            if compute_forces_dict:
+                forces_dict[atom_type][cur_ind] = calc.forces[atom_ind]
             cur_inds[atom_type] += 1
-    if structure_ind_list is not None:
-        return A0_projections_dict, structure_ind_dict
+
+    if return_structure_ind_dict:
+        if compute_forces_dict:
+            return A0_projections_dict, structure_ind_dict, forces_dict
+        else:
+            return A0_projections_dict, structure_ind_dict,
     else:
-        return A0_projections_dict
+        if compute_forces_dict:
+            return A0_projections_dict, forces_dict
+        else:
+            return A0_projections_dict
+
+
+def convert_to_bbasis(bconf):
+    if isinstance(bconf, BBasisConfiguration):
+        bbasis = ACEBBasisSet(bconf)
+    elif isinstance(bconf, ACEBBasisSet):
+        bbasis = bconf
+    elif isinstance(bconf, PyACECalculator):
+        bbasis = bconf.basis
+    else:
+        raise ValueError("Unsupported type of `bconf`: {}".format(type(bconf)))
+    return bbasis
+
+
+def convert_to_atomic_env_list(atomic_env_list, pot: ACEBBasisSet):
+    elements_mapper_dict = pot.elements_to_index_map
+    if isinstance(atomic_env_list, pd.Series):
+        atomic_env_list = atomic_env_list.values
+    if isinstance(atomic_env_list[0], Atoms):
+        atomic_env_list = np.array([aseatoms_to_atomicenvironment(at,
+                                                                  cutoff=pot.cutoffmax,
+                                                                  elements_mapper_dict=elements_mapper_dict)
+                                    for at in atomic_env_list])
+    elif not isinstance(atomic_env_list[0], ACEAtomicEnvironment):
+        raise ValueError("atomic_env_list should be list of ASE.Atoms or ACEAtomicEnvironment")
+    return atomic_env_list
+
+
+def extract_reference_forces_dict(ase_atoms_list: List[Atoms],
+                                  reference_forces_list: List[np.array],
+                                  elements_mapper_dict: Dict[str, int]):
+    n_total_atoms_per_species_type = count_number_total_atoms_per_species_type_aseatom(ase_atoms_list,
+                                                                                       elements_mapper_dict)
+    forces_dict = {st: np.zeros((n_total_atoms_per_species_type[st], 3),
+                                dtype=np.float64) for _, st in elements_mapper_dict.items()}
+
+    cur_inds = [0] * len(elements_mapper_dict)
+    for atoms, ref_forces in zip(ase_atoms_list, reference_forces_list):
+        for atom_ind, atom_symb in enumerate(atoms.get_chemical_symbols()):
+            atom_type = elements_mapper_dict[atom_symb]
+            cur_ind = cur_inds[atom_type]
+            forces_dict[atom_type][cur_ind] = ref_forces[atom_ind]
+            cur_inds[atom_type] += 1
+    return forces_dict
 
 
 def compute_number_of_functions(pot):
@@ -176,7 +264,9 @@ def compute_extrapolation_grade_by_batches(bbasis: Union[BBasisConfiguration, AC
                                            A_active_set_inv_dict: Dict[int, np.array],
                                            structure_ind_batches: Optional[List[List[int]]] = None,
                                            gamma_threshold: Optional[float] = None,
-                                           is_full=False):
+                                           is_full=False,
+                                           verbose=False
+                                           ):
     """
     Compute the extrapolation grade of big dataset (`atomic_env_batches`) by batches,
     so only projections of one batch are storing in memory at once
@@ -187,6 +277,8 @@ def compute_extrapolation_grade_by_batches(bbasis: Union[BBasisConfiguration, AC
     :param structure_ind_batches: (optional) list of list (or np.array) of structure indices
     :param gamma_threshold: (optional, float, default=None) - if provided,  then projection and structure indices
      for atoms with gamma > gamma_threshold (extrapolative) will be collected and returned
+    :param is_full: (bool). If to compute full B_proj (i.e. dE/dc). default - false
+    :param verbose: verbosity flag
 
     :return:
         gamma_dict,
@@ -205,17 +297,18 @@ def compute_extrapolation_grade_by_batches(bbasis: Union[BBasisConfiguration, AC
         extrapolative_structure_ind_dict = {st: [] for st in species_types}
 
     cur_inds = [0] * len(species_types)
-    for batch_num in range(len(atomic_env_batches)):
-        print("Batch #", batch_num)
+    n_batches = len(atomic_env_batches)
+    for batch_num in range(n_batches):
+        print("Batch #{}/{}".format(batch_num + 1, n_batches))
         ae_batch = atomic_env_batches[batch_num]
 
         print("Compute B-projections")
         if structure_ind_batches is not None:
             si_batch = structure_ind_batches[batch_num]
             cur_A0_projections_dict, cur_structure_ind_dict = compute_B_projections(bbasis, ae_batch, si_batch,
-                                                                                    is_full=is_full)
+                                                                                    is_full=is_full, verbose=verbose)
         else:
-            cur_A0_projections_dict, _ = compute_B_projections(bbasis, ae_batch, is_full=is_full)
+            cur_A0_projections_dict = compute_B_projections(bbasis, ae_batch, is_full=is_full, verbose=verbose)
 
         for st in species_types:
             cur_A0_projections = cur_A0_projections_dict[st]
@@ -253,22 +346,44 @@ def compute_active_set(A0_projections_dict: Dict[int, np.array],
                        structure_ind_dict: Optional[Dict[int, np.array]] = None,
                        tol: float = 1.001,
                        max_iters: int = 300,
-                       verbose=False
+                       verbose=False,
+                       extra_A0_projections_dict: Dict[int, np.array] = None,
+                       extra_structure_ind_dict: Optional[Dict[int, np.array]] = None,
                        ):
     """
     Compute active set using MaxVol algorithm
     for each species type from dictionary A0_projections_dict
+
     :param A0_projections_dict:  dictionary {species_type => B-basis projections}
                 shape = [n_atoms[species_type], n_funcs[species_type]]
+    :param structure_ind_dict:
     :param tol: tolerance for MaxVol algorithm
     :param max_iters: maximum number of iterations for MaxVol algorithm
+    :param verbose:
+
+    :param extra_A0_projections_dict: extra B-projections to attach when computing AS
+    :param extra_structure_ind_dict: extra structures indices to attach
 
     :return A_active_set_dict:
-            dictionary {species_type => A_active_set_inv}
-                shape = [n_funcs[species_type], n_funcs[species_type]]
+                dictionary {species_type => A_active_set}
+                    shape = [n_funcs[species_type], n_funcs[species_type]]
+            active_set_structure_inds_dict:
+                dictionary {species_type => selected structures indices}
     """
     species_types = sorted(A0_projections_dict.keys())
     A_active_set_dict = {st: [] for st in species_types}
+
+    if extra_A0_projections_dict is not None:
+        if extra_structure_ind_dict is None and structure_ind_dict is not None:
+            # initiate structures indices with -1
+            extra_structure_ind_dict = {st: -1 * np.ones(len(a)) for st, a in extra_A0_projections_dict.items()}
+
+        for st in extra_A0_projections_dict.keys():
+            A0_projections_dict[st] = np.vstack((A0_projections_dict[st],
+                                                 extra_A0_projections_dict[st]))
+            if structure_ind_dict is not None:
+                structure_ind_dict[st] = np.hstack((structure_ind_dict[st],
+                                                    extra_structure_ind_dict[st]))
 
     if structure_ind_dict is not None:
         active_set_structure_inds_dict = {}
@@ -281,8 +396,16 @@ def compute_active_set(A0_projections_dict: Dict[int, np.array],
         if shape[0] < shape[1]:
             raise ValueError(
                 "Insufficient atomic environments to determine active set for species type {}, "
-                "system is under-determined, projections shape={},{}".format(st, shape))
-        selected_rows, _ = maxvol(cur_A0, tol=tol, max_iters=max_iters)
+                "system is under-determined, projections shape={}".format(st, shape))
+        proj_std = np.std(cur_A0, axis=0)
+        zero_proj_columns = np.where(proj_std == 0)[0]
+        if len(zero_proj_columns) > 0:
+            if verbose:
+                print("{} zero columns are found, add diagonal eps={}".format(len(zero_proj_columns), EPSILON))
+            zero_projs = np.zeros((len(cur_A0), len(zero_proj_columns)))
+            np.fill_diagonal(zero_projs, EPSILON)
+            cur_A0[:, zero_proj_columns] += zero_projs
+        selected_rows, _ = maxvol(cur_A0, tol=tol, max_iters=max_iters, verbose=verbose)
         cur_A_active_set = cur_A0[selected_rows]
         A_active_set_dict[st] = cur_A_active_set
         if structure_ind_dict is not None:
@@ -295,13 +418,16 @@ def compute_active_set(A0_projections_dict: Dict[int, np.array],
 
 
 def compute_active_set_by_batches(bbasis: Union[BBasisConfiguration, ACEBBasisSet],
-                                  atomic_env_batches: List[List[ACEAtomicEnvironment]],
-                                  structure_ind_batches: Optional[List[List[int]]] = None,
+                                  atomic_env_list: Union[List[Atoms], List[ACEAtomicEnvironment]],
+                                  structure_ind_list: Optional[List[int]] = None,
+                                  n_batches=2,
                                   gamma_tolerance: float = 1.01,
                                   maxvol_iters: int = 300,
-                                  n_refinement_iter: int = 5,
+                                  n_refinement_iter: int = 2,
                                   save_interim_active_set: bool = False,
-                                  is_full=False
+                                  is_full=False,
+                                  extra_A_active_set_dict=None,
+                                  verbose=False
                                   ):
     """
 
@@ -312,13 +438,16 @@ def compute_active_set_by_batches(bbasis: Union[BBasisConfiguration, ACEBBasisSe
     Stage 2. Refinement of active set by considering ONLY structures with gamma>1 and current active set
 
     :param bbasis: BBasisConfiguration or ACEBBasisSet
-    :param atomic_env_batches: list of list of ACEAtomicEnvironments
-    :param structure_ind_batches: (optional) list of list (or np.array) of structure indices
+    :param atomic_env_list: list/pd.Series of ASE Atoms or atomic environments
+    :param structure_ind_list: (optional) list if structure indices
+    :param n_batches: number of batches (default = 2)
     :param gamma_tolerance: (float, default=1.01) - gamma tolerance for MaxVol algorithm
     :param maxvol_iters: int, maximum number of iterations for single MaxVol run (for each batch)
     :param n_refinement_iter: maximum number of refinement iterations (stage 2)
     :param save_interim_active_set: bool = False,
     :param is_full: MaxVol on linear B-projections (false, default) or on full non-linear atomic energy (True)
+    :param extra_A_active_set_dict: Dict[species_type => array (N_atoms x N_B_proj) ] , array with B-basis projections
+    :param verbose: verbosity flag
 
     :return:
     best_gamma: (dict)
@@ -337,23 +466,41 @@ def compute_active_set_by_batches(bbasis: Union[BBasisConfiguration, ACEBBasisSe
 
     # Stage 1. Initial cumulative maxvol over batches (however this is not EXACT solution).
     # One needs to do refinement in Stage 2.
-    cur_A_active_set_dict = {v: [] for v in species_types}
-    cur_structure_inds_active_set_dict = {v: [] for v in species_types}
+    if extra_A_active_set_dict is not None:
+        cur_A_active_set_dict = extra_A_active_set_dict
+        cur_structure_inds_active_set_dict = {st: -1 * np.ones(len(a)) for st, a in extra_A_active_set_dict.items()}
+    else:
+        cur_A_active_set_dict = {v: [] for v in species_types}
+        cur_structure_inds_active_set_dict = {v: [] for v in species_types}
 
-    print("Stage 1. Cumulative MaxVol by batches")
-    n_batches = len(atomic_env_batches)
+    if structure_ind_list is None:
+        structure_ind_list = np.arange(len(atomic_env_list), dtype=int)
+
+    bbasis = convert_to_bbasis(bbasis)
+    atomic_env_list = convert_to_atomic_env_list(atomic_env_list, bbasis)
+    batch_splits_indices = np.array_split(np.arange(len(atomic_env_list)), n_batches)
+    atomic_env_batches = [atomic_env_list[bsi] for bsi in batch_splits_indices]
+
+    structure_ind_batches = [structure_ind_list[bsi] for bsi in batch_splits_indices]
+
+    if verbose:
+        print("Stage 1. Cumulative MaxVol by batches")
+    # n_batches = len(atomic_env_batches)
     for batch_num in range(n_batches):
-        print("Batch #{}/{}".format(batch_num + 1, n_batches))
+        if verbose:
+            print("Batch #{}/{}".format(batch_num + 1, n_batches))
         ae_batch = atomic_env_batches[batch_num]
 
-        print("Compute B-projections")
+        if verbose:
+            print("Compute B-projections")
         if structure_ind_batches is not None:
             si_batch = structure_ind_batches[batch_num]
             cur_A0_projections_dict, cur_structure_ind_dict = compute_B_projections(bbasis, ae_batch, si_batch,
-                                                                                    is_full=is_full)
+                                                                                    is_full=is_full, verbose=verbose)
         else:
             cur_A0_projections_dict, cur_structure_ind_dict = compute_B_projections(bbasis, ae_batch,
-                                                                                    is_full=is_full)
+                                                                                    return_structure_ind_dict=True,
+                                                                                    is_full=is_full, verbose=verbose)
 
         # join current active set {cur_A_active_set_dict, cur_structure_inds_active_set_dict}
         # and current batch {cur_A0_projections_dict, cur_structure_ind_dict}
@@ -374,48 +521,62 @@ def compute_active_set_by_batches(bbasis: Union[BBasisConfiguration, ACEBBasisSe
             elif len(cur_A0_projections_dict[st]):
                 joint_A0_projections_dict[st] = cur_A0_projections_dict[st]
                 joint_structure_ind_dict[st] = cur_structure_ind_dict[st]
-        print("Update active set (MaxVol)")
+        if verbose:
+            print("Update active set (MaxVol)")
         cur_A_active_set_dict, cur_structure_inds_active_set_dict = compute_active_set(joint_A0_projections_dict,
                                                                                        joint_structure_ind_dict,
                                                                                        tol=gamma_tolerance,
-                                                                                       max_iters=maxvol_iters)
-        print("Done")
+                                                                                       max_iters=maxvol_iters,
+                                                                                       verbose=verbose)
+        if verbose:
+            print("Done")
 
     # Stage 2. refinement of active set by considering ONLY structures with gamma>1 and current active set
-
+    if verbose:
+        print("Inverting current active set")
     cur_A_active_set_inv_dict = compute_A_active_inverse(cur_A_active_set_dict)
     if save_interim_active_set:
-        print("Save current active set to interim_active_set.asi")
+        if verbose:
+            print("Save current active set to interim_active_set.asi")
         save_active_inverse_set("interim_active_set.asi", cur_A_active_set_inv_dict, elements_name=elements_name)
 
-    print("Compute extrapolation grade for whole dataset by batches")
+    if verbose:
+        print("Compute extrapolation grade for whole dataset by batches")
     gamma_grade, extrapolative_A0_projs_dict, extrapolative_structure_ind_dict = \
-        compute_extrapolation_grade_by_batches(bbasis, atomic_env_batches, cur_A_active_set_inv_dict,
-                                               structure_ind_batches,
-                                               gamma_threshold=gamma_tolerance, is_full=is_full)
+        compute_extrapolation_grade_by_batches(bbasis,
+                                               atomic_env_batches=atomic_env_batches,
+                                               A_active_set_inv_dict=cur_A_active_set_inv_dict,
+                                               structure_ind_batches=structure_ind_batches,
+                                               gamma_threshold=gamma_tolerance,
+                                               is_full=is_full,
+                                               verbose=verbose)
     best_gamma = {k: gg.max() for k, gg in gamma_grade.items()}
-    # initilize best active set with current active set
+    # initialize the best active set with current active set
     best_active_sets_dict = cur_A_active_set_dict.copy()
     best_active_sets_si_dict = cur_structure_inds_active_set_dict.copy()
-    print("Current best gamma:", best_gamma)
+    if verbose:
+        print("Current best gamma:", best_gamma)
 
     if max(best_gamma.values()) <= gamma_tolerance:
         if structure_ind_batches is not None:
             return best_gamma, best_active_sets_dict, best_active_sets_si_dict
         else:
             return best_gamma, best_active_sets_dict
-    print("Stage 2. Refinement of active set")
+    if verbose:
+        print("Stage 2. Refinement of active set")
     # do iterative refinement
     for i in range(n_refinement_iter):
-        print()
-        print("Refinement iteration #{}/{}".format(i + 1, n_refinement_iter))
+        if verbose:
+            print()
+            print("Refinement iteration #{}/{}".format(i + 1, n_refinement_iter))
 
         cur_A0_projections_dict = {}
         cur_structure_ind_dict = {}
 
         for st in species_types:
-            print("Species type: {}, atomic environments outside active set: {}".format(st, len(
-                extrapolative_A0_projs_dict[st])))
+            if verbose:
+                print("Species type: {}, atomic environments outside active set: {}".format(st, len(
+                    extrapolative_A0_projs_dict[st])))
             cur_A0_projections_dict[st] = extrapolative_A0_projs_dict[st]
             cur_structure_ind_dict[st] = extrapolative_structure_ind_dict[st]
 
@@ -438,25 +599,31 @@ def compute_active_set_by_batches(bbasis: Union[BBasisConfiguration, ACEBBasisSe
             elif len(cur_A0_projections_dict[st]):
                 joint_A0_projections_dict[st] = cur_A0_projections_dict[st]
                 joint_structure_ind_dict[st] = cur_structure_ind_dict[st]
-        print("Update active set")
+        if verbose:
+            print("Update active set")
         cur_A_active_set_dict, cur_structure_inds_active_set_dict = compute_active_set(joint_A0_projections_dict,
-                                                                                       joint_structure_ind_dict)
-        print("Done")
-        print("PseudoInversion of current active set")
+                                                                                       joint_structure_ind_dict,
+                                                                                       verbose=verbose)
+        if verbose:
+            print("Done")
+            print("Inverting current active set")
         cur_A_active_set_inv_dict = compute_A_active_inverse(cur_A_active_set_dict)
 
         if save_interim_active_set:
-            print("Save current active set to interim_active_set.asi")
+            if verbose:
+                print("Save current active set to interim_active_set.asi")
             save_active_inverse_set("interim_active_set.asi", cur_A_active_set_inv_dict, elements_name=elements_name)
 
-        print("Compute extrapolation grade for complete dataset by batches")
+        if verbose:
+            print("Compute extrapolation grade for complete dataset by batches")
         gamma_grade, extrapolative_A0_projs_dict, extrapolative_structure_ind_dict = \
             compute_extrapolation_grade_by_batches(bbasis, atomic_env_batches, cur_A_active_set_inv_dict,
                                                    structure_ind_batches,
-                                                   gamma_threshold=gamma_tolerance, is_full=is_full)
+                                                   gamma_threshold=gamma_tolerance, is_full=is_full, verbose=verbose)
 
         current_gamma = {k: gg.max() for k, gg in gamma_grade.items()}
-        print("Current gamma_max:", current_gamma)
+        if verbose:
+            print("Current gamma_max:", current_gamma)
 
         # update best gamma grade
         for st in species_types:
@@ -465,8 +632,10 @@ def compute_active_set_by_batches(bbasis: Union[BBasisConfiguration, ACEBBasisSe
                 best_gamma[st] = current_gamma[st]
                 best_active_sets_dict[st] = cur_A_active_set_dict[st]
                 best_active_sets_si_dict[st] = cur_structure_inds_active_set_dict[st]
-                print("New best gamma({})={}".format(st, best_gamma[st]))
-        print("Current best gamma:", best_gamma)
+                if verbose:
+                    print("New best gamma({})={}".format(st, best_gamma[st]))
+        if verbose:
+            print("Current best gamma:", best_gamma)
 
         # early stopping if max value of gamma is below tolerance
         if max(best_gamma.values()) <= gamma_tolerance:
@@ -557,22 +726,22 @@ def py_farthest_point_sampling_no_batch(pts,
     return indices
 
 
-def read_extrapolation_data(extrapolation_filename, species_type_filename=None):
-    if species_type_filename is None:
-        species_type_filename = os.path.join(os.path.dirname(extrapolation_filename), "species_types.dat")
-
+def read_extrapolation_data(extrapolation_filename, species_to_element_dict=None, species_type_filename=None):
     with open(extrapolation_filename) as f:
         dat = read_lammps_dump_text(f, index=slice(None))
 
-    with open(species_type_filename) as f:
-        l = f.readlines()
+    if species_type_filename is not None:
+        with open(species_type_filename) as f:
+            l = f.readlines()
 
-    elements = l[0].strip().split()
+        elements = l[0].strip().split()
 
-    elements_remap = {i + 1: el for i, el in enumerate(elements)}
+        species_to_element_dict = {i + 1: el for i, el in enumerate(elements)}
+    elif species_to_element_dict is None:
+        raise ValueError("Neither `species_to_element_dict` nor `species_type_filename` provide. Need one of this")
 
     for at in dat:
-        new_symb = [elements_remap[i] for i in at.get_atomic_numbers()]
+        new_symb = [species_to_element_dict[i] for i in at.get_atomic_numbers()]
         at.set_chemical_symbols(new_symb)
         # this is the BUGFIX of ASE, that do not set pbc=True even when cell is provided
         if np.linalg.det(at.get_cell()) > 0:

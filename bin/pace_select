@@ -1,0 +1,109 @@
+#!/usr/bin/env python
+import argparse
+import logging
+
+import os
+import sys
+
+from pyace import BBasisConfiguration
+from pyace.activelearning import compute_A_active_inverse, load_active_inverse_set
+from pyace.aceselect import load_multiple_datasets, select_structures_maxvol, save_selected_structures
+
+LOG_FMT = '%(asctime)s %(levelname).1s - %(message)s'
+logging.basicConfig(level=logging.INFO, format=LOG_FMT, datefmt="%Y/%m/%d %H:%M:%S")
+log = logging.getLogger()
+
+
+def main():
+    parser = build_parser()
+    args_parse = parser.parse_args()
+
+    # extract parameters
+    potential_file = args_parse.potential_file
+    dataset_filename = args_parse.dataset
+    batch_size_option = args_parse.batch_size
+    gamma_tolerance = args_parse.gamma_tolerance
+    maxvol_iters = args_parse.maxvol_iters
+    maxvol_refinement = args_parse.maxvol_refinement
+
+    max_structures = args_parse.max_structures
+    selected_structures_filename = args_parse.selected_structures_filename
+    verbose = not args_parse.not_verbose
+    mem_lim_option = args_parse.memory_limit
+    elements = args_parse.elements
+
+    active_set_inv_fname = args_parse.active_set_inv_fname
+    if active_set_inv_fname is None:
+        active_set_inv_fname = potential_file.replace(".yaml", ".asi")
+    if not os.path.isfile(active_set_inv_fname):
+        if verbose:
+            log.info(f"No ASI file {active_set_inv_fname} found")
+        active_set_inv_fname = None
+
+    if isinstance(dataset_filename, list):
+        df = load_multiple_datasets(dataset_filename, elements, verbose)
+    else:
+        raise ValueError("Unrecognized --dataset (-d) argument: {}".format(dataset_filename))
+
+    if verbose:
+        log.info(f"{len(df['ase_atoms'])} structures in candidate list")
+        log.info(f"Loading B-basis configuration from {potential_file}")
+    bconf = BBasisConfiguration(potential_file)
+
+    if active_set_inv_fname:
+        if verbose:
+            log.info(f"Loading Active Set Inverted  from {active_set_inv_fname}")
+        asi = load_active_inverse_set(active_set_inv_fname)
+        extra_A0_projections_dict = compute_A_active_inverse(asi)
+    else:
+        if verbose:
+            log.info(f"No Active Set Inverted provided")
+        extra_A0_projections_dict = None
+
+    ##### START OF THE METHOD #####
+    df_selected = select_structures_maxvol(df, bconf, extra_A0_projections_dict, batch_size_option, gamma_tolerance,
+                                           max_structures,
+                                           maxvol_iters, maxvol_refinement, mem_lim_option, verbose)
+
+    # save selected structures
+    save_selected_structures(df_selected, selected_structures_filename, verbose)
+
+
+def build_parser():
+    parser = argparse.ArgumentParser(prog="pace_select",
+                                     description="Utility to select structures for training se based on D-optimality criterion")
+    parser.add_argument("dataset", nargs='+',
+                        help="Dataset file name(s), ex.: filename.pckl.gzip [extrapolative_structures.dat]",
+                        type=str)
+    parser.add_argument("-p", "--potential_file", help="B-basis file name (.yaml)", type=str,
+                        required=True)
+    parser.add_argument("-a", "--active-set-inv",
+                        help="Active Set Inverted (ASI) filename, considered as extra B-projections",
+                        default=None, type=str, dest="active_set_inv_fname")
+    parser.add_argument("-e", "--elements", type=str, help='List of elements, used in LAMMPS, i.e. "Ni Nb O"')
+    parser.add_argument("-m", "--max-structures", type=int,
+                        dest="max_structures",
+                        help="Maximum number of structures to select (default -1 = all)",
+                        default=-1)
+    parser.add_argument("-o", "--output", dest="selected_structures_filename", type=str,
+                        help="Selected structures filename: selected.pkl.gz or structures/POSCAR (default: selected.pkl.gz)",
+                        default="selected.pkl.gz"
+                        )
+    parser.add_argument("-b", "--batch_size", help="Batch size (number of structures) considered simultaneously."
+                                                   "If not provided - all dataset at once is considered",
+                        default="auto", type=str)
+    parser.add_argument("-g", "--gamma_tolerance", help="Gamma tolerance",
+                        default=1.01, type=float)
+    parser.add_argument("-i", "--maxvol_iters", help="Number of maximum iteration in MaxVol algorithm",
+                        default=300, type=int)
+    parser.add_argument("-r", "--maxvol_refinement", help="Number of refinements (epochs)",
+                        default=2, type=int)
+    parser.add_argument("-mem", "--memory-limit", help="Memory limit (i.e. 1GB, 500MB or 'auto')", default="auto",
+                        type=str)
+    parser.add_argument("-V", help="suppress verbosity of numerical procedures",
+                        dest="not_verbose", default=False, action="store_true")
+    return parser
+
+
+if __name__ == "__main__":
+    main()

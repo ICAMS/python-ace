@@ -1,0 +1,6 @@
+numpy
+ase
+pandas
+ruamel.yaml
+psutil
+scikit-learn

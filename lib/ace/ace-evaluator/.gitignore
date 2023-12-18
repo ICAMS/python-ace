@@ -47,3 +47,4 @@ doc
 test/CMakeFiles
 test/google-tests
 test/lib
+cmake-build-*/

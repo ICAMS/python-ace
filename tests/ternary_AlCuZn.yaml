@@ -1,0 +1,249 @@
+global:
+  DeltaSplineBins: 0.001
+species:
+  - speciesblock: Al
+    ndensityi: 2
+    npoti: FinnisSinclairShiftedScaled
+    parameters: [1, 1, 1, 0.5]
+    rho_core_cut: 100000
+    drho_core_cut: 250
+    nradmaxi: 1
+    lmaxi: 1
+    rcutij: 4
+    dcutij: 0.01
+    NameOfCutoffFunctionij: cos
+    nradbaseij: 3
+    radbase: ChebExpCos
+    radparameters: [3]
+    radcoefficients: [[[1, 0, 0], [1, 0, 0]]]
+    core-repulsion: [10000, 5]
+    nbody:
+      - {type: Al Al, nr: [1], nl: [0], c: [0.49671415301123267, -0.13826430117118466]}
+      - {type: Al Al, nr: [2], nl: [0], c: [0.64768853810069249, 1.5230298564080254]}
+      - {type: Al Al, nr: [3], nl: [0], c: [-0.23415337472333597, -0.23413695694918055]}
+      - {type: Al Al Al, nr: [1, 1], nl: [0, 0], c: [1.5792128155073915, 0.76743472915290878]}
+      - {type: Al Al Al, nr: [1, 1], nl: [1, 1], c: [-0.46947438593495211, 0.54256004358596466]}
+      - {type: Al Al Al Al, nr: [1, 1, 1], nl: [0, 0, 0], lint: [0], c: [-0.46341769281246226, -0.46572975357025687]}
+      - {type: Al Al Al Al, nr: [1, 1, 1], nl: [0, 1, 1], lint: [1], c: [0.24196227156603412, -1.9132802446577979]}
+  - speciesblock: Cu
+    ndensityi: 1
+    npoti: FinnisSinclairShiftedScaled
+    parameters: [1, 1]
+    rho_core_cut: 100000
+    drho_core_cut: 250
+    nradmaxi: 1
+    lmaxi: 1
+    rcutij: 4
+    dcutij: 0.01
+    NameOfCutoffFunctionij: cos
+    nradbaseij: 3
+    radbase: ChebExpCos
+    radparameters: [3]
+    radcoefficients: [[[1, 0, 0], [1, 0, 0]]]
+    core-repulsion: [10000, 5]
+    nbody:
+      - {type: Cu Cu, nr: [1], nl: [0], c: [-1.7249178325130328]}
+      - {type: Cu Cu, nr: [2], nl: [0], c: [-0.56228752924097269]}
+      - {type: Cu Cu, nr: [3], nl: [0], c: [-1.0128311203344238]}
+      - {type: Cu Cu Cu, nr: [1, 1], nl: [0, 0], c: [0.31424733259527388]}
+      - {type: Cu Cu Cu, nr: [1, 1], nl: [1, 1], c: [-0.90802407552121089]}
+      - {type: Cu Cu Cu Cu, nr: [1, 1, 1], nl: [0, 0, 0], lint: [0], c: [-1.4123037013352915]}
+      - {type: Cu Cu Cu Cu, nr: [1, 1, 1], nl: [0, 1, 1], lint: [1], c: [1.465648768921554]}
+  - speciesblock: Al Cu
+    nradmaxi: 1
+    lmaxi: 1
+    rcutij: 4
+    dcutij: 0.01
+    NameOfCutoffFunctionij: cos
+    nradbaseij: 3
+    radbase: ChebExpCos
+    radparameters: [3]
+    radcoefficients: [[[1, 0, 0], [1, 0, 0]]]
+    core-repulsion: [10000, 5]
+    nbody:
+      - {type: Al Cu, nr: [1], nl: [0], c: [0.49671415301123267, -0.13826430117118466]}
+      - {type: Al Cu, nr: [2], nl: [0], c: [0.64768853810069249, 1.5230298564080254]}
+      - {type: Al Cu, nr: [3], nl: [0], c: [-0.23415337472333597, -0.23413695694918055]}
+      - {type: Al Al Cu, nr: [1, 1], nl: [0, 0], c: [1.5792128155073915, 0.76743472915290878]}
+      - {type: Al Al Cu, nr: [1, 1], nl: [1, 1], c: [-0.46947438593495211, 0.54256004358596466]}
+      - {type: Al Cu Cu, nr: [1, 1], nl: [0, 0], c: [-0.46341769281246226, -0.46572975357025687]}
+      - {type: Al Cu Cu, nr: [1, 1], nl: [1, 1], c: [0.24196227156603412, -1.9132802446577979]}
+      - {type: Al Al Al Cu, nr: [1, 1, 1], nl: [0, 0, 0], lint: [0], c: [-1.7249178325130328, -0.56228752924097269]}
+      - {type: Al Al Al Cu, nr: [1, 1, 1], nl: [0, 1, 1], lint: [1], c: [-1.0128311203344238, 0.31424733259527388]}
+      - {type: Al Al Al Cu, nr: [1, 1, 1], nl: [1, 1, 0], lint: [0], c: [-0.90802407552121089, -1.4123037013352915]}
+      - {type: Al Al Cu Cu, nr: [1, 1, 1], nl: [0, 0, 0], lint: [0], c: [1.465648768921554, -0.22577630048653566]}
+      - {type: Al Al Cu Cu, nr: [1, 1, 1], nl: [0, 1, 1], lint: [1], c: [0.067528204687923837, -1.4247481862134568]}
+      - {type: Al Al Cu Cu, nr: [1, 1, 1], nl: [1, 0, 1], lint: [1], c: [-0.54438272452518266, 0.11092258970986608]}
+      - {type: Al Cu Cu Cu, nr: [1, 1, 1], nl: [0, 0, 0], lint: [0], c: [-1.1509935774223028, 0.37569801834567196]}
+      - {type: Al Cu Cu Cu, nr: [1, 1, 1], nl: [0, 1, 1], lint: [1], c: [-0.60063868991880498, -0.29169374979327678]}
+  - speciesblock: Cu Al
+    nradmaxi: 1
+    lmaxi: 1
+    rcutij: 4
+    dcutij: 0.01
+    NameOfCutoffFunctionij: cos
+    nradbaseij: 3
+    radbase: ChebExpCos
+    radparameters: [3]
+    radcoefficients: [[[1, 0, 0], [1, 0, 0]]]
+    core-repulsion: [10000, 5]
+    nbody:
+      - {type: Cu Al, nr: [1], nl: [0], c: [-0.60170661222939692]}
+      - {type: Cu Al, nr: [2], nl: [0], c: [1.8522781845089378]}
+      - {type: Cu Al, nr: [3], nl: [0], c: [-0.013497224737933921]}
+      - {type: Cu Al Al, nr: [1, 1], nl: [0, 0], c: [-1.0577109289559004]}
+      - {type: Cu Al Al, nr: [1, 1], nl: [1, 1], c: [0.82254491210318903]}
+      - {type: Cu Al Cu, nr: [1, 1], nl: [0, 0], c: [-1.2208436499710222]}
+      - {type: Cu Al Cu, nr: [1, 1], nl: [1, 1], c: [0.2088635950047554]}
+      - {type: Cu Al Al Al, nr: [1, 1, 1], nl: [0, 0, 0], lint: [0], c: [-1.9596701238797756]}
+      - {type: Cu Al Al Al, nr: [1, 1, 1], nl: [0, 1, 1], lint: [1], c: [-1.3281860488984305]}
+      - {type: Cu Al Al Cu, nr: [1, 1, 1], nl: [0, 0, 0], lint: [0], c: [0.19686123586912352]}
+      - {type: Cu Al Al Cu, nr: [1, 1, 1], nl: [0, 1, 1], lint: [1], c: [0.73846657999541043]}
+      - {type: Cu Al Al Cu, nr: [1, 1, 1], nl: [1, 1, 0], lint: [0], c: [0.17136828118997049]}
+      - {type: Cu Al Cu Cu, nr: [1, 1, 1], nl: [0, 0, 0], lint: [0], c: [-0.11564828238824053]}
+      - {type: Cu Al Cu Cu, nr: [1, 1, 1], nl: [0, 1, 1], lint: [1], c: [-0.30110369558928879]}
+      - {type: Cu Al Cu Cu, nr: [1, 1, 1], nl: [1, 0, 1], lint: [1], c: [-1.4785219903674274]}
+  - speciesblock: Zn
+    ndensityi: 1
+    npoti: FinnisSinclairShiftedScaled
+    parameters: [1, 1]
+    rho_core_cut: 100000
+    drho_core_cut: 250
+    nradmaxi: 1
+    lmaxi: 1
+    rcutij: 4
+    dcutij: 0.01
+    NameOfCutoffFunctionij: cos
+    nradbaseij: 3
+    radbase: ChebExpCos
+    radparameters: [3]
+    radcoefficients: [[[1, 0, 0], [1, 0, 0]]]
+    core-repulsion: [10000, 5]
+    nbody:
+      - {type: Zn Zn, nr: [1], nl: [0], c: [-0.22577630048653566]}
+      - {type: Zn Zn, nr: [2], nl: [0], c: [0.067528204687923837]}
+      - {type: Zn Zn, nr: [3], nl: [0], c: [-1.4247481862134568]}
+      - {type: Zn Zn Zn, nr: [1, 1], nl: [0, 0], c: [-0.54438272452518266]}
+      - {type: Zn Zn Zn, nr: [1, 1], nl: [1, 1], c: [0.11092258970986608]}
+      - {type: Zn Zn Zn Zn, nr: [1, 1, 1], nl: [0, 0, 0], lint: [0], c: [-1.1509935774223028]}
+      - {type: Zn Zn Zn Zn, nr: [1, 1, 1], nl: [0, 1, 1], lint: [1], c: [0.37569801834567196]}
+  - speciesblock: Al Zn
+    nradmaxi: 1
+    lmaxi: 1
+    rcutij: 4
+    dcutij: 0.01
+    NameOfCutoffFunctionij: cos
+    nradbaseij: 3
+    radbase: ChebExpCos
+    radparameters: [3]
+    radcoefficients: [[[1, 0, 0], [1, 0, 0]]]
+    core-repulsion: [10000, 5]
+    nbody:
+      - {type: Al Zn, nr: [1], nl: [0], c: [-0.71984420839470864, -0.4606387709597875]}
+      - {type: Al Zn, nr: [2], nl: [0], c: [1.0571222262189157, 0.34361828956846141]}
+      - {type: Al Zn, nr: [3], nl: [0], c: [-1.763040155362734, 0.324083969394795]}
+      - {type: Al Al Zn, nr: [1, 1], nl: [0, 0], c: [-0.38508228041631654, -0.67692200030595873]}
+      - {type: Al Al Zn, nr: [1, 1], nl: [1, 1], c: [0.61167628884086789, 1.0309995224959509]}
+      - {type: Al Zn Zn, nr: [1, 1], nl: [0, 0], c: [0.93128011911619857, -0.83921752322263854]}
+      - {type: Al Zn Zn, nr: [1, 1], nl: [1, 1], c: [-0.30921237585121458, 0.33126343140356396]}
+      - {type: Al Al Al Zn, nr: [1, 1, 1], nl: [0, 0, 0], lint: [0], c: [0.97554512712235919, -0.47917423784528995]}
+      - {type: Al Al Al Zn, nr: [1, 1, 1], nl: [0, 1, 1], lint: [1], c: [-0.18565897666381712, -1.1063349740060282]}
+      - {type: Al Al Al Zn, nr: [1, 1, 1], nl: [1, 1, 0], lint: [0], c: [-1.1962066240806708, 0.81252582239419802]}
+      - {type: Al Al Zn Zn, nr: [1, 1, 1], nl: [0, 0, 0], lint: [0], c: [1.3562400285708229, -0.072010121580333847]}
+      - {type: Al Al Zn Zn, nr: [1, 1, 1], nl: [0, 1, 1], lint: [1], c: [1.0035328978920242, 0.36163602504763415]}
+      - {type: Al Al Zn Zn, nr: [1, 1, 1], nl: [1, 0, 1], lint: [1], c: [-0.64511975460512427, 0.36139560550841393]}
+      - {type: Al Zn Zn Zn, nr: [1, 1, 1], nl: [0, 0, 0], lint: [0], c: [1.5380365664659692, -0.035826039109951538]}
+      - {type: Al Zn Zn Zn, nr: [1, 1, 1], nl: [0, 1, 1], lint: [1], c: [1.5646436558140062, -2.6197451040897444]}
+  - speciesblock: Zn Al
+    nradmaxi: 1
+    lmaxi: 1
+    rcutij: 4
+    dcutij: 0.01
+    NameOfCutoffFunctionij: cos
+    nradbaseij: 3
+    radbase: ChebExpCos
+    radparameters: [3]
+    radcoefficients: [[[1, 0, 0], [1, 0, 0]]]
+    core-repulsion: [10000, 5]
+    nbody:
+      - {type: Zn Al, nr: [1], nl: [0], c: [0.82190250437522383]}
+      - {type: Zn Al, nr: [2], nl: [0], c: [0.087047068238171224]}
+      - {type: Zn Al, nr: [3], nl: [0], c: [-0.29900735046586746]}
+      - {type: Zn Al Al, nr: [1, 1], nl: [0, 0], c: [0.091760776535502298]}
+      - {type: Zn Al Al, nr: [1, 1], nl: [1, 1], c: [-1.9875689146008928]}
+      - {type: Zn Al Zn, nr: [1, 1], nl: [0, 0], c: [-0.21967188783751193]}
+      - {type: Zn Al Zn, nr: [1, 1], nl: [1, 1], c: [0.35711257151174641]}
+      - {type: Zn Al Al Al, nr: [1, 1, 1], nl: [0, 0, 0], lint: [0], c: [1.4778940447415161]}
+      - {type: Zn Al Al Al, nr: [1, 1, 1], nl: [0, 1, 1], lint: [1], c: [-0.51827021827364739]}
+      - {type: Zn Al Al Zn, nr: [1, 1, 1], nl: [0, 0, 0], lint: [0], c: [-0.80849360289318761]}
+      - {type: Zn Al Al Zn, nr: [1, 1, 1], nl: [0, 1, 1], lint: [1], c: [-0.50175704358453654]}
+      - {type: Zn Al Al Zn, nr: [1, 1, 1], nl: [1, 1, 0], lint: [0], c: [0.91540211770207414]}
+      - {type: Zn Al Zn Zn, nr: [1, 1, 1], nl: [0, 0, 0], lint: [0], c: [0.32875110965968446]}
+      - {type: Zn Al Zn Zn, nr: [1, 1, 1], nl: [0, 1, 1], lint: [1], c: [-0.52976020376703881]}
+      - {type: Zn Al Zn Zn, nr: [1, 1, 1], nl: [1, 0, 1], lint: [1], c: [0.5132674331133561]}
+  - speciesblock: Cu Zn
+    nradmaxi: 1
+    lmaxi: 1
+    rcutij: 4
+    dcutij: 0.01
+    NameOfCutoffFunctionij: cos
+    nradbaseij: 3
+    radbase: ChebExpCos
+    radparameters: [3]
+    radcoefficients: [[[1, 0, 0], [1, 0, 0]]]
+    core-repulsion: [10000, 5]
+    nbody:
+      - {type: Cu Zn, nr: [1], nl: [0], c: [0.097077549348040387]}
+      - {type: Cu Zn, nr: [2], nl: [0], c: [0.96864499053288922]}
+      - {type: Cu Zn, nr: [3], nl: [0], c: [-0.70205309387735237]}
+      - {type: Cu Cu Zn, nr: [1, 1], nl: [0, 0], c: [-0.32766214659776821]}
+      - {type: Cu Cu Zn, nr: [1, 1], nl: [1, 1], c: [-0.39210815313215763]}
+      - {type: Cu Zn Zn, nr: [1, 1], nl: [0, 0], c: [-1.4635149481321186]}
+      - {type: Cu Zn Zn, nr: [1, 1], nl: [1, 1], c: [0.29612027706457605]}
+      - {type: Cu Cu Cu Zn, nr: [1, 1, 1], nl: [0, 0, 0], lint: [0], c: [0.26105527217988933]}
+      - {type: Cu Cu Cu Zn, nr: [1, 1, 1], nl: [0, 1, 1], lint: [1], c: [0.0051134566424608898]}
+      - {type: Cu Cu Cu Zn, nr: [1, 1, 1], nl: [1, 1, 0], lint: [0], c: [-0.23458713337514692]}
+      - {type: Cu Cu Zn Zn, nr: [1, 1, 1], nl: [0, 0, 0], lint: [0], c: [-1.4153707420504142]}
+      - {type: Cu Cu Zn Zn, nr: [1, 1, 1], nl: [0, 1, 1], lint: [1], c: [-0.42064532276535904]}
+      - {type: Cu Cu Zn Zn, nr: [1, 1, 1], nl: [1, 0, 1], lint: [1], c: [-0.34271451652676949]}
+      - {type: Cu Zn Zn Zn, nr: [1, 1, 1], nl: [0, 0, 0], lint: [0], c: [-0.8022772692216189]}
+      - {type: Cu Zn Zn Zn, nr: [1, 1, 1], nl: [0, 1, 1], lint: [1], c: [-0.16128571166600914]}
+  - speciesblock: Zn Cu
+    nradmaxi: 1
+    lmaxi: 1
+    rcutij: 4
+    dcutij: 0.01
+    NameOfCutoffFunctionij: cos
+    nradbaseij: 3
+    radbase: ChebExpCos
+    radparameters: [3]
+    radcoefficients: [[[1, 0, 0], [1, 0, 0]]]
+    core-repulsion: [10000, 5]
+    nbody:
+      - {type: Zn Cu, nr: [1], nl: [0], c: [0.40405085681453839]}
+      - {type: Zn Cu, nr: [2], nl: [0], c: [1.8861859012105302]}
+      - {type: Zn Cu, nr: [3], nl: [0], c: [0.17457781283183896]}
+      - {type: Zn Cu Cu, nr: [1, 1], nl: [0, 0], c: [0.25755039072276437]}
+      - {type: Zn Cu Cu, nr: [1, 1], nl: [1, 1], c: [-0.074445915766167214]}
+      - {type: Zn Cu Zn, nr: [1, 1], nl: [0, 0], c: [-1.9187712152990415]}
+      - {type: Zn Cu Zn, nr: [1, 1], nl: [1, 1], c: [-0.026513875449216878]}
+      - {type: Zn Cu Cu Cu, nr: [1, 1, 1], nl: [0, 0, 0], lint: [0], c: [0.060230209941026437]}
+      - {type: Zn Cu Cu Cu, nr: [1, 1, 1], nl: [0, 1, 1], lint: [1], c: [2.4632421124852861]}
+      - {type: Zn Cu Cu Zn, nr: [1, 1, 1], nl: [0, 0, 0], lint: [0], c: [-0.19236096478112252]}
+      - {type: Zn Cu Cu Zn, nr: [1, 1, 1], nl: [0, 1, 1], lint: [1], c: [0.30154734233361247]}
+      - {type: Zn Cu Cu Zn, nr: [1, 1, 1], nl: [1, 1, 0], lint: [0], c: [-0.034711769705243312]}
+      - {type: Zn Cu Zn Zn, nr: [1, 1, 1], nl: [0, 0, 0], lint: [0], c: [-1.168678037619532]}
+      - {type: Zn Cu Zn Zn, nr: [1, 1, 1], nl: [0, 1, 1], lint: [1], c: [1.1428228145150205]}
+      - {type: Zn Cu Zn Zn, nr: [1, 1, 1], nl: [1, 0, 1], lint: [1], c: [0.75193303268677414]}
+  - speciesblock: Al Cu Zn
+    nbody:
+      - {type: Al Cu Zn, nr: [1, 1], nl: [0, 0], c: [0.49671415301123267, -0.13826430117118466]}
+      - {type: Al Cu Zn, nr: [1, 1], nl: [1, 1], c: [0.64768853810069249, 1.5230298564080254]}
+  - speciesblock: Cu Al Zn
+    nbody:
+      - {type: Cu Al Zn, nr: [1, 1], nl: [0, 0], c: [-0.23415337472333597]}
+      - {type: Cu Al Zn, nr: [1, 1], nl: [1, 1], c: [-0.23413695694918055]}
+  - speciesblock: Zn Al Cu
+    nbody:
+      - {type: Zn Al Cu, nr: [1, 1], nl: [0, 0], c: [1.5792128155073915]}
+      - {type: Zn Al Cu, nr: [1, 1], nl: [1, 1], c: [0.76743472915290878]}

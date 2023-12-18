@@ -112,10 +112,18 @@ class FitBackendAdapter:
                             raise RuntimeError("No further batch size reduction is possible, stopping")
 
                         self.backend_config[BACKEND_BATCH_SIZE_KW] = new_batch_size
+                        # check the latest version of potential, update bbasisconfig to restart
+                        try:
+                            log.info("Attempt to get last version of potential")
+                            bbasisconfig = self.fitter.tensorpot.potential.get_updated_config()
+                            log.info("Last version of potential is extracted")
+                        except Exception as e:
+                            log.error("Can not get last version of potential: {}".format(e))
                     else:
                         log.error("Use `backend:batch_size_reduction` option for automatic batch size reduction")
                         raise RuntimeError("{} errors encountered. " +
-                                           "Consider using `backend::{}=true` option for automatic batch size reduction".format(e,
+                                           "Consider using `backend::{}=true` option for automatic batch size reduction".format(
+                                               e,
                                                BACKEND_BATCH_SIZE_REDUCTION_KW))
                 except Exception as e:
                     raise e
@@ -222,7 +230,7 @@ class FitBackendAdapter:
             if np.all(jacobian_factor):
                 jacobian_factor = None  # default value - train all
             else:
-                jacobian_factor = jacobian_factor.astype(np.float)
+                jacobian_factor = jacobian_factor.astype(float)
             batch_size = self.backend_config.get(BACKEND_BATCH_SIZE_KW, 10)
             fit_options = fit_config.get(FIT_OPTIONS_KW, None)
             self.fitter.fit(dataframe, test_df=test_dataframe, niter=fit_config[FIT_NITER_KW],
@@ -323,7 +331,7 @@ class FitBackendAdapter:
         datadf['w_forces'] = datadf['w_forces'].apply(np.reshape, newshape=[-1, 1])
         de = prediction['energy_pred'] - datadf[energy_col]
         df = prediction['forces_pred'] - datadf[force_col]
-        e_loss = np.float(np.sum(datadf['w_energy'] * de ** 2))
+        e_loss = float(np.sum(datadf['w_energy'] * de ** 2))
         f_loss = np.sum((datadf['w_forces'] * df ** 2).map(np.sum))
 
         mae_pae = np.mean(np.abs(de / datadf[nat_column]))

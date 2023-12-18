@@ -29,13 +29,12 @@ __all__ = ["ACEAtomicEnvironment", "create_cube", "create_linear_chain", "aseato
            "ACECalculator",
            "ACECouplingTree", "generate_ms_cg_list", "validate_ls_LS", "is_valid_ls_LS", 'expand_ls_LS',
            "ACECTildeEvaluator", "ACEBEvaluator",
-           "PyACEFit", "PyACECalculator", "PyACEEnsembleCalculator",
-           "StructuresDatasetSpecification", "EnergyBasedWeightingPolicy", "Fexp",
+            "PyACEFit", "PyACECalculator", "PyACEEnsembleCalculator",
+           "ACEDataset",
+           "EnergyBasedWeightingPolicy", "Fexp",
            "get_ace_evaluator_version",
            "EnergyBasedWeightingPolicy", "UniformWeightingPolicy",
            "RadialFunctionsValues", "RadialFunctionsVisualization", "RadialFunctionSmoothness",
-           "StructuresDatasetSpecification",
-
            "create_multispecies_basis_config",
            ]
 

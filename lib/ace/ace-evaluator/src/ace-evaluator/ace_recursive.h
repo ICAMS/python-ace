@@ -63,7 +63,7 @@ class ACEDAG {
                      vector<DOUBLE_TYPE> c);
 
     // the following fields are used only for *construction*, not evaluation
-    int dag_idx;     // current index of dag node 
+    unsigned int dag_idx;     // current index of dag node
     Array2D<int> nodes_pre; //TODO: YL: better to use vector<>
     Array2D<DOUBLE_TYPE> coeffs_pre; //TODO: YL: better to use vector<>
     Array1D<bool> haschild; //TODO: YL: better to use vector<>
@@ -78,18 +78,18 @@ public:
 
     ACEDAG() = default;
 
-    void init(Array2D<int> Aspec,  Array2D<int> AAspec, 
-              Array1D<int> orders, Array2D<DOUBLE_TYPE> coeffs, 
-              int heuristic );
+    void init(Array2D<int> Aspec, Array2D<int> AAspec,
+              Array1D<int> orders, Array2D<DOUBLE_TYPE> coeffs,
+              int heuristic);
 
-    Array1D<ACEComplex> AAbuf; 
-    Array1D<ACEComplex> w; 
-    
-    Array2D<int> Aspec; 
+    Array1D<ACEComplex> AAbuf;
+    Array1D<ACEComplex> w;
+
+    Array2D<int> Aspec;
 
     // nodes in the graph 
-    Array2D<int> nodes;    
-    Array2D<DOUBLE_TYPE> coeffs; 
+    Array2D<int> nodes;
+    Array2D<DOUBLE_TYPE> coeffs;
 
     // total number of nodes in the dag
     int num_nodes;
@@ -102,8 +102,10 @@ public:
     // number of 1-particle basis functions 
     // (these will be stored in the first num1 entries of AAbuf)
     int get_num1() { return Aspec.get_dim(0); };
+
     // total number of n-correlation basis functions n > 1.
-    int get_num2() { return num_nodes - get_num1(); }; 
+    int get_num2() { return num_nodes - get_num1(); };
+
     int get_num2_int() { return num2_int; };   // with children
     int get_num2_leaf() { return num2_leaf; };     // without children
 
@@ -199,7 +201,7 @@ public:
 
     ACERecursiveEvaluator() = default;
 
-    explicit ACERecursiveEvaluator(ACECTildeBasisSet &bas, 
+    explicit ACERecursiveEvaluator(ACECTildeBasisSet &bas,
                                    bool recursive = true) {
         set_recursive(recursive);
         set_basis(bas);
@@ -230,15 +232,15 @@ public:
     void resize_neighbours_cache(int max_jnum) override;
 
     /******* public functions related to recursive evaluator ********/
-    
+
     // print out the DAG for visual inspection
     void print_dag() {
-        for(SPECIES_TYPE mu0 = 0; mu0<basis_set->nelements; mu0++) {
-            cout<<"Specie "<<mu0<<endl;
+        for (SPECIES_TYPE mu0 = 0; mu0 < basis_set->nelements; mu0++) {
+            cout << "Specie " << mu0 << endl;
             species_dags[mu0].print();
         }
     }
-    
+
     // print out the jl format for visual inspection
     // should be converted into a proper test 
     void test_acejlformat(SPECIES_TYPE mu0);
@@ -246,7 +248,11 @@ public:
     void set_recursive(bool tf) { recursive = tf; }
 
     /********************************/
+    vector<int> get_func_ind_shift() override;
 
+    int get_total_number_of_functions() override;
+
+    vector<int> get_number_of_functions() override;
 };
 
 

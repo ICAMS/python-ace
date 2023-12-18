@@ -1,0 +1,40 @@
+metadata:
+  _loss: 0.06633078757002173
+  intermediate_time: 2021-05-02 20:09:58.345648
+  starttime: 2021-05-02 20:08:43.461789
+  user: lysogy36
+global:
+  DeltaSplineBins: 0.001
+species:
+  - speciesblock: Fe
+    ndensityi: 2
+    npoti: FinnisSinclairShiftedScaled
+    parameters: [1, 1, 1, 0.5]
+    rho_core_cut: 200000
+    drho_core_cut: 250
+    nradmaxi: 0
+    lmaxi: 0
+    rcutij: 6.2000000000000002
+    dcutij: 0.01
+    NameOfCutoffFunctionij: cos
+    nradbaseij: 15
+    radbase: ChebExpCos
+    radparameters: [5.25]
+    radcoefficients: []
+    core-repulsion: [0, 5]
+    nbody:
+      - {type: Fe Fe, nr: [1], nl: [0], c: [-1.3050270540652373, 14.583131714030918]}
+      - {type: Fe Fe, nr: [2], nl: [0], c: [582.88926189707104, 389.72644167761422]}
+      - {type: Fe Fe, nr: [3], nl: [0], c: [999.61286473770065, 705.14147996623092]}
+      - {type: Fe Fe, nr: [4], nl: [0], c: [-76.12027157199411, -22.592337295916082]}
+      - {type: Fe Fe, nr: [5], nl: [0], c: [-1014.1546795893698, -851.98862441477763]}
+      - {type: Fe Fe, nr: [6], nl: [0], c: [-13.776410742301136, -252.60398952695022]}
+      - {type: Fe Fe, nr: [7], nl: [0], c: [1076.6701524284447, 1002.1181282924722]}
+      - {type: Fe Fe, nr: [8], nl: [0], c: [-107.09842751346434, 585.46908629087113]}
+      - {type: Fe Fe, nr: [9], nl: [0], c: [-1191.6164882227765, -1182.6434019461656]}
+      - {type: Fe Fe, nr: [10], nl: [0], c: [621.84851495274006, -921.67883629218181]}
+      - {type: Fe Fe, nr: [11], nl: [0], c: [1089.5519609114303, 1577.9631112800741]}
+      - {type: Fe Fe, nr: [12], nl: [0], c: [-1932.0264163521585, 942.99930919136784]}
+      - {type: Fe Fe, nr: [13], nl: [0], c: [1433.8290080694683, -2794.9673121736373]}
+      - {type: Fe Fe, nr: [14], nl: [0], c: [-569.97012344023187, 1934.4089110110694]}
+      - {type: Fe Fe, nr: [15], nl: [0], c: [101.78373692098954, -491.40205785488388]}

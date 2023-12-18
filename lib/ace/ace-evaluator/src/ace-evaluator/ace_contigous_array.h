@@ -45,9 +45,9 @@ using namespace std;
 template<typename T>
 class ContiguousArrayND {
 protected:
+    string array_name = "Array"; ///<array name
     T *data = nullptr; ///< pointer to contiguous data
     size_t size = 0; ///< total array size
-    string array_name = "Array"; ///<array name
     bool is_proxy_ = false; ///< array is proxy (wrapper) and not owner of the memory
 public:
 
@@ -175,7 +175,7 @@ public:
      */
     inline T &get_data(size_t ind) {
 #ifdef MULTIARRAY_INDICES_CHECK
-        if ((ind < 0) | (ind >= size)) {
+        if ((ind >= size)) { // (ind < 0) ||
             printf("%s: get_data ind=%ld out of range (0, %ld)\n", array_name.c_str(), ind, size);
             exit(EXIT_FAILURE);
         }
@@ -218,9 +218,9 @@ public:
         vector<T> res;
 
         res.resize(size);
-        size_t vec_ind = 0;
+//        size_t vec_ind = 0;
 
-        for (int vec_ind = 0; vec_ind < size; vec_ind++)
+        for (size_t vec_ind = 0; vec_ind < size; vec_ind++)
                 res.at(vec_ind) = data[vec_ind];
 
         return res;

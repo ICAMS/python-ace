@@ -6,7 +6,7 @@
 #include "ace-evaluator/ace_types.h"
 
 
-void ACEAtomicEnvironment::set_x(vector<vector<DOUBLE_TYPE>> &new_x) {
+void ACEAtomicEnvironment::set_x(const vector<vector<DOUBLE_TYPE>> &new_x) {
     _clean_x();
     n_atoms_extended = new_x.size();
     x = new DOUBLE_TYPE *[n_atoms_extended];
@@ -27,7 +27,7 @@ vector<vector<DOUBLE_TYPE>> ACEAtomicEnvironment::get_x() const {
     return ret_x;
 }
 
-void ACEAtomicEnvironment::set_species_types(vector<SPECIES_TYPE> &new_species_types) {
+void ACEAtomicEnvironment::set_species_types(const vector<SPECIES_TYPE> &new_species_types) {
     _clean_species_types();
     n_atoms_extended = new_species_types.size();
     species_type = new SPECIES_TYPE[n_atoms_extended];
@@ -44,7 +44,7 @@ vector<SPECIES_TYPE> ACEAtomicEnvironment::get_species_types() const {
     return ret_species_types;
 }
 
-void ACEAtomicEnvironment::set_neighbour_list(vector<vector<int>> &new_neighbour_list) {
+void ACEAtomicEnvironment::set_neighbour_list(const vector<vector<int>> &new_neighbour_list) {
     _clean_neighbour_list();
     n_atoms_real = new_neighbour_list.size();
     num_neighbours = new int[n_atoms_real];
@@ -73,21 +73,82 @@ vector<vector<int>> ACEAtomicEnvironment::get_neighbour_list() const {
 }
 
 DOUBLE_TYPE ACEAtomicEnvironment::get_minimal_nn_distance() const {
-    DOUBLE_TYPE nn_min_distance=1e3;
-    for (int i = 0; i<this->n_atoms_real; i++) {
+    DOUBLE_TYPE nn_min_distance = 1e3;
+    for (int i = 0; i < this->n_atoms_real; ++i) {
         auto r_i = this->x[i];
         auto num_neighbours = this->num_neighbours[i];
         auto cur_neighbour_list = this->neighbour_list[i];
-        for(int j=0;j<num_neighbours;j++) {
+        for (int j = 0; j < num_neighbours; ++j) {
             auto r_j = this->x[cur_neighbour_list[j]];
-            DOUBLE_TYPE r = sqrt(sqr(r_j[0]-r_i[0]) + sqr(r_j[1]-r_i[1]) + sqr(r_j[2]-r_i[2]));
-            if (r<nn_min_distance)
+            DOUBLE_TYPE r = sqrt(sqr(r_j[0] - r_i[0]) + sqr(r_j[1] - r_i[1]) + sqr(r_j[2] - r_i[2]));
+            if (r < nn_min_distance)
                 nn_min_distance = r;
         }
     }
     return nn_min_distance;
 }
 
+std::map<std::pair<SPECIES_TYPE, SPECIES_TYPE>, DOUBLE_TYPE>
+ACEAtomicEnvironment::get_minimal_nn_distance_per_bond() const {
+    std::map<std::pair<SPECIES_TYPE, SPECIES_TYPE>, DOUBLE_TYPE> nn_min_distance_map;
+    int i, j, jj;
+    SPECIES_TYPE type_i, type_j;
+    int cur_num_neighbours;
+
+    for (i = 0; i < this->n_atoms_real; ++i) {
+        auto r_i = this->x[i];
+        type_i = this->species_type[i];
+        cur_num_neighbours = this->num_neighbours[i];
+        auto cur_neighbour_list = this->neighbour_list[i];
+        for (jj = 0; jj < cur_num_neighbours; ++jj) {
+            j = cur_neighbour_list[jj];
+            auto r_j = this->x[j];
+            type_j = this->species_type[j];
+            DOUBLE_TYPE dist = sqrt(sqr(r_j[0] - r_i[0]) + sqr(r_j[1] - r_i[1]) + sqr(r_j[2] - r_i[2]));
+            auto bond_pair = make_pair(type_i, type_j);
+            if (nn_min_distance_map.find(bond_pair) != nn_min_distance_map.end()) {
+                // if bond-pair exists
+                auto bond_nn_min_dist = nn_min_distance_map.at(bond_pair);
+                if (dist < bond_nn_min_dist)
+                    nn_min_distance_map[bond_pair] = dist;
+            } else {
+                // if bond-pair not exists - add
+                nn_min_distance_map[bond_pair] = dist;
+            }
+        }
+    }
+    return nn_min_distance_map;
+}
+
+
+std::vector<std::tuple<SPECIES_TYPE, SPECIES_TYPE, DOUBLE_TYPE>>
+ACEAtomicEnvironment::get_nearest_atom_type_and_distance() const {
+    std::vector<std::tuple<SPECIES_TYPE, SPECIES_TYPE, DOUBLE_TYPE>> result{};
+
+    for (int i = 0; i < this->n_atoms_real; ++i) {
+        auto r_i = this->x[i];
+        SPECIES_TYPE type_i = this->species_type[i];
+        int cur_num_neighbours = this->num_neighbours[i];
+        auto cur_neighbour_list = this->neighbour_list[i];
+        DOUBLE_TYPE nearest_neighbour_dist = 100;
+        SPECIES_TYPE nearest_atom_type = -1;
+        for (int jj = 0; jj < cur_num_neighbours; ++jj) {
+            int j = cur_neighbour_list[jj];
+            auto r_j = this->x[j];
+            DOUBLE_TYPE dist = sqrt(sqr(r_j[0] - r_i[0]) + sqr(r_j[1] - r_i[1]) + sqr(r_j[2] - r_i[2]));
+            if (dist < nearest_neighbour_dist) {
+                nearest_neighbour_dist = dist;
+                SPECIES_TYPE type_j = this->species_type[j];
+                nearest_atom_type = type_j;
+            }
+        }
+        if (nearest_atom_type != -1)
+            result.emplace_back(type_i, nearest_atom_type, nearest_neighbour_dist);
+        else
+            result.emplace_back(type_i, type_i, nearest_neighbour_dist);
+    }
+    return result;
+}
 
 /**
  * Read the structure from the file. File format is:
@@ -116,7 +177,7 @@ void ACEAtomicEnvironment::_load(FILE *fin) {
 
 void ACEAtomicEnvironment::_load(FILE *fin, const string &filename) {
     int res;
-    char buffer[1024]={0};
+    char buffer[1024] = {0};
 
     // read natoms
     int n_atoms_real = 0;
@@ -175,7 +236,7 @@ void ACEAtomicEnvironment::save(const string &filename) {
 void ACEAtomicEnvironment::load_full(const string &filename) {
     _clean();
     FILE *fin = fopen(filename.c_str(), "rt");
-    if (fin == NULL)
+    if (fin == nullptr)
         throw invalid_argument("Could not open file " + filename);
 
     int res;
@@ -301,11 +362,10 @@ void ACEAtomicEnvironment::save_full(const string &filename) {
     fclose(fout);
 }
 
-void ACEAtomicEnvironment::set_origins(vector<int> &new_origins) {
+void ACEAtomicEnvironment::set_origins(const vector<int> &new_origins) {
     if (new_origins.size() != n_atoms_extended)
         throw invalid_argument("Length of origins is inconsistent with n_atoms_extended");
-    if (origins != nullptr)
-        delete[] origins;
+    delete[] origins;
     origins = new int[n_atoms_extended];
     for (int i = 0; i < n_atoms_extended; i++)
         origins[i] = new_origins[i];
@@ -472,7 +532,7 @@ Matrix rotation_matrix(DOUBLE_TYPE theta, DOUBLE_TYPE theta1, DOUBLE_TYPE theta2
 
 
 void rotate_structure(ACEAtomicEnvironment &env, Matrix &rotation_matrix) {
-    int nat, i, j, k;
+    int nat, i, j;
 
     for (nat = 0; nat < env.n_atoms_real; nat++) {
         DOUBLE_TYPE r[3] = {0};

@@ -4,8 +4,20 @@ find_program(CMAKE_C_COMPILER NAMES $ENV{CC} gcc PATHS ENV PATH NO_DEFAULT_PATH)
 find_program(CMAKE_CXX_COMPILER NAMES $ENV{CXX} g++ PATHS ENV PATH NO_DEFAULT_PATH)
 project(pyace C CXX)
 
+if(NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Choose the type of build" FORCE)
+endif()
+
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_POSITION_INDEPENDENT_CODE True)
+
+cmake_policy(SET CMP0068 NEW)
+
+# set rpath for macOS
+if(APPLE)
+  set(CMAKE_INSTALL_RPATH "@loader_path")
+endif()
+
 # Set source directory
 #------------------------------------------------------
 set(SOURCE_DIR "src/pyace")
@@ -44,13 +56,12 @@ set(CNPY_INCLUDE_PATH lib/ace/utils/)
 include_directories(${CNPY_INCLUDE_PATH})
 
 add_subdirectory(lib/pybind11)
-if (NOT CMAKE_BUILD_TYPE)
-  set(CMAKE_BUILD_TYPE Release)
-endif ()
+
 
 # for advanced functionality
 # TODO: check speed influence of this flag
 add_definitions(-DEXTRA_C_PROJECTIONS)
+add_definitions(-DCOMPUTE_B_GRAD)
 #add_definitions(-DDEBUG_FORCES_CALCULATIONS)
 #add_definitions(-DMULTIARRAY_INDICES_CHECK)
 add_subdirectory(lib/ace)
@@ -59,6 +70,7 @@ add_subdirectory(lib/ace)
 #--------------------------------------------------------
 set(SOURCES_SHARMONICS "${ACE_SRC}/ace_couplings.cpp"
             "${ACE_SRC}/ace_spherical_polar.cpp"
+            "${ACE_SRC}/ace_clebsch_gordan.cpp"
             "${SOURCE_DIR}/ace/ace_spherical_polar_binding.cpp"
             )
 
@@ -118,27 +130,43 @@ set(SOURCES_CALCULATOR
 #---------------------------------------------------------
 #set(CMAKE_CXX_FLAGS "-Wall -Wextra")
 #set(CMAKE_CXX_FLAGS_DEBUG "-g")
-set(CMAKE_CXX_FLAGS_RELEASE "-Ofast -DNDEBUG")
-set(CMAKE_CXX_FLAGS_DEBUG "-Ofast -DNDEBUG")
+set(CMAKE_CXX_FLAGS_RELEASE "-Ofast") #  -DNDEBUG
+#set(CMAKE_CXX_FLAGS_DEBUG "-Ofast -DNDEBUG")
 
 #Finally create the package
 #--------------------------------------------------------
 pybind11_add_module(sharmonics ${SOURCES_SHARMONICS} )
+if (CMAKE_COMPILER_IS_GNUCC)
+  target_compile_options(sharmonics PRIVATE -Wunused-variable -Wvla -Wno-effc++ -Werror=vla)
+endif ()
 
 pybind11_add_module(coupling ${SOURCES_COUPLING})
 target_link_libraries(coupling PRIVATE yaml-cpp-pace)
-
+if (CMAKE_COMPILER_IS_GNUCC)
+  target_compile_options(coupling PRIVATE -Wunused-variable -Wvla -Wno-effc++ -Werror=vla)
+endif ()
 
 pybind11_add_module(catomicenvironment ${SOURCES_CATOMICENVIRONMENT} )
+if (CMAKE_COMPILER_IS_GNUCC)
+  target_compile_options(catomicenvironment PRIVATE -Wunused-variable -Wvla -Wno-effc++ -Werror=vla)
+endif ()
 
 pybind11_add_module(basis ${SOURCES_BASIS} )
 target_link_libraries(basis PRIVATE yaml-cpp-pace)
 target_link_libraries(basis PRIVATE cnpy)
+if (CMAKE_COMPILER_IS_GNUCC)
+  target_compile_options(basis PRIVATE -Wunused-variable -Wvla -Wno-effc++ -Werror=vla)
+endif ()
 
 pybind11_add_module(evaluator ${SOURCES_EVALUATOR}  ${SOURCES_BASIS} )
 target_link_libraries(evaluator PRIVATE yaml-cpp-pace)
 target_link_libraries(evaluator PRIVATE cnpy)
+if (CMAKE_COMPILER_IS_GNUCC)
+  target_compile_options(evaluator PRIVATE -Wunused-variable -Wvla -Wno-effc++ -Werror=vla)
+endif ()
 
 pybind11_add_module(calculator ${SOURCES_CALCULATOR} )
-
+if (CMAKE_COMPILER_IS_GNUCC)
+  target_compile_options(calculator PRIVATE -Wunused-variable -Wvla -Wno-effc++ -Werror=vla)
+endif ()
 

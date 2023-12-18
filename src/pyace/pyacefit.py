@@ -66,7 +66,7 @@ def batch_compute_projections_function_wrapper(batch_indices, potential_params):
     ace.set_evaluator(evaluator)
 
     def pure_row_func(ae):
-        ace.compute(ae)
+        ace.compute(ae, compute_projections=True)
         nat = ae.n_atoms_real
         # flatten projections
         pr = ace.projections

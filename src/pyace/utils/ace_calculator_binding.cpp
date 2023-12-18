@@ -30,7 +30,7 @@ py::class_<ACECalculator>(m, "ACECalculator", R"mydelimiter(
         .def(py::init<>())
         .def(py::init<ACEEvaluator &>(), py::arg("ACEEvaluator"))
         .def("set_evaluator", &ACECalculator::set_evaluator)
-        .def("compute", &ACECalculator::compute, py::arg("atomic_environment"), py::arg("verbose") = false)
+        .def("compute", &ACECalculator::compute, py::arg("atomic_environment"), py::arg("compute_projections") = false, py::arg("compute_b_grad") = false, py::arg("verbose") = false)
         .def_property_readonly("forces", &ACECalculator_get_forces)
         .def_readonly("energy", &ACECalculator::energy)
         .def_property_readonly("energies", [](const ACECalculator &calc) { return calc.energies.to_vector(); })
@@ -40,6 +40,7 @@ py::class_<ACECalculator>(m, "ACECalculator", R"mydelimiter(
         .def_readonly("dF_drhos", &ACECalculator::dF_drhos)
         .def_readonly("dE_dc", &ACECalculator::dE_dc)
         .def_readonly("gamma_grade",&ACECalculator::gamma_grade)
+        .def_readonly("forces_bfuncs",&ACECalculator::forces_bfuncs)
     ;
 
 

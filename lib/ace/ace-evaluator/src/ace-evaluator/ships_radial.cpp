@@ -101,7 +101,7 @@ void SHIPsRadPolyBasis::fread(FILE *fptr) {
     res = fscanf(fptr, "tests: ntests = %d\n", &ntests);
     if (res != 1)
         throw invalid_argument("Couldn't read line: tests: ntests = %d");
-    for (size_t itest = 0; itest < ntests; itest++) {
+    for (int itest = 0; itest < ntests; itest++) {
         // read an r argument
         res = fscanf(fptr, " r=%lf\n", &r);
         // printf("r = %lf \n", r);
@@ -111,7 +111,7 @@ void SHIPsRadPolyBasis::fread(FILE *fptr) {
         // evaluate the basis
         this->calcP(r, maxn, SPECIES_TYPE(0), SPECIES_TYPE(0));
         // compare against the stored values
-        for (size_t n = 0; n < maxn; n++) {
+        for (int n = 0; n < maxn; n++) {
             res = fscanf(fptr, " %lf %lf\n", &Pn, &dPn);
             if (res != 2)
                 throw invalid_argument("Couldn't read test value line: %lf %lf");
@@ -260,7 +260,7 @@ void SHIPsRadialFunctions::load(string fname) {
 void SHIPsRadialFunctions::fread(FILE *fptr) {
     int res;
     size_t maxn;
-    char hasE0, haspair;
+    char haspair;
     DOUBLE_TYPE c;
 
     // check whether we have a pair potential 
@@ -325,7 +325,7 @@ void SHIPsRadialFunctions::read_yaml(YAML_PACE::Node node) {
                 throw invalid_argument("yace::polypairpot::coefficients has species type key larger than nelements");
             auto coefficients = p.second;
 
-            for (int i = 0; i < maxn; i++)
+            for (unsigned int i = 0; i < maxn; i++)
                 this->paircoeffs(mu_i, mu_j, i) = coefficients.at(i);
         }
 

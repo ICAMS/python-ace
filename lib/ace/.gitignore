@@ -39,3 +39,6 @@
 
 # Editor-based Rest Client
 .idea/httpRequests
+
+cmake-build-*/
+build/

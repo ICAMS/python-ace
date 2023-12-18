@@ -83,12 +83,9 @@ void check_sum_of_forces(ACEAtomicEnvironment &ae, ACECalculator &aceCalculator,
     fx_abs /= ae.n_atoms_real;
     fy_abs /= ae.n_atoms_real;
     fz_abs /= ae.n_atoms_real;
-    if (fx_abs > 0)
-        ASSERT_LE(abs(fx) / fx_abs, threshold) << "Sum of forces_x !=0";
-    if (fy_abs > 0)
-        ASSERT_LE(abs(fy) / fy_abs, threshold) << "Sum of forces_y !=0";
-    if (fz_abs > 0)
-        ASSERT_LE(abs(fz) / fz_abs, threshold) << "Sum of forces_z !=0";
+    if (fx_abs > 0) { ASSERT_LE(abs(fx) / fx_abs, threshold) << "Sum of forces_x !=0"; }
+    if (fy_abs > 0) { ASSERT_LE(abs(fy) / fy_abs, threshold) << "Sum of forces_y !=0"; }
+    if (fz_abs > 0) { ASSERT_LE(abs(fz) / fz_abs, threshold) << "Sum of forces_z !=0"; }
 }
 
 

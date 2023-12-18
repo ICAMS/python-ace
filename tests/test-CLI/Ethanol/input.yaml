@@ -1,0 +1,94 @@
+cutoff: 5.0 # cutoff for neighbour list construction
+seed: 42  # random seed
+
+#################################################################
+## Metadata section
+#################################################################
+metadata:
+  origin: "Automatically generated input"
+
+#################################################################
+## Potential definition section
+#################################################################
+potential:
+  deltaSplineBins: 0.001
+  elements: ['C', 'H', 'O']
+
+  embeddings:
+    ALL: {
+      npot: 'FinnisSinclairShiftedScaled',
+      fs_parameters: [ 1, 1, 1, 0.5 ],
+      ndensity: 2,
+    }
+
+  bonds:
+    ALL: {
+      radbase: SBessel,
+      radparameters: [ 5.25 ],
+      rcut: 5.0,
+      dcut: 0.01,
+      NameOfCutoffFunction: cos,
+    }
+
+  functions:
+    number_of_functions_per_element: 50
+    UNARY:   { nradmax_by_orders: [ 15, 6, 4, 3, 2, 2 ], lmax_by_orders: [ 0 , 3, 3, 2, 2, 1 ]}
+    BINARY:  { nradmax_by_orders: [ 15, 6, 3, 2, 2, 1 ], lmax_by_orders: [ 0 , 3, 2, 1, 1, 0 ]}
+    TERNARY: { nradmax_by_orders: [ 15, 3, 3, 2, 1 ],    lmax_by_orders: [ 0 , 2, 2, 1, 1 ], }
+    ALL:     { nradmax_by_orders: [ 15, 3, 2, 1, 1 ],    lmax_by_orders: [ 0 , 2, 2, 1, 1 ] }
+
+
+#################################################################
+## Dataset specification section
+#################################################################
+data:
+  filename: ethanol.pckl.gzip       # force to read reference pickled dataframe from given file
+  
+
+
+#################################################################
+## Fit specification section
+#################################################################
+fit:
+  loss: { kappa: 0.3, L1_coeffs: 1e-8,  L2_coeffs: 1e-8}
+  # if kappa: auto, then it will be determined from the variation of energy per atom and forces norms in train set
+    ## DATA WEIGHTING OPTIONS ##
+  weighting: {
+      type: EnergyBasedWeightingPolicy,
+      nfit: 100,
+      DEup: 10.0,  ## eV, upper energy range (E_min + DElow, E_min + DEup)
+      DFup: 50.0, ## eV/A
+      DElow: 1.0,  ## eV
+      DE: 1.0,
+      DF: 1.0,
+      ##  "convex_hull" or "cohesive" : method to compute the E_min
+      energy: cohesive,
+      ## structures types: all (default), bulk or cluster
+      reftype: all,
+      ## random number seed
+      seed: 42
+    }
+  
+
+  optimizer: BFGS # or L-BFGS-B
+
+  ## maximum number of minimize iterations
+  maxiter: 20
+
+  ## additional options for scipy.minimize
+  #  options: {maxcor: 100}
+
+  ## Automatically find the smallest interatomic distance in dataset  and set inner cutoff based on this
+  #  repulsion: auto
+
+  #  ladder_step: 100
+  #  ladder_type: power_order
+
+#################################################################
+## Backend specification section
+#################################################################
+backend:
+  evaluator: tensorpot
+  batch_size: 100
+  display_step: 50
+

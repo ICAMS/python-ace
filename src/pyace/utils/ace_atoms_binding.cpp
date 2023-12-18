@@ -12,6 +12,7 @@
 #include "extra/ace_atoms.h"
 
 #include <pybind11/stl_bind.h>
+#include <iostream>
 
 PYBIND11_MAKE_OPAQUE(std::map<string, string>)
 
@@ -111,6 +112,89 @@ get_minimal_nn_distance_tp(py::array_t<DOUBLE_TYPE, py::array::c_style | py::arr
     return nn_min_distance;
 }
 
+
+std::map<std::pair<int, int>, DOUBLE_TYPE>
+get_minimal_nn_distance_per_bond_tp(
+        py::array_t<DOUBLE_TYPE, py::array::c_style | py::array::forcecast> _positions, //2D[nat][3]
+        py::array_t<DOUBLE_TYPE, py::array::c_style | py::array::forcecast> _cell, //2D[3][3]
+        py::array_t<int, py::array::c_style | py::array::forcecast> _ind_i, // 1D[nbonds]
+        py::array_t<int, py::array::c_style | py::array::forcecast> _ind_j, // 1D[nbonds]
+        py::array_t<int, py::array::c_style | py::array::forcecast> _mu_i, // 1D[nbonds]
+        py::array_t<int, py::array::c_style | py::array::forcecast> _mu_j, // 1D[nbonds]
+        py::array_t<DOUBLE_TYPE, py::array::c_style | py::array::forcecast> _offsets // 2D[nbonds][3]
+) {
+    auto buf_positions = _positions.request();
+    if (buf_positions.ndim != 2)
+        throw std::runtime_error("Shape of `_positions` should be [n_at][3]");
+
+    auto buf_cell = _cell.request();
+    if (buf_cell.ndim != 2 || buf_cell.shape[0] != 3 || buf_cell.shape[1] != 3)
+        throw std::runtime_error("Shape of `_cell` should be [3][3]");
+
+    auto buf_int_i = _ind_i.request();
+    if (buf_int_i.ndim != 1)
+        throw std::runtime_error("Shape of `_int_i` should be [n_bonds]");
+
+    auto buf_int_j = _ind_j.request();
+    if (buf_int_j.ndim != 1)
+        throw std::runtime_error("Shape of `_int_j` should be [n_bonds]");
+
+    if (buf_int_i.shape[0] != buf_int_j.shape[0])
+        throw std::runtime_error("Shape of `_int_i` and `_int_j` should be equal");
+
+    auto buf_mu_i = _mu_i.request();
+    if (buf_mu_i.ndim != 1)
+        throw std::runtime_error("Shape of `_mu_i` should be [n_bonds]");
+
+    auto buf_mu_j = _mu_j.request();
+    if (buf_mu_j.ndim != 1)
+        throw std::runtime_error("Shape of `_mu_j` should be [n_bonds]");
+
+
+    if (buf_mu_i.shape[0] != buf_mu_i.shape[0] || buf_mu_i.shape[0] != buf_int_i.shape[0] ||
+        buf_mu_j.shape[0] != buf_int_j.shape[0])
+        throw std::runtime_error("Shape of `_mu_i` and `_mu_j` and `_ind_i` and `_ind_j` should be equal");
+
+    size_t n_bonds = buf_int_i.shape[0];
+
+    auto buf_offsets = _offsets.request();
+    if (buf_offsets.ndim != 2 || buf_offsets.shape[0] != n_bonds || buf_offsets.shape[1] != 3)
+        throw std::runtime_error("Shape of `_offsets` should be [nbonds][3]");
+
+    std::map<std::pair<int, int>, DOUBLE_TYPE> nn_min_distance_map;
+    vector<DOUBLE_TYPE> drvec_rel(3, 0.);
+    vector<DOUBLE_TYPE> drvec(3, 0);
+    int i, j, mu_i, mu_j;
+    for (size_t t = 0; t < n_bonds; t++) {
+
+        i = *_ind_i.data(t);
+        j = *_ind_j.data(t);
+
+        mu_i = *_mu_i.data(t);
+        mu_j = *_mu_j.data(t);
+
+
+        const double *off = _offsets.data(t);
+        const double *pos_i = _positions.data(i);
+        const double *pos_j = _positions.data(j);
+
+        for (int a = 0; a < 3; a++)
+            drvec_rel[a] = pos_j[a] + off[a] - pos_i[a];
+
+        for (int alpha = 0; alpha < 3; alpha++) {
+            drvec[alpha] = 0;
+            for (int lat_vec_ind = 0; lat_vec_ind < 3; lat_vec_ind++) {
+                drvec[alpha] += drvec_rel[lat_vec_ind] * (*_cell.data(lat_vec_ind, alpha));
+            }
+        }
+        DOUBLE_TYPE r = sqrt(sqr(drvec[0]) + sqr(drvec[1]) + sqr(drvec[2]));
+
+        const auto bond_pair = make_pair(mu_i, mu_j);
+        if (nn_min_distance_map.find(bond_pair) == nn_min_distance_map.end() || r < nn_min_distance_map.at(bond_pair))
+            nn_min_distance_map[bond_pair] = r;
+    }
+    return nn_min_distance_map;
+}
 
 vector<DOUBLE_TYPE> north(vector<DOUBLE_TYPE> &v1, vector<DOUBLE_TYPE> &v2) {
     vector<DOUBLE_TYPE> vn(3, 0);
@@ -275,7 +359,7 @@ struct NeighbourCluster {
     vector<DOUBLE_TYPE> min_r, max_r;
     vector<vector<DOUBLE_TYPE>> positions;
     vector<vector<DOUBLE_TYPE>> scaled_positions;
-    vector<int> species_types;
+    vector<SPECIES_TYPE> species_types;
     vector<int> origins;
     vector<vector<int>> nshifts;
 };
@@ -538,13 +622,12 @@ inline DOUBLE_TYPE distance(vector<DOUBLE_TYPE> &r1, vector<DOUBLE_TYPE> &r2) {
 
 
 ACEAtomicEnvironment build_atomic_env_from_cluster_nogrid(NeighbourCluster &cluster, DOUBLE_TYPE r_cut) {
-    DOUBLE_TYPE eps = 1e-14;
     // first n_atoms_real of cluster.positions/species_types/origins are for REAL atoms
     // remaining atoms - from ghost images
     int n_atoms_real = cluster.n_atoms_real;
 
     vector<vector<DOUBLE_TYPE>> x;
-    vector<int> species_type;
+    vector<SPECIES_TYPE> species_type;
     vector<int> origins;
     vector<vector<int>> neighbour_list;
     vector<int> num_neighbours;
@@ -630,7 +713,7 @@ ACEAtomicEnvironment build_atomic_env_from_cluster(NeighbourCluster &cluster, DO
     }
 
     vector<vector<DOUBLE_TYPE>> x;
-    vector<int> species_type;
+    vector<SPECIES_TYPE> species_type;
     vector<int> origins;
     vector<vector<int>> neighbour_list;
     vector<int> num_neighbours;
@@ -666,7 +749,7 @@ ACEAtomicEnvironment build_atomic_env_from_cluster(NeighbourCluster &cluster, DO
         for (int ix = lo_ind[0]; ix <= hi_ind[0]; ix++)
             for (int iy = lo_ind[1]; iy <= hi_ind[1]; iy++)
                 for (int iz = lo_ind[2]; iz <= hi_ind[2]; iz++) {
-                    for (auto j:  indices_grid(ix, iy, iz)) {
+                    for (auto j: indices_grid(ix, iy, iz)) {
                         if (i == j) continue;
                         auto &r_j = cluster.positions[j];
                         DOUBLE_TYPE r_ij = distance(r_j, r_i);
@@ -855,9 +938,12 @@ PYBIND11_MODULE(catomicenvironment, m) {
             .def("load_full", &ACEAtomicEnvironment::load_full)
             .def("save_full", &ACEAtomicEnvironment::save_full)
             .def("get_minimal_nn_distance", &ACEAtomicEnvironment::get_minimal_nn_distance)
+            .def("get_minimal_nn_distance_per_bond", &ACEAtomicEnvironment::get_minimal_nn_distance_per_bond)
+            .def("get_nearest_atom_type_and_distance", &ACEAtomicEnvironment::get_nearest_atom_type_and_distance)
             .def(py::pickle(&ACEAtomicEnvironment__getstate__, &ACEAtomicEnvironment__setstate__));
 
     m.def("get_minimal_nn_distance_tp", &get_minimal_nn_distance_tp);
+    m.def("get_minimal_nn_distance_per_bond_tp", &get_minimal_nn_distance_per_bond_tp);
     m.def("build_atomic_env", &build_atomic_env);
     m.def("get_nghbrs_tp_atoms", &get_nghbrs_tp_atoms);
 

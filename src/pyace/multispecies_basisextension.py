@@ -47,6 +47,28 @@ PERIODIC_ELEMENTS = chemical_symbols = [
 default_mus_ns_uni_to_rawlsLS_np_rank_filename = pkg_resources.resource_filename('pyace.data',
                                                                                  'mus_ns_uni_to_rawlsLS_np_rank.pckl')
 
+def clean_bbasisconfig(initial_bbasisconfig):
+    for block in initial_bbasisconfig.funcspecs_blocks:
+        block.lmaxi = 0
+        block.nradmaxi = 0
+        block.nradbaseij = 0
+        block.radcoefficients = []
+        block.funcspecs = []
+
+
+def reset_bbasisconfig(bconf):
+    """set crad=delta_nk, func.coeffs=[0...]"""
+    for block in bconf.funcspecs_blocks:
+        block.set_func_coeffs(np.zeros_like(block.get_func_coeffs()))
+        radcoefficients = np.array(block.radcoefficients)
+        if len(radcoefficients.shape) == 3:
+            # C_ nlk = delta_nk
+            radcoefficients[:, :, :] = 0.0
+            for nk in range(min(radcoefficients.shape[0], radcoefficients.shape[2])):
+                radcoefficients[nk, :, nk] = 1.0
+            block.set_radial_coeffs(radcoefficients.flatten())
+
+
 
 def unify_to_minimized_indices(seq, shift=0):
     """
@@ -345,6 +367,21 @@ def create_multispecies_basis_config(potential_config: Dict,
     new_basis_conf.funcspecs_blocks = blocks_list
     validate_bonds_nradmax_lmax_nradbase(new_basis_conf)
     new_basis_conf.validate(raise_exception=True)
+
+    if ("functions" in potential_config and
+            "number_of_functions_per_element" in potential_config['functions']):
+        num_block = len(new_basis_conf.funcspecs_blocks)
+        number_of_functions_per_element = potential_config["functions"]["number_of_functions_per_element"]
+        target_bbasis = ACEBBasisSet(new_basis_conf)
+        nelements = target_bbasis.nelements
+        ladder_step = number_of_functions_per_element * nelements // num_block
+
+        initial_basisconfig = new_basis_conf.copy()
+        clean_bbasisconfig(initial_basisconfig)
+        current_bbasisconfig = extend_multispecies_basis(initial_basisconfig, new_basis_conf,
+                                                         "power_order", ladder_step)
+        new_basis_conf = current_bbasisconfig
+
     return new_basis_conf
 
 

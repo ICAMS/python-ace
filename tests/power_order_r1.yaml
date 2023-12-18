@@ -1,0 +1,35 @@
+metadata:
+  intermediate_time: 2021-02-22 16:55:26.049999
+  purpose: initial fit
+global:
+  DeltaSplineBins: 0.001
+species:
+  - speciesblock: Al
+    nradmaxi: 0
+    lmaxi: 0
+    ndensityi: 2
+    npoti: FinnisSinclair
+    parameters: [1, 1, 1, 0.5]
+    rcutij: 6
+    dcutij: 0.01
+    NameOfCutoffFunctionij: cos
+    nradbaseij: 12
+    radbase: ChebExpCos
+    radparameters: [5.25]
+    radcoefficients: []
+    core-repulsion: [0, 0]
+    rho_core_cut: 100000
+    drho_core_cut: 250
+    nbody:
+      - {type: Al Al, nr: [1], nl: [0], c: [-0.27850945053350068, -0.64560007538636688]}
+      - {type: Al Al, nr: [2], nl: [0], c: [0.020465580706676329, 0.02479799878590187]}
+      - {type: Al Al, nr: [3], nl: [0], c: [0.062249844475122891, 0.074023711485384308]}
+      - {type: Al Al, nr: [4], nl: [0], c: [0.081997506750633817, 0.0905439047683404]}
+      - {type: Al Al, nr: [5], nl: [0], c: [0.04917769522857128, 0.029950101871944173]}
+      - {type: Al Al, nr: [6], nl: [0], c: [-0.023820897122941179, -0.10132692186298153]}
+      - {type: Al Al, nr: [7], nl: [0], c: [-0.082517402593631911, -0.24088931403415123]}
+      - {type: Al Al, nr: [8], nl: [0], c: [-0.065040179734157141, -0.30813629005628695]}
+      - {type: Al Al, nr: [9], nl: [0], c: [0.046875239965871417, -0.26244825529414517]}
+      - {type: Al Al, nr: [10], nl: [0], c: [0.19680936778265717, -0.14502573353456791]}
+      - {type: Al Al, nr: [11], nl: [0], c: [0.26703400868302479, -0.072482907436256891]}
+      - {type: Al Al, nr: [12], nl: [0], c: [0.13934209248580975, -0.17716101679577551]}

@@ -96,6 +96,7 @@ public:
 class AbstractRadialBasis {
 public:
     SPECIES_TYPE nelements = 0; ///< number of elements
+    std::vector<std::string> elements;
     Array2D<DOUBLE_TYPE> cut = Array2D<DOUBLE_TYPE>("cut"); ///< cutoffs, shape: [nelements][nelements]
     Array2D<DOUBLE_TYPE> dcut = Array2D<DOUBLE_TYPE>("dcut"); ///< decay of cutoff, shape: [nelements][nelements]
 
@@ -128,6 +129,10 @@ public:
     DOUBLE_TYPE cr; ///< hard-core repulsion
     DOUBLE_TYPE dcr; ///< derivative of hard-core repulsion
     DOUBLE_TYPE d2cr; ///< derivative of hard-core repulsion
+
+    DOUBLE_TYPE cru; ///< hard-core repulsion, uncut
+    DOUBLE_TYPE dcru; ///< derivative of hard-core repulsion, uncut
+    DOUBLE_TYPE d2cru; ///< derivative of hard-core repulsion, uncut
 
     Array5D<DOUBLE_TYPE> crad = Array5D<DOUBLE_TYPE>(
             "crad"); ///< expansion coefficients of radial functions into radial basis function, see Eq. (27) of PRB, shape:  [nelements][nelements][nradial][lmax + 1][nradbase]
@@ -222,7 +227,7 @@ public:
      * @param radbasename  type of radial basis function \f$ g_k(r) \f$ (default: "ChebExpCos")
      */
     void init(NS_TYPE nradb, LS_TYPE lmax, NS_TYPE nradial, DOUBLE_TYPE deltaSplineBins, SPECIES_TYPE nelements,
-              vector<vector<string>> radbasename);
+              vector<vector<string>> radbasename) override;
 
     /**
      * Destructor
@@ -265,6 +270,9 @@ public:
      */
     void radcore(DOUBLE_TYPE r, DOUBLE_TYPE pre, DOUBLE_TYPE lambda, DOUBLE_TYPE cutoff, DOUBLE_TYPE &cr,
                         DOUBLE_TYPE &dcr, DOUBLE_TYPE cut_in = 0, DOUBLE_TYPE dcut_in = 0);
+
+    static void ZBL(DOUBLE_TYPE r, int Zi, int Zj, DOUBLE_TYPE &cr,
+                    DOUBLE_TYPE &dcr, DOUBLE_TYPE cut_out, DOUBLE_TYPE cut_in, DOUBLE_TYPE prefactor=1);
 
     /**
      * Function that sets up the look-up tables for spline-representation of radial functions.

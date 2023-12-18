@@ -38,6 +38,10 @@ PyACE ASE calculator
 :param gamma_lower_bound (default: 1.1)
 :param gamma_upper_bound (default: 5.0)
 :param stop_at_large_extrapolation (default: False)
+:param verbose (default: 0).   0 - no extrapolation output,
+                               1 - output for upper-bound extrapolation
+                               2 - output for upper- and lower-bound extrapolation
+                               3 - output for all interpolation/extrapolation calculations
 """
         if "recursive_evaluator" not in kwargs:
             kwargs["recursive_evaluator"] = False
@@ -55,6 +59,9 @@ PyACE ASE calculator
             kwargs["dump_extrapolative_structures"] = False
         if "keep_extrapolative_structures" not in kwargs:
             kwargs["keep_extrapolative_structures"] = False
+
+        if "verbose" not in kwargs:
+            kwargs["verbose"] = 0
 
         Calculator.__init__(self, basis_set=basis_set, **kwargs)
         self.nl = None
@@ -78,6 +85,7 @@ PyACE ASE calculator
         self.extrapolative_structures_gamma = []
         self.ace = ACECalculator()
         self.ace.set_evaluator(self.evaluator)
+        self.compute_projections = True
 
     def _create_evaluator(self):
 
@@ -134,7 +142,7 @@ PyACE ASE calculator
         else:
             raise ValueError("PyACECalculator.set_active_set works only with ACEBEvaluator/B-basis potential(.yaml)")
 
-    def calculate(self, atoms=None, properties=['energy', 'forces', 'stress', 'energies'],
+    def calculate(self, atoms=None, properties=('energy', 'forces', 'stress', 'energies'),
                   system_changes=all_changes):
         Calculator.calculate(self, atoms, properties, system_changes)
 
@@ -143,11 +151,15 @@ PyACE ASE calculator
         self.forces = np.empty((len(atoms), 3))
 
         self.get_atomic_env(atoms)
-        self.ace.compute(self.ae)
+        self.ace.compute(self.ae, compute_projections=self.compute_projections)
 
         self.energy, self.forces = np.array(self.ace.energy), np.array(self.ace.forces)
         nat = len(atoms)
-        self.projections = np.reshape(self.ace.projections, (nat, -1))
+        try:
+            self.projections = np.reshape(self.ace.projections, (nat, -1))
+        except ValueError:
+            # if projections has different shapes
+            self.projections = self.ace.projections
 
         self.energies = np.array(self.ace.energies)
 
@@ -165,35 +177,33 @@ PyACE ASE calculator
             self.stress = self.virial[[0, 1, 2, 5, 4, 3]] / self.volume
             self.results["stress"] = self.stress
 
-        # dump to the file the structure with gamma above extrapolation limit
-        if (self.parameters.dump_extrapolative_structures
-                or self.parameters.stop_at_large_extrapolation
-                or self.parameters.keep_extrapolative_structures):
-            if not self.is_active_set_configured:
-                raise RuntimeError("Active set is not configured, please do it with `set_active_set` method")
+        if (self.parameters.dump_extrapolative_structures or self.parameters.stop_at_large_extrapolation or
+            self.parameters.keep_extrapolative_structures) and not self.is_active_set_configured:
+            raise RuntimeError("Active set is not configured, please do it with `set_active_set` method")
 
+        if self.is_active_set_configured:
             max_gamma = max(self.ace.gamma_grade)
-            if max_gamma > self.parameters.gamma_upper_bound:
-                msg = "Upper extrapolation threshold exceed: max(gamma) = {}".format(max_gamma)
-                print(msg)
+            # collect or dump calculations if extrapolation larger than lower bound
+            if max_gamma >= self.parameters.gamma_lower_bound:
+                # collect extrapolative structures if needed
                 if self.parameters.keep_extrapolative_structures:
                     self.extrapolative_structures_list.append(atoms.copy())
                     self.extrapolative_structures_gamma.append(max_gamma)
-
+                # dump extrapolative structures if needed
                 if self.parameters.dump_extrapolative_structures:
                     self.dump_current_configuration(atoms, max_gamma)
 
+            if max_gamma >= self.parameters.gamma_upper_bound:
+                msg = "Upper extrapolation threshold exceeded: max(gamma) = {}".format(max_gamma)
+                if self.parameters.verbose >= 1:
+                    print(msg)
+                # stop if extrapolation larger than upper bound if needed
                 if self.parameters.stop_at_large_extrapolation:
                     raise RuntimeError(msg)
-
-            elif max_gamma > self.parameters.gamma_lower_bound:
-                msg = "Lower extrapolation threshold exceed: max(gamma) = {}".format(max_gamma)
-                print(msg)
-                if self.parameters.keep_extrapolative_structures:
-                    self.extrapolative_structures_list.append(atoms.copy())
-                    self.extrapolative_structures_gamma.append(max_gamma)
-                if self.parameters.dump_extrapolative_structures:
-                    self.dump_current_configuration(atoms, max_gamma)
+            elif max_gamma >= self.parameters.gamma_lower_bound and self.parameters.verbose >= 2:
+                print("Lower extrapolation threshold exceeded: max(gamma) = {}".format(max_gamma))
+            elif self.parameters.verbose >= 3:
+                print("Extrapolation: max(gamma) = {}".format(max_gamma))
 
     def dump_current_configuration(self, atoms, max_gamma):
 
@@ -319,50 +329,3 @@ PyACE ASE ensemble calculator
             self.results["stress"] = self.stress
             self.results["stress_std"] = self.stress_std
             self.results["stress_dev"] = self.stress_dev
-
-
-if __name__ == '__main__':
-    from ase.build import bulk
-    from pyace.basis import BBasisConfiguration, BBasisFunctionSpecification, BBasisFunctionsSpecificationBlock
-
-    block = BBasisFunctionsSpecificationBlock()
-
-    block.block_name = "Al"
-    block.nradmaxi = 1
-    block.lmaxi = 0
-    block.npoti = "FinnisSinclair"
-    block.fs_parameters = [1, 1, 1, 0.5]
-    block.rcutij = 8.7
-    block.dcutij = 0.01
-    block.NameOfCutoffFunctionij = "cos"
-    block.nradbaseij = 1
-    block.radbase = "ChebExpCos"
-    block.radparameters = [3.0]
-    block.radcoefficients = [1]
-
-    block.funcspecs = [
-        BBasisFunctionSpecification(["Al", "Al"], ns=[1], ls=[0], LS=[], coeffs=[1.]),
-        # BBasisFunctionSpecification(["Al", "Al", "Al"], ns=[1, 1], ls=[0, 0], LS=[], coeffs=[2])
-    ]
-
-    basisConfiguration = BBasisConfiguration()
-    basisConfiguration.deltaSplineBins = 0.001
-    basisConfiguration.funcspecs_blocks = [block]
-
-    a = bulk('Al', 'fcc', a=4, cubic=True)
-    a.pbc = False
-    print(a)
-    calc = PyACECalculator(basis_set=basisConfiguration)
-    a.set_calculator(calc)
-    e1 = (a.get_potential_energy())
-    f1 = a.get_forces()
-    print(e1)
-    print(f1)
-
-    calc2 = PyACECalculator(basis_set=ACEBBasisSet(basisConfiguration))
-    a2 = bulk('Al', 'fcc', a=4, cubic=True)
-    a2.set_calculator(calc2)
-    e2 = (a2.get_potential_energy())
-    f2 = a2.get_forces()
-    print(e2)
-    print(f2)

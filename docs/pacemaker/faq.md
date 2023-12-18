@@ -76,6 +76,28 @@ potential:
 
 It will  reset potential from potential.yaml, i.e. set radial coefficients to delta_nk and B-basis function coefficients to zero.
 
+## What is the best value for the relative force weight in the loss function, `kappa`?
+
+The default value of `kappa: 0.3` in the loss function `fit:: loss: {kappa: 0.3, L1_coeffs: 1e-8, L2_coeffs: 1e-8,}` provides a good initial guess.
+
+Additionally, there is an option to use `kappa: auto`, which analyzes the distribution (standard deviation) of training energies and forces to balance the contributions of these two factors in loss function.
+
+However, you can try using the following two-stage scheme to improve both energy and force metrics:
+
+1) Initially, perform the fit with a very high weight on forces, such as `kappa: 0.95` or `kappa: 0.99`.
+
+2) Then, switch to a high weight on energies, ranging from `kappa: 0.05` to `kappa: 0.1`. To do this, you need to continue the fitting process starting from the last version of the potential from the previous step.
+
+```
+pacemaker input.yaml # step 1 with kappa: 0.95
+cp interim_potential_0.yaml cont.yaml
+# or cp output_potential.yaml cont.yaml
+pacemaker input_k-0.1.yaml -p cont.yaml # step 2 with kappa: 0.05 .. 0.1
+```
+
+In the second step, the force metrics may initially increase for the first few dozen iterations, but they should eventually revert and decrease. 
+On the other hand, the energy metrics should decrease immediately. If this is not the case, you can try slightly increasing the value of kappa.
+
 ## My potential behaves unphysical at short distances, how to fix it?
 
 If training data lacks data at shorter distances, expected repulsive behaviour is not always reproduced.
@@ -140,28 +162,26 @@ data:
 
 ## I want to change the cutoff, what should I do ?
 
-If you decrease the cutoff, i.e. from `rcut: 7` to `rcut: 6.5`,
-then no neighbours will be lost, and you could continue to use the dataset, but it would be less computational efficient.
+If you change cutoff, i.e. from `rcut: 7` to `rcut: 6.5`, then potential should be refitted from the scratch.
+`pacemaker` will recompute neighbourlists on every run, so, no need to extra options except for specifying cutoff. 
 
-If you increase the cutoff, then it is necessary to rebuild the neighbour lists by adding `--rebuild` option to pacemaker, i.e.
 
-```
-pacemaker ... --rebuild
-```  
 
 ## How better to organize my dataset files ?
+
 It is recommended to store all dataset files (i.e. `df*.pckl.gzip`) in one folder and
 specify the environment variable `$PACEMAKERDATAPATH` (exectue it in terminal or add to for example `.bashrc`) 
 
 ```
-export PACEMAKERDATAPATH=/path/to/my/datases/files
+export PACEMAKERDATAPATH=/path/to/my/dataset/files
 ```  
 
 ## What are good values for regularization parameters ?
+
 Ideally, one would prefer avoid using regularizations and would use additional data instead. When this is not possible, 
 it is recommended that relative contribution of the regularization terms into the total loss do not exceed a few percents. 
 So, regularization parameters of order **1e-5 ~ 1e-8** are good initial values, but check their relative contribution in 
-detailed statistics, printed every `input.yaml::backed::display_step` step.
+detailed statistics, printed every `input.yaml::backend::display_step` step.
 
 ## How to fit only certain part of the potential, i.e. binary interaction only ?
 If you have already fitted potential `Al.yaml` and `Ni.yaml` and would like to create a binary potential by fitting
@@ -201,8 +221,9 @@ fit:
 ```
 
 ## I see different metrics text files during the fit, what is it ?
+
 All metrics files contain values of loss function (*loss*), its energy/forces contributions (*e_loss_contrib*, *f_loss_contrib*),
-regularization contributions (*reg_loss*) and also root mean squared error (RMSE)/ mean absolute error (MAE) (*rmse_**, *mae_**)
+regularization contributions (*reg_loss*) and also root mean squared error (RMSE)/ mean absolute error (MAE) (*rmse_*, *mae_*)
 of energies (*rmse_epa*,*mae_epa*) and forces (norm of error vector *rmse_f* and per-component *mae_f_comp*)  for whole dataset
 as well as for structures within 1eV/atom above minumum (*low_**).  
 `metrics.txt` and `test_metrics.txt` are update every train/test step, whereas `ladder_metrics.txt`/`test_ladder_metrics.txt`
@@ -210,6 +231,7 @@ are updated after each ladder step and `cycle_metrics.txt`/`test_cycle_metrics.t
 
 
 ## Optimization stops too early due to too small updates, but I want to run it longer...
+
 You need to decrease certain tolerance parameters for corresponding minimization algorithm. 
 For example, for [BFGS](https://docs.scipy.org/doc/scipy/reference/optimize.minimize-bfgs.html), there is `gtol: 1e-5` 
 default parameter, that you could decrease in `input.yaml`
@@ -218,8 +240,12 @@ fit:
   options: {gtol: 5e-7}
 ```
 
-## How to create a custom weights dataframe for ExternalWeightingPolicy?
+## How to create a custom weights dataframe for ExternalWeightingPolicy? How to add more weights to certain structures ?
 
-## How to add more weights to certain structures ?
+Please check [this](https://github.com/ICAMS/python-ace/blob/master/examples/custom-weights/data_custom_weights.ipynb) example notebook.
 
-## How to run on-the-fly validation of the potential ?
+## How to compute B-basis projections for various structures?
+
+If you have  ACE potential (fitted or just constructed from scratch), then you can compute the B-basis projections for all atoms in your structure(s).
+Please check [this](https://github.com/ICAMS/python-ace/blob/master/examples/pyace/bbasis_projections.ipynb) example notebook.
+

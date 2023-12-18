@@ -122,17 +122,18 @@ public:
     }
 
 #ifdef MULTIARRAY_INDICES_CHECK
+
 /**
  * Check if indices (l,m) are within array
  */
     void check_indices(LS_TYPE l, MS_TYPE m) const {
 
-        if ((l < 0) | (l > lmax)) {
+        if ((l > lmax)) { //(l < 0) |
             fprintf(stderr, "%s: Index l = %d out of range (0, %d)\n", array_name.c_str(), l, lmax);
             exit(EXIT_FAILURE);
         }
 
-        if ((m < -l) | (m > l)) {
+        if ((m < -l) || (m > l)) {
             fprintf(stderr, "%s: Index m = %d out of range (%d, %d)\n", array_name.c_str(), m, -l, l);
             exit(EXIT_FAILURE);
         }
@@ -142,6 +143,7 @@ public:
             exit(EXIT_FAILURE);
         }
     }
+
 #endif
 
     /**
@@ -301,21 +303,22 @@ public:
     }
 
 #ifdef MULTIARRAY_INDICES_CHECK
+
     /**
      * Check if indices (i0, l,m) are within array
      */
     void check_indices(size_t i0, LS_TYPE l, MS_TYPE m) const {
-        if ((l < 0) | (l > lmax)) {
+        if ((l < 0) || (l > lmax)) {
             fprintf(stderr, "%s: Index l = %d out of range (0, %d)\n", array_name.c_str(), l, lmax);
             exit(EXIT_FAILURE);
         }
 
-        if ((m < -l) | (m > l)) {
+        if ((m < -l) || (m > l)) {
             fprintf(stderr, "%s: Index m = %d out of range (%d, %d)\n", array_name.c_str(), m, -l, l);
             exit(EXIT_FAILURE);
         }
 
-        if ((i0 < 0) | (i0 >= dim[0])) {
+        if ((i0 < 0) || (i0 >= dim[0])) {
             fprintf(stderr, "%s: index i0 = %ld out of range (0, %ld)\n", array_name.c_str(), i0, dim[0] - 1);
             exit(EXIT_FAILURE);
         }
@@ -326,6 +329,7 @@ public:
             exit(EXIT_FAILURE);
         }
     }
+
 #endif
 
     /**
@@ -497,30 +501,31 @@ public:
      * Check if indices (i0, l,m) are within array
      */
     void check_indices(size_t i0, size_t i1, LS_TYPE l, MS_TYPE m) const {
-        if ((l < 0) | (l > lmax)) {
+        if ((l > lmax)) { //(l < 0) ||
             fprintf(stderr, "%s: Index l = %d out of range (0, %d)\n", array_name.c_str(), l, lmax);
             exit(EXIT_FAILURE);
         }
 
-        if ((m < -l) | (m > l)) {
+        if ((m < -l) || (m > l)) {
             fprintf(stderr, "%s: Index m = %d out of range (%d, %d)\n", array_name.c_str(), m, -l, l);
             exit(EXIT_FAILURE);
         }
 
-        if ((i0 < 0) | (i0 >= dim[0])) {
+        if ((i0 >= dim[0])) { //(i0 < 0) ||
             fprintf(stderr, "%s: index i0 = %ld out of range (0, %ld)\n", array_name.c_str(), i0, dim[0] - 1);
             exit(EXIT_FAILURE);
         }
 
 
-        if ((i1 < 0) | (i1 >= dim[1])) {
+        if ((i1 >= dim[1])) {//(i1 < 0) ||
             fprintf(stderr, "%s: index i1 = %ld out of range (0, %ld)\n", array_name.c_str(), i1, dim[1] - 1);
             exit(EXIT_FAILURE);
         }
 
         size_t ii = i0 * s[0] + i1 * s[1] + l * (l + 1) + m;
         if (ii >= size) {
-            fprintf(stderr, "%s: index = %ld (i0=%ld, i1=%ld, l=%d, m=%d) out of range %ld\n", array_name.c_str(), ii, i0,
+            fprintf(stderr, "%s: index = %ld (i0=%ld, i1=%ld, l=%d, m=%d) out of range %ld\n", array_name.c_str(), ii,
+                    i0,
                     i1, l, m, size);
             exit(EXIT_FAILURE);
         }
@@ -576,6 +581,227 @@ public:
      */
     inline Array2DLM<T> &operator()(size_t i0, size_t i1) {
         return *_proxy_slices(i0, i1);
+    }
+};
+
+
+/**
+ * Contiguous array to organize values by \f$ (i_0, i_1, i_2, l , m) \f$ indices.
+ * Only \f$ d_{0}, d_{1}, d_{2}, l_\textrm{max}\f$ should be provided: \f$ m = -l, \dots,l \f$
+ * for \f$ l = 0, \dots, l_\textrm{max}\f$
+ * @tparam T type of values to store
+ */
+template<typename T>
+class Array5DLM : public ContiguousArrayND<T> {
+    using ContiguousArrayND<T>::array_name;
+    using ContiguousArrayND<T>::data;
+    using ContiguousArrayND<T>::size;
+
+    LS_TYPE lmax = 0; ///< orbital dimension \f$ l_{max} \f$
+    size_t dim[3] = {0, 0, 0}; ///< linear dimension \f$ d_{0}, d_{1}, d_{2} \f$
+    size_t s[3] = {0, 0, 0}; ///< strides for linear dimensions
+
+    Array3D<Array2DLM<T> *> _proxy_slices; ///< slices representation
+public:
+    /**
+     *  Default empty constructor
+     */
+    Array5DLM() = default;
+
+    /**
+     *  Parametrized constructor
+     * @param array_name name of the array
+     */
+    Array5DLM(string array_name) {
+        this->array_name = array_name;
+    };
+
+    /**
+     *  Parametrized constructor
+     * @param d0 maximum value of \f$ i_0 \f$
+     * @param d1 maximum value of \f$ i_1 \f$
+     * @param lmax maximum value of \f$ l \f$
+     * @param array_name name of the array
+     */
+    explicit Array5DLM(size_t d0, size_t d1, size_t d2, LS_TYPE lmax, string array_name = "Array5DLM") {
+        init(d0, d1, d2, lmax, array_name);
+    }
+
+    /**
+     * Initialize array, reallocate memory and its slices
+     * @param d0 maximum value of \f$ i_0 \f$
+     * @param d1 maximum value of \f$ i_1 \f$
+     * @param lmax  maximum value of \f$ l \f$
+     * @param array_name name of the array
+     */
+    void init(size_t d0, size_t d1, size_t d2, LS_TYPE lmax, string array_name = "Array5DLM") {
+        this->array_name = array_name;
+        this->lmax = lmax;
+        dim[2] = d2;
+        dim[1] = d1;
+        dim[0] = d0;
+        s[2] = lmax * lmax;
+        s[1] = s[2] * dim[2];
+        s[0] = s[1] * dim[1];
+        if (size != s[0] * dim[0]) {
+            size = s[0] * dim[0];
+            if (data) delete[] data;
+            data = new T[size]{};
+            memset(data, 0, size * sizeof(T));
+        } else {
+            memset(data, 0, size * sizeof(T));
+        }
+
+        _proxy_slices.set_array_name(array_name + "_proxy");
+        //release old memory if there is any
+        _clear_proxies();
+        //arrange proxy-slices
+        _proxy_slices.resize(dim[0], dim[1], dim[2]);
+        for (size_t i0 = 0; i0 < dim[0]; ++i0)
+            for (size_t i1 = 0; i1 < dim[1]; ++i1)
+                for (size_t i2 = 0; i2 < dim[2]; ++i2) {
+                    _proxy_slices(i0, i1, i2) = new Array2DLM<T>(this->lmax,
+                                                                 &this->data[i0 * s[0] + i1 * s[1] + i2 * s[2]],
+                                                                 array_name + "_slice");
+                }
+    }
+
+    /**
+     * Release pointers to slices
+     */
+    void _clear_proxies() {
+
+        for (size_t i0 = 0; i0 < _proxy_slices.get_dim(0); ++i0)
+            for (size_t i1 = 0; i1 < _proxy_slices.get_dim(1); ++i1)
+                for (size_t i2 = 0; i2 < _proxy_slices.get_dim(2); ++i2) {
+                    delete _proxy_slices(i0, i1, i2);
+                    _proxy_slices(i0, i1, i2) = nullptr;
+                }
+    }
+
+    /**
+     * Destructor, clear proxies
+     */
+    ~Array5DLM() {
+        _clear_proxies();
+    }
+
+    /**
+     * Deallocate memory, reallocate with the new dimensions
+     * @param d0
+     * @param d1
+     * @param d2
+     * @param lmax
+     */
+    void resize(size_t d0, size_t d1, size_t d2, LS_TYPE lmax) {
+        _clear_proxies();
+        init(d0, d1, d2, lmax, this->array_name);
+    }
+
+    /**
+      * Get array dimensions
+      * @param d dimension index
+      * @return  dimension along axis 'd'
+      */
+    size_t get_dim(int d) const {
+        return dim[d];
+    }
+
+#ifdef MULTIARRAY_INDICES_CHECK
+
+    /**
+     * Check if indices (i0, l,m) are within array
+     */
+    void check_indices(size_t i0, size_t i1, size_t i2, LS_TYPE l, MS_TYPE m) const {
+        if ((l > lmax)) { //(l < 0) ||
+            fprintf(stderr, "%s: Index l = %d out of range (0, %d)\n", array_name.c_str(), l, lmax);
+            exit(EXIT_FAILURE);
+        }
+
+        if ((m < -l) || (m > l)) {
+            fprintf(stderr, "%s: Index m = %d out of range (%d, %d)\n", array_name.c_str(), m, -l, l);
+            exit(EXIT_FAILURE);
+        }
+
+        if ((i0 >= dim[0])) { //(i0 < 0) ||
+            fprintf(stderr, "%s: index i0 = %ld out of range (0, %ld)\n", array_name.c_str(), i0, dim[0] - 1);
+            exit(EXIT_FAILURE);
+        }
+
+
+        if ((i1 >= dim[1])) {//(i1 < 0) ||
+            fprintf(stderr, "%s: index i1 = %ld out of range (0, %ld)\n", array_name.c_str(), i1, dim[1] - 1);
+            exit(EXIT_FAILURE);
+        }
+
+        if ((i2 >= dim[2])) {//(i1 < 0) ||
+            fprintf(stderr, "%s: index i2 = %ld out of range (0, %ld)\n", array_name.c_str(), i2, dim[2] - 1);
+            exit(EXIT_FAILURE);
+        }
+
+        size_t ii = i0 * s[0] + i1 * s[1] + i2 * s[2] + l * (l + 1) + m;
+        if (ii >= size) {
+            fprintf(stderr, "%s: index = %ld (i0=%ld, i1=%ld, i2=%ld, l=%d, m=%d) out of range %ld\n",
+                    array_name.c_str(), ii,
+                    i0, i1, i2, l, m, size);
+            exit(EXIT_FAILURE);
+        }
+    }
+
+#endif
+
+    /**
+     * Accessing the array value by index (i0,i1,i2,l,m) for reading
+     * @param i0
+     * @param i1
+     * @param i2
+     * @param l
+     * @param m
+     * @return array value
+     */
+    inline const T &operator()(size_t i0, size_t i1, size_t i2, LS_TYPE l, MS_TYPE m) const {
+#ifdef MULTIARRAY_INDICES_CHECK
+        check_indices(i0, i1, i2, l, m);
+#endif
+        return data[i0 * s[0] + i1 * s[1] + i2 * s[2] + l * (l + 1) + m];
+    }
+
+    /**
+     * Accessing the array value by index (i0,i1,i2,l,m) for writing
+     * @param i0
+     * @param i1
+     * @param i2
+     * @param l
+     * @param m
+     * @return array value
+     */
+    inline T &operator()(size_t i0, size_t i1, size_t i2, LS_TYPE l, MS_TYPE m) {
+#ifdef MULTIARRAY_INDICES_CHECK
+        check_indices(i0, i1, i2, l, m);
+#endif
+        return data[i0 * s[0] + i1 * s[1] + i2 * s[2] + l * (l + 1) + m];
+    }
+
+    /**
+     * Return proxy Array2DLM pointing to i0, i1, l=0, m=0 to read
+     * @param i0
+     * @param i1
+     * @param i2
+     * @return proxy Array2DLM pointing to i0, l=0, m=0
+     */
+    inline const Array2DLM<T> &operator()(size_t i0, size_t i1, size_t i2) const {
+        return *_proxy_slices(i0, i1, i2);
+    }
+
+    /**
+     * Return proxy Array2DLM pointing to i0, i1, l=0, m=0 to write
+     * @param i0
+     * @param i1
+     * @param i2
+     * @return proxy Array2DLM pointing to i0, l=0, m=0
+     */
+    inline Array2DLM<T> &operator()(size_t i0, size_t i1, size_t i2) {
+        return *_proxy_slices(i0, i1, i2);
     }
 };
 

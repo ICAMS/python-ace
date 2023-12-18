@@ -45,8 +45,10 @@
 class ACEEvaluator {
 protected:
 
-    Array2D<DOUBLE_TYPE> A_rank1 = Array2D<DOUBLE_TYPE>("A_rank1"); ///< 2D-array for storing A's for rank=1, shape: A(mu_j,n)
-    Array4DLM<ACEComplex> A = Array4DLM<ACEComplex>("A"); ///< 4D array with (l,m) last indices  for storing A's for rank>1: A(mu_j, n, l, m)
+    Array2D<DOUBLE_TYPE> A_rank1 = Array2D<DOUBLE_TYPE>(
+            "A_rank1"); ///< 2D-array for storing A's for rank=1, shape: A(mu_j,n)
+    Array4DLM<ACEComplex> A = Array4DLM<ACEComplex>(
+            "A"); ///< 4D array with (l,m) last indices  for storing A's for rank>1: A(mu_j, n, l, m)
 
     /**
      * Initialize internal arrays according to basis set sizes
@@ -55,8 +57,10 @@ protected:
     void init(ACEAbstractBasisSet *basis_set);
 
 public:
-    Array1D<DOUBLE_TYPE> rhos = Array1D<DOUBLE_TYPE>("rhos"); ///< densities \f$ \rho^{(p)} \f$(ndensity), p  = 0 .. ndensity-1
-    Array1D<DOUBLE_TYPE> dF_drho = Array1D<DOUBLE_TYPE>("dF_drho"); ///< derivatives of cluster functional wrt. densities, index = 0 .. ndensity-1
+    Array1D<DOUBLE_TYPE> rhos = Array1D<DOUBLE_TYPE>(
+            "rhos"); ///< densities \f$ \rho^{(p)} \f$(ndensity), p  = 0 .. ndensity-1
+    Array1D<DOUBLE_TYPE> dF_drho = Array1D<DOUBLE_TYPE>(
+            "dF_drho"); ///< derivatives of cluster functional wrt. densities, index = 0 .. ndensity-1
 
     // set of timers for code profiling
 
@@ -82,6 +86,7 @@ public:
 
 
     DOUBLE_TYPE e_atom = 0; ///< energy of current atom, including core-repulsion
+    DOUBLE_TYPE ace_fcut;
 
     /**
      * temporary array for the pair forces between current atom_i and its neighbours atom_k
@@ -93,16 +98,16 @@ public:
 
     virtual ~ACEEvaluator() = default;
 
-     /**
-      * The key method to compute energy and forces for atom 'i'.
-      * Method will update the  "e_atom" variable and "neighbours_forces(jj, alpha)" array
-      *
-      * @param i atom index
-      * @param x atomic positions array of the real and ghost atoms, shape: [atom_ind][3]
-      * @param type  atomic types array of the real and ghost atoms, shape: [atom_ind]
-      * @param jnum  number of neighbours of atom_i
-      * @param jlist array of neighbour indices, shape: [jnum]
-      */
+    /**
+     * The key method to compute energy and forces for atom 'i'.
+     * Method will update the  "e_atom" variable and "neighbours_forces(jj, alpha)" array
+     *
+     * @param i atom index
+     * @param x atomic positions array of the real and ghost atoms, shape: [atom_ind][3]
+     * @param type  atomic types array of the real and ghost atoms, shape: [atom_ind]
+     * @param jnum  number of neighbours of atom_i
+     * @param jlist array of neighbour indices, shape: [jnum]
+     */
     virtual void compute_atom(int i, DOUBLE_TYPE **x, const SPECIES_TYPE *type, const int jnum, const int *jlist) = 0;
 
     /**
@@ -112,14 +117,32 @@ public:
     virtual void resize_neighbours_cache(int max_jnum) = 0;
 
 #ifdef EXTRA_C_PROJECTIONS
+    bool compute_projections = false;
     /* 1D array to store projections of basis function (all ranks), shape: [func_ind] */
-    Array1D<DOUBLE_TYPE> projections  = Array1D<DOUBLE_TYPE>("projections");
+    Array1D<DOUBLE_TYPE> projections = Array1D<DOUBLE_TYPE>("projections");
 
-    Array1D<DOUBLE_TYPE> dE_dc  = Array1D<DOUBLE_TYPE>("dE_dc");
+    Array1D<DOUBLE_TYPE> dE_dc = Array1D<DOUBLE_TYPE>("dE_dc");
 
 
     DOUBLE_TYPE max_gamma_grade = 0;
 #endif
+
+#ifdef COMPUTE_B_GRAD
+    bool compute_b_grad = false;
+    // Array to hold the descriptor decomposed force contributions per neighbour
+    //shape: [total_basis_size_rank1 + total_basis_size, jnum, 3]
+    Array3D<DOUBLE_TYPE> neighbours_dB = Array3D<DOUBLE_TYPE>("neighbours_dB");
+
+    // for B-derivatives
+    Array3D<DOUBLE_TYPE> weights_rank1_dB = Array3D<DOUBLE_TYPE>("weights_rank1_dB");
+    Array5DLM<ACEComplex> weights_dB = Array5DLM<ACEComplex>("weights_dB");
+#endif
+
+    virtual vector<int> get_func_ind_shift() = 0;
+
+    virtual vector<int> get_number_of_functions() = 0;
+
+    virtual int get_total_number_of_functions() = 0;
 };
 
 //TODO: split into separate file
@@ -222,6 +245,12 @@ public:
      * @param max_jnum  maximum number of neighbours
      */
     void resize_neighbours_cache(int max_jnum) override;
+
+    vector<int> get_func_ind_shift() override;
+
+    int get_total_number_of_functions() override;
+
+    vector<int> get_number_of_functions() override;
 };
 
 

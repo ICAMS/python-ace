@@ -227,7 +227,7 @@ bool compare(const ACEAbstractBasisFunction &b1, const ACEAbstractBasisFunction 
     // ms_combs:
     // size =  num_ms_combs * rank,
     // effective shape: [num_ms_combs][rank]
-    for (SHORT_INT_TYPE i = 0; i < b1.num_ms_combs * b1.rank; i++)
+    for (int i = 0; i < b1.num_ms_combs * b1.rank; i++)
         if (b1.ms_combs[i] < b2.ms_combs[i]) return true;
         else if (b1.ms_combs[i] > b2.ms_combs[i]) return false;
 

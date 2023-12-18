@@ -1,7 +1,7 @@
 #ifndef SCANNER_H_62B23520_7C8E_11DE_8A39_0800200C9A66
 #define SCANNER_H_62B23520_7C8E_11DE_8A39_0800200C9A66
 
-#if defined(_MSC_VER) || \
+#if defined(_MSC_VER) ||                                            \
     (defined(__GNUC__) && (__GNUC__ == 3 && __GNUC_MINOR__ >= 4) || \
      (__GNUC__ >= 4))  // GCC supports "pragma once" correctly since 3.4
 #pragma once
@@ -9,9 +9,7 @@
 
 #include <cstddef>
 #include <ios>
-#include <map>
 #include <queue>
-#include <set>
 #include <stack>
 #include <string>
 
@@ -21,204 +19,170 @@
 #include "yaml-cpp/mark.h"
 
 namespace YAML_PACE {
-    class Node;
-
-    class RegEx;
+class Node;
+class RegEx;
 
 /**
  * A scanner transforms a stream of characters into a stream of tokens.
  */
-    class Scanner {
-    public:
-        explicit Scanner(std::istream &in);
+class Scanner {
+ public:
+  explicit Scanner(std::istream &in);
+  ~Scanner();
 
-        ~Scanner();
+  /** Returns true if there are no more tokens to be read. */
+  bool empty();
 
-        /** Returns true if there are no more tokens to be read. */
-        bool empty();
+  /** Removes the next token in the queue. */
+  void pop();
 
-        /** Removes the next token in the queue. */
-        void pop();
+  /** Returns, but does not remove, the next token in the queue. */
+  Token &peek();
 
-        /** Returns, but does not remove, the next token in the queue. */
-        Token &peek();
+  /** Returns the current mark in the input stream. */
+  Mark mark() const;
 
-        /** Returns the current mark in the input stream. */
-        Mark mark() const;
+ private:
+  struct IndentMarker {
+    enum INDENT_TYPE { MAP, SEQ, NONE };
+    enum STATUS { VALID, INVALID, UNKNOWN };
+    IndentMarker(int column_, INDENT_TYPE type_)
+        : column(column_), type(type_), status(VALID), pStartToken(nullptr) {}
 
-    private:
-        struct IndentMarker {
-            enum INDENT_TYPE {
-                MAP, SEQ, NONE
-            };
-            enum STATUS {
-                VALID, INVALID, UNKNOWN
-            };
+    int column;
+    INDENT_TYPE type;
+    STATUS status;
+    Token *pStartToken;
+  };
 
-            IndentMarker(int column_, INDENT_TYPE type_)
-                    : column(column_), type(type_), status(VALID), pStartToken(nullptr) {}
+  enum FLOW_MARKER { FLOW_MAP, FLOW_SEQ };
 
-            int column;
-            INDENT_TYPE type;
-            STATUS status;
-            Token *pStartToken;
-        };
+ private:
+  // scanning
 
-        enum FLOW_MARKER {
-            FLOW_MAP, FLOW_SEQ
-        };
+  /**
+   * Scans until there's a valid token at the front of the queue, or the queue
+   * is empty. The state can be checked by {@link #empty}, and the next token
+   * retrieved by {@link #peek}.
+   */
+  void EnsureTokensInQueue();
 
-    private:
-        // scanning
+  /**
+   * The main scanning function; this method branches out to scan whatever the
+   * next token should be.
+   */
+  void ScanNextToken();
 
-        /**
-         * Scans until there's a valid token at the front of the queue, or the queue
-         * is empty. The state can be checked by {@link #empty}, and the next token
-         * retrieved by {@link #peek}.
-         */
-        void EnsureTokensInQueue();
+  /** Eats the input stream until it reaches the next token-like thing. */
+  void ScanToNextToken();
 
-        /**
-         * The main scanning function; this method branches out to scan whatever the
-         * next token should be.
-         */
-        void ScanNextToken();
+  /** Sets the initial conditions for starting a stream. */
+  void StartStream();
 
-        /** Eats the input stream until it reaches the next token-like thing. */
-        void ScanToNextToken();
+  /** Closes out the stream, finish up, etc. */
+  void EndStream();
 
-        /** Sets the initial conditions for starting a stream. */
-        void StartStream();
+  Token *PushToken(Token::TYPE type);
 
-        /** Closes out the stream, finish up, etc. */
-        void EndStream();
+  bool InFlowContext() const { return !m_flows.empty(); }
+  bool InBlockContext() const { return m_flows.empty(); }
+  std::size_t GetFlowLevel() const { return m_flows.size(); }
 
-        Token *PushToken(Token::TYPE type);
+  Token::TYPE GetStartTokenFor(IndentMarker::INDENT_TYPE type) const;
 
-        bool InFlowContext() const { return !m_flows.empty(); }
+  /**
+   * Pushes an indentation onto the stack, and enqueues the proper token
+   * (sequence start or mapping start).
+   *
+   * @return the indent marker it generates (if any).
+   */
+  IndentMarker *PushIndentTo(int column, IndentMarker::INDENT_TYPE type);
 
-        bool InBlockContext() const { return m_flows.empty(); }
+  /**
+   * Pops indentations off the stack until it reaches the current indentation
+   * level, and enqueues the proper token each time. Then pops all invalid
+   * indentations off.
+   */
+  void PopIndentToHere();
 
-        std::size_t GetFlowLevel() const { return m_flows.size(); }
+  /**
+   * Pops all indentations (except for the base empty one) off the stack, and
+   * enqueues the proper token each time.
+   */
+  void PopAllIndents();
 
-        Token::TYPE GetStartTokenFor(IndentMarker::INDENT_TYPE type) const;
+  /** Pops a single indent, pushing the proper token. */
+  void PopIndent();
+  int GetTopIndent() const;
 
-        /**
-         * Pushes an indentation onto the stack, and enqueues the proper token
-         * (sequence start or mapping start).
-         *
-         * @return the indent marker it generates (if any).
-         */
-        IndentMarker *PushIndentTo(int column, IndentMarker::INDENT_TYPE type);
+  // checking input
+  bool CanInsertPotentialSimpleKey() const;
+  bool ExistsActiveSimpleKey() const;
+  void InsertPotentialSimpleKey();
+  void InvalidateSimpleKey();
+  bool VerifySimpleKey();
+  void PopAllSimpleKeys();
 
-        /**
-         * Pops indentations off the stack until it reaches the current indentation
-         * level, and enqueues the proper token each time. Then pops all invalid
-         * indentations off.
-         */
-        void PopIndentToHere();
+  /**
+   * Throws a ParserException with the current token location (if available),
+   * and does not parse any more tokens.
+   */
+  void ThrowParserException(const std::string &msg) const;
 
-        /**
-         * Pops all indentations (except for the base empty one) off the stack, and
-         * enqueues the proper token each time.
-         */
-        void PopAllIndents();
+  bool IsWhitespaceToBeEaten(char ch);
 
-        /** Pops a single indent, pushing the proper token. */
-        void PopIndent();
+  /**
+   * Returns the appropriate regex to check if the next token is a value token.
+   */
+  const RegEx &GetValueRegex() const;
 
-        int GetTopIndent() const;
+  struct SimpleKey {
+    SimpleKey(const Mark &mark_, std::size_t flowLevel_);
 
-        // checking input
-        bool CanInsertPotentialSimpleKey() const;
+    void Validate();
+    void Invalidate();
 
-        bool ExistsActiveSimpleKey() const;
+    Mark mark;
+    std::size_t flowLevel;
+    IndentMarker *pIndent;
+    Token *pMapStart, *pKey;
+  };
 
-        void InsertPotentialSimpleKey();
+  // and the tokens
+  void ScanDirective();
+  void ScanDocStart();
+  void ScanDocEnd();
+  void ScanBlockSeqStart();
+  void ScanBlockMapSTart();
+  void ScanBlockEnd();
+  void ScanBlockEntry();
+  void ScanFlowStart();
+  void ScanFlowEnd();
+  void ScanFlowEntry();
+  void ScanKey();
+  void ScanValue();
+  void ScanAnchorOrAlias();
+  void ScanTag();
+  void ScanPlainScalar();
+  void ScanQuotedScalar();
+  void ScanBlockScalar();
 
-        void InvalidateSimpleKey();
+ private:
+  // the stream
+  Stream INPUT;
 
-        bool VerifySimpleKey();
+  // the output (tokens)
+  std::queue<Token> m_tokens;
 
-        void PopAllSimpleKeys();
-
-        /**
-         * Throws a ParserException with the current token location (if available),
-         * and does not parse any more tokens.
-         */
-        void ThrowParserException(const std::string &msg) const;
-
-        bool IsWhitespaceToBeEaten(char ch);
-
-        /**
-         * Returns the appropriate regex to check if the next token is a value token.
-         */
-        const RegEx &GetValueRegex() const;
-
-        struct SimpleKey {
-            SimpleKey(const Mark &mark_, std::size_t flowLevel_);
-
-            void Validate();
-
-            void Invalidate();
-
-            Mark mark;
-            std::size_t flowLevel;
-            IndentMarker *pIndent;
-            Token *pMapStart, *pKey;
-        };
-
-        // and the tokens
-        void ScanDirective();
-
-        void ScanDocStart();
-
-        void ScanDocEnd();
-
-        void ScanBlockSeqStart();
-
-        void ScanBlockMapSTart();
-
-        void ScanBlockEnd();
-
-        void ScanBlockEntry();
-
-        void ScanFlowStart();
-
-        void ScanFlowEnd();
-
-        void ScanFlowEntry();
-
-        void ScanKey();
-
-        void ScanValue();
-
-        void ScanAnchorOrAlias();
-
-        void ScanTag();
-
-        void ScanPlainScalar();
-
-        void ScanQuotedScalar();
-
-        void ScanBlockScalar();
-
-    private:
-        // the stream
-        Stream INPUT;
-
-        // the output (tokens)
-        std::queue<Token> m_tokens;
-
-        // state info
-        bool m_startedStream, m_endedStream;
-        bool m_simpleKeyAllowed;
-        bool m_canBeJSONFlow;
-        std::stack<SimpleKey> m_simpleKeys;
-        std::stack<IndentMarker *> m_indents;
-        ptr_vector<IndentMarker> m_indentRefs;  // for "garbage collection"
-        std::stack<FLOW_MARKER> m_flows;
-    };
+  // state info
+  bool m_startedStream, m_endedStream;
+  bool m_simpleKeyAllowed;
+  bool m_canBeJSONFlow;
+  std::stack<SimpleKey> m_simpleKeys;
+  std::stack<IndentMarker *> m_indents;
+  ptr_vector<IndentMarker> m_indentRefs;  // for "garbage collection"
+  std::stack<FLOW_MARKER> m_flows;
+};
 }
 
 #endif  // SCANNER_H_62B23520_7C8E_11DE_8A39_0800200C9A66

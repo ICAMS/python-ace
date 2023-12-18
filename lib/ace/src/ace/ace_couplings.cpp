@@ -22,7 +22,7 @@ vector<SHORT_INT_TYPE> generate_coupling_tree(RANK_TYPE r) {
     tree_indices_array.resize(3 * (r - 1));
 
     SHORT_INT_TYPE i;
-    SHORT_INT_TYPE ms[r];
+    vector<SHORT_INT_TYPE> ms(r);
 
     queue<SHORT_INT_TYPE> Tree_indices_queue;
     queue<SHORT_INT_TYPE> ms_queue;
@@ -34,7 +34,7 @@ vector<SHORT_INT_TYPE> generate_coupling_tree(RANK_TYPE r) {
     }
 
 
-    RANK_TYPE MS[r - 2];
+    vector<RANK_TYPE> MS(r - 2);
     for (i = 0; i < r - 2; i++) {
         MS[i] = i + r;
         MS_queue.push(MS[i]);
@@ -67,7 +67,7 @@ vector<SHORT_INT_TYPE> generate_coupling_tree(RANK_TYPE r) {
     }
 
 
-    while (interm_queue.size() > 1 & i_int != -1) {
+    while (interm_queue.size() > 1 && i_int != -1) {
         i1 = interm_queue.front();
         interm_queue.pop();
 
@@ -149,7 +149,7 @@ vector<SHORT_INT_TYPE> generate_coupling_tree(RANK_TYPE r) {
 
 //compute the sign of the given ms combination as the sign of the first non-zero element
 // if all elements are zero, sign = 0
-int get_ms_sign(const RANK_TYPE rank, const MS_TYPE *ms) {
+int get_ms_sign(const RANK_TYPE rank, const vector<MS_TYPE> &ms) {
     int sign = 0;
     for (SHORT_INT_TYPE j = 0; j < rank; ++j)
         if (ms[j] < 0) {
@@ -164,7 +164,7 @@ int get_ms_sign(const RANK_TYPE rank, const MS_TYPE *ms) {
 
 // by the given rank and corresponding array of ls,
 // generate the ms_strides array (size=rank) and the total size of the ms-space
-unsigned long get_ms_space_size_and_strides(const RANK_TYPE rank, const LS_TYPE *ls, unsigned long *ms_strides) {
+unsigned long get_ms_space_size_and_strides(const RANK_TYPE rank, const LS_TYPE *ls, vector<unsigned long> &ms_strides) {
     ms_strides[0] = 1;
     unsigned long int m_space_size = (2 * ls[0] + 1);
     for (RANK_TYPE i = 1; i < rank; i++) {
@@ -177,7 +177,7 @@ unsigned long get_ms_space_size_and_strides(const RANK_TYPE rank, const LS_TYPE 
 // in:   rank, current enumeration index in ms-space (ms_space_ind), ls-array and ms_strides array
 // out:  reconstructed array of ms (from the ms-space)
 void unpack_ms_space_point(const RANK_TYPE rank, unsigned long ms_space_ind, const LS_TYPE *ls,
-                           const unsigned long *ms_strides, MS_TYPE *ms) {
+                           const vector<unsigned long> &ms_strides, vector<MS_TYPE> &ms) {
     unsigned long int ms_space_point = ms_space_ind;
     for (SHORT_INT_TYPE j = rank - 1; j >= 0; j--) {
         ms[j] = ms_space_point / ms_strides[j] - ls[j];
@@ -372,16 +372,16 @@ void expand_ls_LS(RANK_TYPE rank, vector<LS_TYPE> &ls, vector<LS_TYPE> &LS) {// 
         if (ls.size() == 1)
             ls.emplace_back(ls.at(0));
     } else if (rank == 3) { //       //L(-1) = l(-1)
-        if (LS.empty() and ls.size() == rank)
+        if (LS.empty() && ls.size() == rank)
             LS.emplace_back(ls.at(2)); // LS[0] ==LS[-1] == ls[2]==ls[-1]
     } else if (rank == 4) {
         if (LS.size() == 1)
             LS.emplace_back(LS.at(0)); // LS[1]==LS[0]
     } else if (rank == 5) {
-        if (LS.size() == rank - 3 and ls.size() == rank)
+        if (LS.size() == rank - 3 && ls.size() == rank)
             LS.emplace_back(ls.at(4)); // LS[0] ==LS[-1] == ls[2]==ls[-1]
     } else if (rank == 6) { // LS[-1]==LS[-2]
-        if (LS.size() == rank - 3 and ls.size() == rank)
+        if (LS.size() == rank - 3 && ls.size() == rank)
             LS.emplace_back(LS.at(LS.size() - 1));
     }
 }
@@ -398,10 +398,7 @@ int generate_equivariant_ms_cg_list(const RANK_TYPE rank, const LS_TYPE *ls, con
         throw invalid_argument(s.str());
     }
 
-    RANK_TYPE rankL = 0;
-    if (rank > 2)
-        rankL = rank - 2;
-    LS_TYPE lsLS[2 * rank - 1];
+    vector<LS_TYPE> lsLS(2 * rank - 1);
     LS_TYPE sum_of_ls = 0;
     for (RANK_TYPE i = 0; i < rank; i++) {
         lsLS[i] = ls[i];
@@ -435,12 +432,12 @@ int generate_equivariant_ms_cg_list(const RANK_TYPE rank, const LS_TYPE *ls, con
     cout<<"Loop over {m}_space"<<endl;
 #endif
     // get the ms-space strides and ms-space size
-    unsigned long int ms_strides[rank];
+    vector<unsigned long int> ms_strides(rank);
     unsigned long ms_space_size = get_ms_space_size_and_strides(rank, ls, ms_strides);
 
     int sum_of_ms;
     int sign;
-    MS_TYPE ms[rank];
+    vector<MS_TYPE> ms(rank);
     bool invalid_ms_combination = false; // flag to mark the current ms-combination as invalid
     //  LOOP OVER M-SPACE (all (m1,m2,..mr) combinations, accumulate the correct ms-combinations and corresponding
     // generalized Clebsh-Gordan coefficients into "ms_cs_pairs_list"
@@ -470,7 +467,7 @@ int generate_equivariant_ms_cg_list(const RANK_TYPE rank, const LS_TYPE *ls, con
 #ifdef DEBUG_COUPLING
         cout<<endl;
 #endif
-        MS_TYPE msMS[2 * rank - 1]; //2*rank-2 + 1 =2*rank-1;  +1 for M_last==0
+        vector<MS_TYPE> msMS(2 * rank - 1); //2*rank-2 + 1 =2*rank-1;  +1 for M_last==0
         //copy the ms vector to the first part of joint msMS vector
         for (RANK_TYPE i_mM = 0; i_mM < rank; i_mM++)
             msMS[i_mM] = ms[i_mM];
@@ -482,7 +479,7 @@ int generate_equivariant_ms_cg_list(const RANK_TYPE rank, const LS_TYPE *ls, con
 #ifdef DEBUG_COUPLING
         cout<<"loop over tree"<<endl;
 #endif
-        //Loop over M-tree: reconstruct the the MS-part values by using the rules from M-tree and ms-values
+        //Loop over M-tree: reconstruct the MS-part values by using the rules from M-tree and ms-values
         for (RANK_TYPE triple_ind = 0; triple_ind < rank - 1; triple_ind++) {
             i1 = tree_indices_array[triple_ind * 3 + 0];
             i2 = tree_indices_array[triple_ind * 3 + 1];

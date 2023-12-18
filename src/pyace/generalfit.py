@@ -1,4 +1,5 @@
 import gc
+import json
 import logging
 
 from datetime import datetime
@@ -12,14 +13,14 @@ import pyace
 from pyace.basis import ACEBBasisSet, BBasisConfiguration
 from pyace.basisextension import construct_bbasisconfiguration, get_actual_ladder_step
 from pyace.multispecies_basisextension import extend_multispecies_basis, expand_trainable_parameters, \
-    compute_bbasisset_train_mask
+    compute_bbasisset_train_mask, clean_bbasisconfig, reset_bbasisconfig
 from pyace.const import *
 from pyace.fitadapter import FitBackendAdapter
-from pyace.preparedata import get_fitting_dataset, normalize_energy_forces_weights
+from pyace.preparedata import ACEDataset
 from pyace.lossfuncspec import LossFunctionSpecification
 from pyace.metrics_aggregator import MetricsAggregator
-
-from pyace.atomicenvironment import calculate_minimal_nn_distance
+from pyace.utils.utils import complement_min_dist_dict
+from pyace.atomicenvironment import calculate_minimal_nn_distance_per_bond
 
 log = logging.getLogger(__name__)
 log.setLevel(logging.DEBUG)
@@ -27,6 +28,7 @@ log.setLevel(logging.DEBUG)
 __username = None
 
 FITTING_DATA_INFO_FILENAME = "fitting_data_info.pckl.gzip"
+TEST_DATA_INFO_FILENAME = "test_data_info.pckl.gzip"
 
 
 def get_username():
@@ -43,28 +45,6 @@ def get_username():
         return __username
 
 
-def clean_bbasisconfig(initial_bbasisconfig):
-    for block in initial_bbasisconfig.funcspecs_blocks:
-        block.lmaxi = 0
-        block.nradmaxi = 0
-        block.nradbaseij = 0
-        block.radcoefficients = []
-        block.funcspecs = []
-
-
-def reset_bbasisconfig(bconf):
-    """set crad=delta_nk, func.coeffs=[0...]"""
-    for block in bconf.funcspecs_blocks:
-        block.set_func_coeffs(np.zeros_like(block.get_func_coeffs()))
-        radcoefficients = np.array(block.radcoefficients)
-        if len(radcoefficients.shape) == 3:
-            # C_ nlk = delta_nk
-            radcoefficients[:, :, :] = 0.0
-            for nk in range(min(radcoefficients.shape[0], radcoefficients.shape[2])):
-                radcoefficients[nk, :, nk] = 1.0
-            block.set_radial_coeffs(radcoefficients.flatten())
-
-
 def setup_inner_core_repulsion(basisconf, r_in, delta_in=0.1, rho_cut=5, drho_cut=5,
                                core_rep_parameters=(10000, 1)):
     for block in basisconf.funcspecs_blocks:
@@ -79,6 +59,30 @@ def setup_inner_core_repulsion(basisconf, r_in, delta_in=0.1, rho_cut=5, drho_cu
         elif block.number_of_species == 2:
             block.core_rep_parameters = core_rep_parameters
             block.inner_cutoff_type = "distance"
+
+
+def setup_zbl_inner_core_repulsion(bconf, min_dist_per_bond_dict, dr_in=0.1, rho_cut=1, drho_cut=1,
+                                   core_rep_pars=(1, 1)):
+    elements = set()
+    for sp in bconf.funcspecs_blocks:
+        for e in sp.elements_vec:
+            elements.add(e)
+    elements = sorted(elements)
+    e_to_mu = {e: i for i, e in enumerate(elements)}
+    for sp in bconf.funcspecs_blocks:
+        key = tuple(sorted(sp.block_name.split()))
+        if len(key) == 2:
+            r_in = min_dist_per_bond_dict[(e_to_mu[key[0]], e_to_mu[key[1]])]
+        elif len(key) == 1:
+            r_in = min_dist_per_bond_dict[(e_to_mu[key[0]], e_to_mu[key[0]])]
+        else:
+            continue
+        sp.core_rep_parameters = core_rep_pars
+        sp.r_in = r_in
+        sp.delta_in = dr_in
+        sp.inner_cutoff_type = 'zbl'
+        sp.rho_cut = rho_cut
+        sp.drho_cut = drho_cut
 
 
 def get_initial_potential(start_potential):
@@ -109,27 +113,17 @@ def get_initial_potential(start_potential):
     return initial_bbasisconfig
 
 
-def train_test_split(df, test_size: Union[float, int]) -> Tuple[pd.DataFrame, pd.DataFrame]:
-    """
-    Split df into train and test
-    :param df: data frame
-    :param test_size:
-    :return:
-    """
-    n_samples = len(df)
-    if test_size >= 1:
-        train_size = n_samples - test_size
-    elif 0 < test_size and test_size < 1:
-        test_size = int(n_samples * test_size)
-        train_size = n_samples - test_size
+def save_dataset(dataframe, fname):
+    # columns to save: w_energy, w_forces, NUMBER_OF_ATOMS, PROTOTYPE_NAME, prop_id,structure_id, gen_id, if any
+    # columns_to_save = ["PROTOTYPE_NAME", "NUMBER_OF_ATOMS", "prop_id", "structure_id", "gen_id", "pbc"] + \
+    #                   [ENERGY_CORRECTED_COL, EWEIGHTS_COL, FWEIGHTS_COL]
+    columns_to_drop = ["tp_atoms", "atomic_env"]
+    fitting_data_columns = dataframe.columns
 
-    inds = np.arange(len(df))
-    np.random.shuffle(inds)
+    columns_to_save = [col for col in fitting_data_columns if col not in columns_to_drop]
 
-    train_inds = sorted(inds[:train_size])
-    test_inds = sorted(inds[train_size:])
-
-    return df.iloc[train_inds].copy(), df.iloc[test_inds].copy()
+    dataframe[columns_to_save].to_pickle(fname, compression="gzip", protocol=4)
+    log.info("Dataset saved into {}".format(fname))
 
 
 class GeneralACEFit:
@@ -223,22 +217,14 @@ class GeneralACEFit:
                     number_of_functions_per_element = potential_config["functions"]["number_of_functions_per_element"]
                     target_bbasis = ACEBBasisSet(self.target_bbasisconfig)
                     nelements = target_bbasis.nelements
-                    ladder_step = number_of_functions_per_element * nelements // num_block
-                    expected_number_of_functions = ladder_step * num_block
+
                     log.info(
-                        """Target potential contains {total_number_of_functions} functions,"""
-                        """ but is limited to maximum {number_of_functions_per_element}"""
+                        """Number of functions in target potential"""
+                        """ is limited to maximum {number_of_functions_per_element}"""
                         """ functions per element  for {nelements} elements ({num_block} blocks)""".format(
-                            total_number_of_functions=self.target_bbasisconfig.total_number_of_functions,
                             number_of_functions_per_element=number_of_functions_per_element,
                             nelements=nelements,
                             num_block=num_block))
-
-                    initial_basisconfig = self.target_bbasisconfig.copy()
-                    clean_bbasisconfig(initial_basisconfig)
-                    current_bbasisconfig = extend_multispecies_basis(initial_basisconfig, self.target_bbasisconfig,
-                                                                     "power_order", ladder_step)
-                    self.target_bbasisconfig = current_bbasisconfig
                     log.info("Resulted potential contains {} functions".format(
                         self.target_bbasisconfig.total_number_of_functions))
 
@@ -326,52 +312,29 @@ class GeneralACEFit:
         self.fitting_data = None
         self.test_data = None
         if isinstance(self.data_config, (dict, str)):
-            self.fitting_data = get_fitting_dataset(evaluator_name=self.evaluator_name,
-                                                    data_config=self.data_config,
-                                                    weighting_policy_spec=self.weighting_policy_spec,
-                                                    cutoff=self.cutoff, elements=self.elements
-                                                    )
-            if isinstance(self.data_config, dict):
-                if "test_size" in self.data_config:
-                    test_size = self.data_config["test_size"]
-                    log.info("Splitting test dataset (test_size = {}) from main dataset({} samples)".format(test_size,
-                                                                                                            len(self.fitting_data)))
-                    self.fitting_data, self.test_data = train_test_split(self.fitting_data, test_size=test_size)
-                elif "test_filename" in self.data_config:
-                    test_filename = self.data_config["test_filename"]
-                    log.info("Loading test dataset from {}".format(test_filename))
-                    self.test_data = get_fitting_dataset(evaluator_name=self.evaluator_name,
-                                                         data_config={"filename": test_filename,
-                                                                      "datapath": self.data_config.get("datapath"),
-                                                                      "force_rebuild": self.data_config.get(
-                                                                          "force_rebuild", False)
-                                                                      },
-                                                         weighting_policy_spec=self.weighting_policy_spec,
-                                                         cutoff=self.cutoff, elements=self.elements
-                                                         )
+            if REFERENCE_ENERGY in self.target_bbasisconfig.metadata and REFERENCE_ENERGY not in self.data_config:
+                self.data_config[REFERENCE_ENERGY] = json.loads(self.target_bbasisconfig.metadata[REFERENCE_ENERGY])
+                log.info(f"Loading '{REFERENCE_ENERGY}' from potential metadata")
+            self.ace_dataset = ACEDataset(data_config=self.data_config,
+                                          weighting_policy_spec=self.weighting_policy_spec,
+                                          cutoff=self.cutoff, elements=self.elements,
+                                          evaluator_name=self.evaluator_name, )
+            if self.ace_dataset.reference_energy is not None:
+                self.target_bbasisconfig.metadata[REFERENCE_ENERGY] = json.dumps(self.ace_dataset.reference_energy)
+                self.target_bbasisconfig.save(TARGET_POTENTIAL_YAML)
+                log.info(f"Saving '{REFERENCE_ENERGY}' to potential metadata")
+            self.fitting_data = self.ace_dataset.fitting_data
+            self.test_data = self.ace_dataset.test_data
         elif isinstance(self.data_config, pd.DataFrame):
             self.fitting_data = self.data_config
         else:
             raise ValueError("'data-config' should be dictionary or pd.DataFrame")
 
         if self.fitting_data is not None:
-            normalize_energy_forces_weights(self.fitting_data)
+            save_dataset(self.fitting_data, FITTING_DATA_INFO_FILENAME)
+
         if self.test_data is not None:
-            normalize_energy_forces_weights(self.test_data)
-
-        self.save_fitting_data_info()
-
-        # automatic repulsion selection
-        if "repulsion" in self.fit_config and self.fit_config["repulsion"] == "auto":
-            log.info("Auto core-repulsion estimation. Minimal distance calculation...")
-            calculate_minimal_nn_distance(self.fitting_data)
-            min_distance = self.fitting_data["min_distance"].min()
-            log.info("Minimal distance = {:.2f} A ".format(min_distance))
-            r_in = min_distance - 0.01
-            setup_inner_core_repulsion(self.target_bbasisconfig, r_in)
-            if self.initial_bbasisconfig:
-                setup_inner_core_repulsion(self.initial_bbasisconfig, r_in)
-            log.info("Inner cutoff / core-repulsion initialized")
+            save_dataset(self.test_data, TEST_DATA_INFO_FILENAME)
 
         # plot self.fitting_data, self.test_data
         if self.fitting_data is not None:
@@ -391,6 +354,20 @@ class GeneralACEFit:
 
         self.loss_spec = LossFunctionSpecification(**loss_spec_dict)
 
+    def set_core_rep(self, basis_conf):
+        # automatic repulsion selection
+        if "repulsion" in self.fit_config and self.fit_config["repulsion"] == "auto":
+            log.info("Auto core-repulsion estimation. Minimal distance calculation...")
+            min_distance_per_bond = calculate_minimal_nn_distance_per_bond(self.fitting_data)
+            basis = ACEBBasisSet(basis_conf)
+
+            min_distance_per_bond = complement_min_dist_dict(min_distance_per_bond, min_distance_per_bond,
+                                                             basis.elements_name,
+                                                             verbose=True)
+            log.info("Minimal distance per bonds = {} A ".format(min_distance_per_bond))
+            setup_zbl_inner_core_repulsion(basis_conf, min_distance_per_bond)
+            log.info("Inner cutoff / core-repulsion initialized with ZBL")
+
     def fit_metric_callback(self, metrics_dict, extended_display_step=None):
         metrics_dict["cycle_step"] = self.current_fit_cycle
         metrics_dict["ladder_step"] = self.current_ladder_step
@@ -400,20 +377,6 @@ class GeneralACEFit:
         metrics_dict["cycle_step"] = self.current_fit_cycle
         metrics_dict["ladder_step"] = self.current_ladder_step
         self.metrics_aggregator.test_metric_callback(metrics_dict, extended_display_step=extended_display_step)
-
-    def save_fitting_data_info(self):
-        # columns to save: w_energy, w_forces, NUMBER_OF_ATOMS, PROTOTYPE_NAME, prop_id,structure_id, gen_id, if any
-        # columns_to_save = ["PROTOTYPE_NAME", "NUMBER_OF_ATOMS", "prop_id", "structure_id", "gen_id", "pbc"] + \
-        #                   [ENERGY_CORRECTED_COL, EWEIGHTS_COL, FWEIGHTS_COL]
-        columns_to_drop = ["tp_atoms", "atomic_env"]
-        fitting_data_columns = self.fitting_data.columns
-
-        columns_to_save = [col for col in fitting_data_columns if col not in columns_to_drop]
-
-        self.fitting_data[columns_to_save].to_pickle(FITTING_DATA_INFO_FILENAME,
-                                                     compression="gzip",
-                                                     protocol=4)
-        log.info("Fitting dataset info saved into {}".format(FITTING_DATA_INFO_FILENAME))
 
     def fit(self) -> BBasisConfiguration:
         gc.collect()

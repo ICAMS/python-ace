@@ -15,7 +15,7 @@ __all__ = ['rect_maxvol', 'maxvol', 'rect_maxvol_svd', 'maxvol_svd',
 from .misc import svd_cut
 
 def py_rect_maxvol(A, tol=1., maxK=None, min_add_K=None, minK=None,
-        start_maxvol_iters=10, identity_submatrix=True, top_k_index=-1):
+        start_maxvol_iters=10, identity_submatrix=True, top_k_index=-1, verbose=False):
     """
     Python implementation of rectangular 2-volume maximization.
 
@@ -89,7 +89,7 @@ def py_rect_maxvol(A, tol=1., maxK=None, min_add_K=None, minK=None,
         C[index[:K]] = np.eye(K, dtype=C.dtype)
     return index[:K].copy(), C
 
-def py_maxvol(A, tol=1.05, max_iters=100, top_k_index=-1):
+def py_maxvol(A, tol=1.05, max_iters=100, top_k_index=-1, verbose=False):
     """
     Python implementation of 1-volume maximization.
 
@@ -226,7 +226,7 @@ def rect_maxvol(A, tol=1., maxK=None, min_add_K=None, minK=None,
     return rect_maxvol_func(A, tol, maxK, min_add_K, minK, start_maxvol_iters,
             identity_submatrix, top_k_index)
 
-def maxvol(A, tol=1.05, max_iters=100, top_k_index=-1):
+def maxvol(A, tol=1.05, max_iters=100, top_k_index=-1, verbose=False):
     """
     Finds good square submatrix.
 
@@ -283,7 +283,7 @@ def maxvol(A, tol=1.05, max_iters=100, top_k_index=-1):
     Chebyshev norm of matrix C: 1.07854
     """
     return maxvol_func(A, tol=tol, max_iters=max_iters,
-            top_k_index=top_k_index)
+            top_k_index=top_k_index, verbose=verbose)
 
 def rect_maxvol_svd(A, svd_tol=1e-3, svd_alpha=0., tol=1., maxK=None,
         min_add_K=None, minK=None, start_maxvol_iters=10,

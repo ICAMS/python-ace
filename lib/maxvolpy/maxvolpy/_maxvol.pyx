@@ -1,4 +1,4 @@
-
+#cython: language_level=3
 #cython: embedsignature=True, cdivision=True, boundscheck=False, wraparound=False, initializedcheck=False
 __all__ = ['c_maxvol', 'c_rect_maxvol']
 import numpy as np
@@ -30,7 +30,7 @@ def c_rect_maxvol(A, tol=1., maxK=None, min_add_K=None, minK=None,
         start_maxvol_iters=10, identity_submatrix=True, top_k_index=-1):
     """
     Cython implementation of rectangular 2-volume maximization.
-    
+
     For information see `rect_maxvol` function.
     """
     cdef int N, r, id_sub
@@ -75,10 +75,10 @@ def c_rect_maxvol(A, tol=1., maxK=None, min_add_K=None, minK=None,
     except Exception:
         raise
 
-def c_maxvol(A, tol=1.05, max_iters=100, top_k_index=-1):
+def c_maxvol(A, tol=1.05, max_iters=100, top_k_index=-1, int verbose=0):
     """
     Cython implementation of 1-volume maximization.
-    
+
     For information see `maxvol` function.
     """
     cdef int N, r
@@ -98,16 +98,16 @@ def c_maxvol(A, tol=1.05, max_iters=100, top_k_index=-1):
     try:
         if A.dtype is np.dtype(np.float32):
             smaxvol(N, r, <float *>lu.data, <float *>coef.data,
-                <int *>basis.data, tol, max_iters, top_k_index)
+                <int *>basis.data, tol, max_iters, top_k_index,verbose)
         elif A.dtype == np.dtype(np.float64):
             dmaxvol(N, r, <double *>lu.data, <double *>coef.data,
-                <int *>basis.data, tol, max_iters, top_k_index)
+                <int *>basis.data, tol, max_iters, top_k_index,verbose)
         elif A.dtype is np.dtype(np.complex64):
             cmaxvol(N, r, <float complex *>lu.data, <float complex *>
-                coef.data, <int *>basis.data, tol, max_iters, top_k_index)
+                coef.data, <int *>basis.data, tol, max_iters, top_k_index,verbose)
         elif A.dtype is np.dtype(np.complex128):
             zmaxvol(N, r, <double complex*>lu.data, <double complex *>
-                coef.data, <int *>basis.data, tol, max_iters, top_k_index)
+                coef.data, <int *>basis.data, tol, max_iters, top_k_index,verbose)
         else:
             raise TypeError("must be of float or complex type")
     except Exception:
@@ -117,8 +117,8 @@ def c_maxvol(A, tol=1.05, max_iters=100, top_k_index=-1):
 
 cdef object srect_maxvol(int N, int R, float *lu, float tol, int minK,
         int maxK, int start_maxvol_iters, int identity_submatrix,
-        int top_k_index):
-    cdef char cN = 'N'
+        int top_k_index,int verbose=0):
+    cdef char cN = b'N'
     cdef int i, j, i_one = 1, K, size = N*R
     cdef float d_one = 1.0, d_zero = 0.0, l
     cdef float tol2 = tol*tol, tmp, tmp2
@@ -138,7 +138,7 @@ cdef object srect_maxvol(int N, int R, float *lu, float tol, int minK,
         top_k_index = R
     scopy(&size, lu, &i_one, coef, &i_one)
     tmp = 1.05 # tolerance for square maxvol
-    smaxvol(N, R, lu, coef, basis, tmp, start_maxvol_iters, top_k_index)
+    smaxvol(N, R, lu, coef, basis, tmp, start_maxvol_iters, top_k_index,verbose)
     # compute square length for each vector
     for j in prange(top_k_index, schedule="static", nogil=True):
         L[j] = 0.0
@@ -201,14 +201,14 @@ cdef object srect_maxvol(int N, int R, float *lu, float tol, int minK,
     return I, C
 
 cdef object smaxvol(int N, int R, float *lu, float *coef, int *basis,
-        float tol, int max_iters, int top_k_index):
+        float tol, int max_iters, int top_k_index, int verbose=0):
     cdef int *ipiv = <int *> malloc(R * sizeof(int))
     cdef int *interchange = <int *> malloc(N * sizeof(int))
     cdef float *tmp_row = <float *> malloc(R*sizeof(float))
     cdef float *tmp_column = <float *> malloc(N*sizeof(float))
     cdef int info = 0, size = N * R, i, j, tmp_int, i_one = 1, iters = 0
     cdef int k_row, k_col
-    cdef char cR = 'R', cN = 'N', cU = 'U', cL = 'L'
+    cdef char cR = b'R', cN = b'N', cU = b'U', cL = b'L'
     cdef float d_one = 1, alpha, max_value
     cdef float abs_max, tmp
     if (ipiv == NULL or interchange == NULL or tmp_row == NULL or
@@ -248,8 +248,8 @@ cdef object smaxvol(int N, int R, float *lu, float *coef, int *basis,
                     j = k_row
                     i = k_col
         max_value = coef[j+i*N]
-        if iters % 10 == 0:
-            print('Iter {}/{}: abs_max = {} (tol = {})'.format(iters, max_iters, abs_max, tol))
+        if verbose and iters % 10 == 0:
+            print('Iter {}/{}: abs_max = {:.3f} (tol = {:.3f})'.format(iters, max_iters, abs_max, tol))
         if abs_max > tol:
             scopy(&R, coef+j, &N, tmp_row, &i_one)
             tmp_row[i] -= d_one
@@ -267,8 +267,8 @@ cdef object smaxvol(int N, int R, float *lu, float *coef, int *basis,
 
 cdef object drect_maxvol(int N, int R, double *lu, double tol, int minK,
         int maxK, int start_maxvol_iters, int identity_submatrix,
-        int top_k_index):
-    cdef char cN = 'N'
+        int top_k_index, int verbose=0):
+    cdef char cN = b'N'
     cdef int i, j, i_one = 1, K, size = N*R
     cdef double d_one = 1.0, d_zero = 0.0, l
     cdef double tol2 = tol*tol, tmp, tmp2
@@ -288,7 +288,7 @@ cdef object drect_maxvol(int N, int R, double *lu, double tol, int minK,
         top_k_index = R
     dcopy(&size, lu, &i_one, coef, &i_one)
     tmp = 1.05 # tolerance for square maxvol
-    dmaxvol(N, R, lu, coef, basis, tmp, start_maxvol_iters, top_k_index)
+    dmaxvol(N, R, lu, coef, basis, tmp, start_maxvol_iters, top_k_index, verbose)
     # compute square length for each vector
     for j in prange(top_k_index, schedule="static", nogil=True):
         L[j] = 0.0
@@ -351,14 +351,14 @@ cdef object drect_maxvol(int N, int R, double *lu, double tol, int minK,
     return I, C
 
 cdef object dmaxvol(int N, int R, double *lu, double *coef, int *basis,
-        double tol, int max_iters, int top_k_index):
+        double tol, int max_iters, int top_k_index, int verbose=0):
     cdef int *ipiv = <int *> malloc(R * sizeof(int))
     cdef int *interchange = <int *> malloc(N * sizeof(int))
     cdef double *tmp_row = <double *> malloc(R*sizeof(double))
     cdef double *tmp_column = <double *> malloc(N*sizeof(double))
     cdef int info = 0, size = N * R, i, j, tmp_int, i_one = 1, iters = 0
     cdef int k_row, k_col
-    cdef char cR = 'R', cN = 'N', cU = 'U', cL = 'L'
+    cdef char cR = b'R', cN = b'N', cU = b'U', cL = b'L'
     cdef double d_one = 1, alpha, max_value
     cdef double abs_max, tmp
     if (ipiv == NULL or interchange == NULL or tmp_row == NULL or
@@ -398,8 +398,8 @@ cdef object dmaxvol(int N, int R, double *lu, double *coef, int *basis,
                     j = k_row
                     i = k_col
         max_value = coef[j+i*N]
-        if iters % 10 == 0:
-            print('Iter {}/{}: abs_max = {} (tol = {})'.format(iters, max_iters, abs_max, tol))
+        if verbose and iters % 10 == 0:
+            print('Iter {}/{}: abs_max = {:.3f} (tol = {:.3f})'.format(iters, max_iters, abs_max, tol))
         if abs_max > tol:
             dcopy(&R, coef+j, &N, tmp_row, &i_one)
             tmp_row[i] -= d_one
@@ -417,8 +417,8 @@ cdef object dmaxvol(int N, int R, double *lu, double *coef, int *basis,
 
 cdef object crect_maxvol(int N, int R, float complex *lu, float tol, int minK,
         int maxK, int start_maxvol_iters, int identity_submatrix,
-        int top_k_index):
-    cdef char cN = 'N'
+        int top_k_index, int verbose=0):
+    cdef char cN = b'N'
     cdef int i, j, i_one = 1, K, size = N*R
     cdef float complex d_one = 1.0, d_zero = 0.0, l
     cdef float tol2 = tol*tol, tmp, tmp2
@@ -438,7 +438,7 @@ cdef object crect_maxvol(int N, int R, float complex *lu, float tol, int minK,
         top_k_index = R
     ccopy(&size, lu, &i_one, coef, &i_one)
     tmp = 1.05 # tolerance for square maxvol
-    cmaxvol(N, R, lu, coef, basis, tmp, start_maxvol_iters, top_k_index)
+    cmaxvol(N, R, lu, coef, basis, tmp, start_maxvol_iters, top_k_index, verbose)
     # compute square length for each vector
     for j in prange(top_k_index, schedule="static", nogil=True):
         L[j] = 0.0
@@ -501,14 +501,14 @@ cdef object crect_maxvol(int N, int R, float complex *lu, float tol, int minK,
     return I, C
 
 cdef object cmaxvol(int N, int R, float complex *lu, float complex *coef, int *basis,
-        float tol, int max_iters, int top_k_index):
+        float tol, int max_iters, int top_k_index, int verbose=0):
     cdef int *ipiv = <int *> malloc(R * sizeof(int))
     cdef int *interchange = <int *> malloc(N * sizeof(int))
     cdef float complex *tmp_row = <float complex *> malloc(R*sizeof(float complex))
     cdef float complex *tmp_column = <float complex *> malloc(N*sizeof(float complex))
     cdef int info = 0, size = N * R, i, j, tmp_int, i_one = 1, iters = 0
     cdef int k_row, k_col
-    cdef char cR = 'R', cN = 'N', cU = 'U', cL = 'L'
+    cdef char cR = b'R', cN = b'N', cU = b'U', cL = b'L'
     cdef float complex d_one = 1, alpha, max_value
     cdef float abs_max, tmp
     if (ipiv == NULL or interchange == NULL or tmp_row == NULL or
@@ -548,8 +548,8 @@ cdef object cmaxvol(int N, int R, float complex *lu, float complex *coef, int *b
                     j = k_row
                     i = k_col
         max_value = coef[j+i*N]
-        if iters % 10 == 0:
-            print('Iter {}/{}: abs_max = {} (tol = {})'.format(iters, max_iters, abs_max, tol))
+        if verbose and iters % 10 == 0:
+            print('Iter {}/{}: abs_max = {:.3f} (tol = {:.3f})'.format(iters, max_iters, abs_max, tol))
         if abs_max > tol:
             ccopy(&R, coef+j, &N, tmp_row, &i_one)
             tmp_row[i] -= d_one
@@ -567,8 +567,8 @@ cdef object cmaxvol(int N, int R, float complex *lu, float complex *coef, int *b
 
 cdef object zrect_maxvol(int N, int R, double complex *lu, double tol, int minK,
         int maxK, int start_maxvol_iters, int identity_submatrix,
-        int top_k_index):
-    cdef char cN = 'N'
+        int top_k_index, int verbose=0):
+    cdef char cN = b'N'
     cdef int i, j, i_one = 1, K, size = N*R
     cdef double complex d_one = 1.0, d_zero = 0.0, l
     cdef double tol2 = tol*tol, tmp, tmp2
@@ -588,7 +588,7 @@ cdef object zrect_maxvol(int N, int R, double complex *lu, double tol, int minK,
         top_k_index = R
     zcopy(&size, lu, &i_one, coef, &i_one)
     tmp = 1.05 # tolerance for square maxvol
-    zmaxvol(N, R, lu, coef, basis, tmp, start_maxvol_iters, top_k_index)
+    zmaxvol(N, R, lu, coef, basis, tmp, start_maxvol_iters, top_k_index, verbose)
     # compute square length for each vector
     for j in prange(top_k_index, schedule="static", nogil=True):
         L[j] = 0.0
@@ -651,14 +651,14 @@ cdef object zrect_maxvol(int N, int R, double complex *lu, double tol, int minK,
     return I, C
 
 cdef object zmaxvol(int N, int R, double complex *lu, double complex *coef, int *basis,
-        double tol, int max_iters, int top_k_index):
+        double tol, int max_iters, int top_k_index, int verbose=0):
     cdef int *ipiv = <int *> malloc(R * sizeof(int))
     cdef int *interchange = <int *> malloc(N * sizeof(int))
     cdef double complex *tmp_row = <double complex *> malloc(R*sizeof(double complex))
     cdef double complex *tmp_column = <double complex *> malloc(N*sizeof(double complex))
     cdef int info = 0, size = N * R, i, j, tmp_int, i_one = 1, iters = 0
     cdef int k_row, k_col
-    cdef char cR = 'R', cN = 'N', cU = 'U', cL = 'L'
+    cdef char cR = b'R', cN = b'N', cU = b'U', cL = b'L'
     cdef double complex d_one = 1, alpha, max_value
     cdef double abs_max, tmp
     if (ipiv == NULL or interchange == NULL or tmp_row == NULL or
@@ -698,8 +698,8 @@ cdef object zmaxvol(int N, int R, double complex *lu, double complex *coef, int 
                     j = k_row
                     i = k_col
         max_value = coef[j+i*N]
-        if iters % 10 == 0:
-            print('Iter {}/{}: abs_max = {} (tol = {})'.format(iters, max_iters, abs_max, tol))
+        if verbose and iters % 10 == 0:
+            print('Iter {}/{}: abs_max = {:.3f} (tol = {:.3f})'.format(iters, max_iters, abs_max, tol))
         if abs_max > tol:
             zcopy(&R, coef+j, &N, tmp_row, &i_one)
             tmp_row[i] -= d_one

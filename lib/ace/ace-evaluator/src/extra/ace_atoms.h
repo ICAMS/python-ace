@@ -7,6 +7,8 @@
 
 #include <cmath>
 #include <vector>
+#include <map>
+#include <utility>
 #include "ace-evaluator/ace_types.h"
 #include "ace-evaluator/ace_arraynd.h"
 
@@ -15,8 +17,8 @@
 using namespace std;
 
 struct ACEAtomicEnvironment {
-    int n_atoms_real; // number of real atoms
-    int n_atoms_extended; // number of extended atoms (incl. periodic images)
+    int n_atoms_real = 0; // number of real atoms
+    int n_atoms_extended = 0; // number of extended atoms (incl. periodic images)
 
     DOUBLE_TYPE **x = nullptr; // of shape (n_atoms_extended,3)
     SPECIES_TYPE *species_type = nullptr; // of shape (n_atoms_extended,)
@@ -106,7 +108,7 @@ struct ACEAtomicEnvironment {
         num_neighbours = nullptr;
     }
 
-    void _clean_species_types(){
+    void _clean_species_types() {
         delete[] species_type;
         species_type = nullptr;
     }
@@ -167,23 +169,27 @@ struct ACEAtomicEnvironment {
         _clean();
     }
 
-    void set_x(vector<vector<DOUBLE_TYPE>> &new_x);
+    void set_x(const vector<vector<DOUBLE_TYPE>> &new_x);
 
     vector<vector<DOUBLE_TYPE>> get_x() const;
 
-    void set_species_types(vector<SPECIES_TYPE> &new_species_types);
+    void set_species_types(const vector<SPECIES_TYPE> &new_species_types);
 
     vector<SPECIES_TYPE> get_species_types() const;
 
-    void set_origins(vector<int> &new_origins);
+    void set_origins(const vector<int> &new_origins);
 
     vector<int> get_origins() const;
 
-    void set_neighbour_list(vector<vector<int>> &new_neighbour_list);
+    void set_neighbour_list(const vector<vector<int>> &new_neighbour_list);
 
     vector<vector<int>> get_neighbour_list() const;
 
     DOUBLE_TYPE get_minimal_nn_distance() const;
+
+    std::map<std::pair<SPECIES_TYPE,SPECIES_TYPE>,DOUBLE_TYPE> get_minimal_nn_distance_per_bond() const;
+
+    std::vector<std::tuple<SPECIES_TYPE,SPECIES_TYPE,DOUBLE_TYPE>> get_nearest_atom_type_and_distance() const;
 };
 
 ACEAtomicEnvironment create_linear_chain(int n, int axis = 2, double scale_factor = 1.);
