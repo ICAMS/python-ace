@@ -126,6 +126,10 @@ def save_dataset(dataframe, fname):
     log.info("Dataset saved into {}".format(fname))
 
 
+class TestLossChangeTooSmallException(StopIteration):
+    pass
+
+
 class GeneralACEFit:
     """
     Main fitting wrapper class
@@ -150,6 +154,7 @@ class GeneralACEFit:
                  seed=None,
                  callbacks=None
                  ):
+        self.early_stopping_occured = None
         self.seed = seed
         if self.seed is not None:
             log.info("Set numpy random seed to {}".format(self.seed))
@@ -293,11 +298,11 @@ class GeneralACEFit:
 
         self.data_config = data_config
         self.weighting_policy_spec = self.fit_config.get(FIT_WEIGHTING_KW)
-        display_step = backend_config.get('display_step', 20)
+        self.display_step = backend_config.get('display_step', 20)
         if self.ladder_scheme:
-            self.metrics_aggregator = MetricsAggregator(extended_display_step=display_step)
+            self.metrics_aggregator = MetricsAggregator(extended_display_step=self.display_step)
         else:
-            self.metrics_aggregator = MetricsAggregator(extended_display_step=display_step,
+            self.metrics_aggregator = MetricsAggregator(extended_display_step=self.display_step,
                                                         ladder_metrics_filename=None)
         self.fit_backend = FitBackendAdapter(backend_config,
                                              fit_metrics_callback=self.fit_metric_callback,
@@ -354,6 +359,24 @@ class GeneralACEFit:
 
         self.loss_spec = LossFunctionSpecification(**loss_spec_dict)
 
+        # attributes for early stopping
+        self.train_loss_list = []
+        self.test_loss_list = []
+        self.early_stopping_occured = False
+        self.early_stopping_patience = fit_config.get("early_stopping_patience", 200)
+        self.min_relative_train_loss_per_iter = fit_config.get('min_relative_train_loss_per_iter')
+        self.min_relative_test_loss_per_iter = fit_config.get('min_relative_test_loss_per_iter')
+        if self.min_relative_train_loss_per_iter:
+            self.min_relative_train_loss_per_iter=-abs(self.min_relative_train_loss_per_iter)
+            log.info(
+                f"Slowest relative change of TRAIN loss is set to {self.min_relative_train_loss_per_iter :+1.2e}/iter, " +
+                f"patience = {self.early_stopping_patience} iters")
+        if self.min_relative_test_loss_per_iter:
+            self.min_relative_test_loss_per_iter = -abs(self.min_relative_test_loss_per_iter)
+            log.info(
+                f"Slowest relative change of TEST loss is set to {self.min_relative_test_loss_per_iter :+1.2e}/iter, " +
+                f"patience = {self.early_stopping_patience} iters")
+
     def set_core_rep(self, basis_conf):
         # automatic repulsion selection
         if "repulsion" in self.fit_config and self.fit_config["repulsion"] == "auto":
@@ -372,11 +395,71 @@ class GeneralACEFit:
         metrics_dict["cycle_step"] = self.current_fit_cycle
         metrics_dict["ladder_step"] = self.current_ladder_step
         self.metrics_aggregator.fit_metric_callback(metrics_dict, extended_display_step=extended_display_step)
+        self.train_loss_list.append(metrics_dict['loss'])
+        self.log_d_rel_loss(metrics_dict["iter_num"], mode='train')
+        if self.min_relative_train_loss_per_iter is not None:
+            self.detect_early_stopping(mode='train')
 
     def test_metric_callback(self, metrics_dict, extended_display_step=None):
         metrics_dict["cycle_step"] = self.current_fit_cycle
         metrics_dict["ladder_step"] = self.current_ladder_step
         self.metrics_aggregator.test_metric_callback(metrics_dict, extended_display_step=extended_display_step)
+        self.test_loss_list.append(metrics_dict['loss'])
+        self.log_d_rel_loss(metrics_dict["iter_num"], mode='test')
+        if self.min_relative_test_loss_per_iter is not None:
+            self.detect_early_stopping(mode='test')
+
+    def compute_d_rel_loss_d_step(self, loss_list, mode):
+        iter_step = self.display_step if mode == 'test' else 1
+        min_loss_depth = int(np.ceil(self.early_stopping_patience / iter_step))
+        # take last min_loss_depth
+        loss_list = np.array(loss_list[-min_loss_depth:])
+        d_rel_loss_d_step = (loss_list[1:] - loss_list[:-1]) / loss_list[:-1] / iter_step  # normally - big negative
+        return d_rel_loss_d_step
+
+    def log_d_rel_loss(self, iter_num, mode):
+        if iter_num > 0 and iter_num % self.display_step == 0 and not self.early_stopping_occured:
+            loss_list = self.get_loss_list(mode)
+            d_rel_loss_d_step = self.compute_d_rel_loss_d_step(loss_list, mode)
+            if len(d_rel_loss_d_step) > 0:
+                last_d_rel_loss_d_step = d_rel_loss_d_step[-1]
+                log.info(f"Last relative {mode.upper()} loss change {last_d_rel_loss_d_step :+1.2e}/iter")
+
+    def get_loss_list(self, mode):
+        assert mode in ['train', 'test'], f"Unsupported {mode=}"
+
+        if mode == 'train':
+            return self.train_loss_list
+        elif mode == 'test':
+            return self.test_loss_list
+
+    def detect_early_stopping(self, mode):
+        loss_list = self.get_loss_list(mode)
+        if self.early_stopping_occured:
+            # early stopping already occured
+            return
+
+        iter_step = self.display_step if mode == 'test' else 1
+        min_loss_depth = int(np.ceil(self.early_stopping_patience / iter_step))
+
+        if len(loss_list) - 1 < min_loss_depth:  # -1 because test loss is written at it=0
+            # trajectory is not long enough
+            return
+
+        d_rel_loss_d_step = self.compute_d_rel_loss_d_step(loss_list, mode)
+
+        min_relative_loss_per_iter = self.min_relative_test_loss_per_iter if mode == 'test' else self.min_relative_train_loss_per_iter
+        if min(d_rel_loss_d_step) > min_relative_loss_per_iter:
+            # early stopping
+            min_d_rel_loss_d_step = min(d_rel_loss_d_step)
+            last_d_rel_loss_d_step = d_rel_loss_d_step[-1]
+            msg = f"EARLY STOPPING: Too small or even positive {mode.upper()} loss change (best={min_d_rel_loss_d_step:+1.2e}  / iter, " + \
+                  f"last={last_d_rel_loss_d_step:+1.2e}/iter, " + \
+                  f"threshold = {min_relative_loss_per_iter :+1.2e}/iter) " + \
+                  f"within last {self.early_stopping_patience} iterations. Stopping"
+            log.info(msg)
+            self.early_stopping_occured = True
+            raise TestLossChangeTooSmallException(msg)
 
     def fit(self) -> BBasisConfiguration:
         gc.collect()
@@ -474,6 +557,7 @@ class GeneralACEFit:
                                                                                        num_of_parameters))
             log.info("Running fit backend")
             self.current_fit_iteration = 0
+            self.reset_early_stopping()
             current_bbasisconfig = self.fit_backend.fit(
                 current_bbasisconfig,
                 dataframe=self.fitting_data, loss_spec=self.loss_spec, fit_config=self.fit_config,
@@ -534,6 +618,11 @@ class GeneralACEFit:
         self.fit_backend.last_fit_metric_data = best_fitting_metric_data
         save_interim_potential(current_best_bbasisconfig, potential_filename="interim_potential_best_cycle.yaml")
         return current_best_bbasisconfig
+
+    def reset_early_stopping(self):
+        self.early_stopping_occured = False
+        self.test_loss_list = []
+        self.train_loss_list = []
 
     @staticmethod
     def apply_gaussian_noise(current_bbasisconfig, trainable_parameters_dict, noise_abs_sigma, noise_rel_sigma):

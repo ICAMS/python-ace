@@ -447,7 +447,7 @@ class MetricsAggregator:
         log.info('{:<12}'.format(title) +
                  "#{iter_num:<5}".format(iter_num=iter_num) +
                  '{:<14}'.format('({numeval} evals):'.format(numeval=fit_metrics_dict["eval_count"])) +
-                 '{:>10}'.format('Loss: ') + "{loss: >3.6f}".format(loss=total_loss) +
+                 '{:>10}'.format('Loss: ') + "{loss: >1.4e}".format(loss=total_loss) +
                  '{str1:>21}{rmse_epa:>.2f} ({low_rmse_e:>.2f}) meV/at' \
                  .format(str1=" | RMSE Energy(low): ",
                          rmse_epa=1e3 * fit_metrics_dict["rmse_epa"],

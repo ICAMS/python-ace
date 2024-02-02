@@ -70,6 +70,11 @@ fit:
   #  ladder_step: 100
   #  ladder_type: power_order
 
+  # Early stopping
+  # min_relative_train_loss_per_iter: 5e-5
+  # min_relative_test_loss_per_iter: 1e-5
+  # early_stopping_patience: 200
+
 #################################################################
 ## Backend specification section
 #################################################################
