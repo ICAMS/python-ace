@@ -72,10 +72,14 @@ fit:
 
   ## scipy.minimze algorithm: BFGS /  L-BFGS-B / Nelder-Mead / etc...
   optimizer: BFGS
-  repulsion: auto
 
   ## maximum number of scipy.minimize iterations
   maxiter: 20
+
+  #  early stopping
+  min_relative_train_loss_per_iter: 5e-5
+  min_relative_test_loss_per_iter: 1e-5
+  early_stopping_patience: 10
 
 #################################################################
 ## Backend specification section
@@ -83,4 +87,4 @@ fit:
 backend:
   evaluator: tensorpot
   batch_size: 100
-  display_step: 50
+  display_step: 10
