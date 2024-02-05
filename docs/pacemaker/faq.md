@@ -249,3 +249,31 @@ Please check [this](https://github.com/ICAMS/python-ace/blob/master/examples/cus
 If you have  ACE potential (fitted or just constructed from scratch), then you can compute the B-basis projections for all atoms in your structure(s).
 Please check [this](https://github.com/ICAMS/python-ace/blob/master/examples/pyace/bbasis_projections.ipynb) example notebook.
 
+## What is early stopping and how to use it?
+
+Early stopping is a technique used to prevent overfitting in the ML model.
+The main idea is to halt the optimization procedure once the loss/metrics on the test set stops improving. 
+Additional criteria, such as slow improvement in the training loss, can be employed to prevent the unnecessary expenditure 
+of computational resources. In pacemaker, you can activate these early stopping criteria by including the following lines
+into `input.yaml`:
+```yaml
+fit:
+  # Early stopping
+  min_relative_train_loss_per_iter: 5e-5
+  min_relative_test_loss_per_iter: 1e-5
+  early_stopping_patience: 200
+```
+The parameters `min_relative_train_loss_per_iter` and `min_relative_test_loss_per_iter` characterize the minimal relative 
+change in the train and test loss per iteration, respectively (in absolute value). 
+The relative loss at iteration t is computed as:
+```
+relative_loss_per_iter(t) = (loss(t) - loss(t - N)) / loss(t - N) / N
+```
+Here, `N` represents the number of iterations between the computation of loss functions (`N=1` for train loss and `N=display_step`
+for test loss). `early_stopping_patience` characterizes the minimal number of iterations before stopping can occur.
+In a normal situation, `relative_loss_per_iter` should be negative and large in absolute value.
+
+Stopping occurs when **any** of the following criteria are met *each* step over the last `early_stopping_patience` steps:
+* `relative_TRAIN_loss_per_iter > -|min_relative_train_loss_per_iter|`
+* `relative_TEST_loss_per_iter > -|min_relative_test_loss_per_iter|`
+ 
