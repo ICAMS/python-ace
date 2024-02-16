@@ -367,7 +367,7 @@ class GeneralACEFit:
         self.min_relative_train_loss_per_iter = fit_config.get('min_relative_train_loss_per_iter')
         self.min_relative_test_loss_per_iter = fit_config.get('min_relative_test_loss_per_iter')
         if self.min_relative_train_loss_per_iter:
-            self.min_relative_train_loss_per_iter=-abs(self.min_relative_train_loss_per_iter)
+            self.min_relative_train_loss_per_iter = -abs(self.min_relative_train_loss_per_iter)
             log.info(
                 f"Slowest relative change of TRAIN loss is set to {self.min_relative_train_loss_per_iter :+1.2e}/iter, " +
                 f"patience = {self.early_stopping_patience} iters")
@@ -449,7 +449,7 @@ class GeneralACEFit:
         d_rel_loss_d_step = self.compute_d_rel_loss_d_step(loss_list, mode)
 
         min_relative_loss_per_iter = self.min_relative_test_loss_per_iter if mode == 'test' else self.min_relative_train_loss_per_iter
-        if d_rel_loss_d_step and min(d_rel_loss_d_step) > min_relative_loss_per_iter:
+        if d_rel_loss_d_step is not None and len(d_rel_loss_d_step) > 0 and min(d_rel_loss_d_step) > min_relative_loss_per_iter:
             # early stopping
             min_d_rel_loss_d_step = min(d_rel_loss_d_step)
             last_d_rel_loss_d_step = d_rel_loss_d_step[-1]
