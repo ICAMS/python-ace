@@ -412,6 +412,8 @@ class GeneralACEFit:
     def compute_d_rel_loss_d_step(self, loss_list, mode):
         iter_step = self.display_step if mode == 'test' else 1
         min_loss_depth = int(np.ceil(self.early_stopping_patience / iter_step))
+        if len(loss_list) >= 2:
+            min_loss_depth = max(min_loss_depth, 2)
         # take last min_loss_depth
         loss_list = np.array(loss_list[-min_loss_depth:])
         d_rel_loss_d_step = (loss_list[1:] - loss_list[:-1]) / loss_list[:-1] / iter_step  # normally - big negative
@@ -419,11 +421,12 @@ class GeneralACEFit:
 
     def log_d_rel_loss(self, iter_num, mode):
         if iter_num > 0 and iter_num % self.display_step == 0 and not self.early_stopping_occured:
+            iter_step = self.display_step if mode == 'test' else 1
             loss_list = self.get_loss_list(mode)
             d_rel_loss_d_step = self.compute_d_rel_loss_d_step(loss_list, mode)
             if len(d_rel_loss_d_step) > 0:
                 last_d_rel_loss_d_step = d_rel_loss_d_step[-1]
-                log.info(f"Last relative {mode.upper()} loss change {last_d_rel_loss_d_step :+1.2e}/iter")
+                log.info(f"Last relative {mode.upper()} loss change {last_d_rel_loss_d_step :+1.2e}/iter (averaged over last {iter_step} step(s))")
 
     def get_loss_list(self, mode):
         assert mode in ['train', 'test'], f"Unsupported {mode=}"
