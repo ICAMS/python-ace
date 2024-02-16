@@ -449,7 +449,7 @@ class GeneralACEFit:
         d_rel_loss_d_step = self.compute_d_rel_loss_d_step(loss_list, mode)
 
         min_relative_loss_per_iter = self.min_relative_test_loss_per_iter if mode == 'test' else self.min_relative_train_loss_per_iter
-        if min(d_rel_loss_d_step) > min_relative_loss_per_iter:
+        if d_rel_loss_d_step and min(d_rel_loss_d_step) > min_relative_loss_per_iter:
             # early stopping
             min_d_rel_loss_d_step = min(d_rel_loss_d_step)
             last_d_rel_loss_d_step = d_rel_loss_d_step[-1]
