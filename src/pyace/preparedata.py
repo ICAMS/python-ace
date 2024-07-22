@@ -812,12 +812,12 @@ class ACEDataset:
         if epa_min < -20 or epa_max > 250:
             # re-run with self.reference_energy='auto'
             if self.reference_energy is None:
-                big_warning(f"Some values of corrected energy {epa_min:.3g} eV/atom are too extreme,\n" +
+                big_warning(f"Some values of corrected energy (min={epa_min:.3g} eV/atom, max={epa_max:.3g} eV/atom) are too extreme,\n" +
                             "i.e. <-20 eV/atom or >250 eV/atom\n" +
                             "`reference_energy` will be computed automatically.")
                 self.reference_energy = 'auto'
                 return self.process_dataset(df)
-            big_warning(f"Some values of corrected energy {epa_min:.3g} eV/atom are too extreme,\n" +
+            big_warning(f"Some values of corrected energy (min={epa_min:.3g} eV/atom, max={epa_max:.3g} eV/atom) are too extreme,\n" +
                         "i.e. <-20 eV/atom or >250 eV/atom\n" +
                         "Correct your energy or use data::reference_energy: auto option !!!")
         # enforce attach single point calculator to avoid mistakes
