@@ -10,7 +10,7 @@ ASL is a reciprocal licence very similar to GPL and the core terms are identical
 
 The non-commercial limitation makes ASL incompatible with the GPL and other open-source licences with copyleft provisions because these licences require that modified versions of the original program are made available free of charge for any type of use, including commercial, and this is prevented by ASL.  As the two sets of reciprocal terms are incompatible, any modified version of the original program combining ASL and copylefted open-source code can be used internally but cannot be licensed out.
 
-The non-commercial restriction is an integral part of the license and you may not remove it without the consent of the rights holder in the ASL licensed code. Please contact __ICAMS, Ruhr University Bochum__ for any questions and/or to enquire about commercial use rights. 
+The non-commercial restriction is an integral part of the license and you may not remove it without the consent of the rights holder in the ASL licensed code. Please contact __ACEworks GbmH__  (e-mail: contact@aceworks.works) for any questions and/or to enquire about commercial use rights. 
 
 *The changes to the GPLv2 are: removing the Preamble, replacing the reference to the “General Public License” in clause 0 with a reference to the “ASL”, removing clause 9 and adding clause 13 with the non-commercial restriction and limited patent grant
 
