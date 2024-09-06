@@ -22,6 +22,10 @@ Install it using the following commands:
 ```
 pip install tensorflow==2.8.0 
 ```
+or to have CUDA support in latest versions of TensorFlow
+```
+pip install tensorflow[and-cuda] 
+```
 
 2. Download the `tensorpotential` from [this repository](https://github.com/ICAMS/TensorPotential).
 * Clone with
