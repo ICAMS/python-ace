@@ -187,7 +187,7 @@ public:
      * Get array data pointer
      * @return data array pointer
      */
-    inline T* get_data() const {
+    inline T *get_data() const {
         return data;
     }
 
@@ -243,6 +243,32 @@ public:
         return is_proxy_;
     }
 
+    /**
+ * move all data from src into this, starting from dest_ind position
+ * src array become proxy
+ * @param src
+ * @param dest_ind
+ */
+    void move_from(ContiguousArrayND<T> src, size_t dest_ind) {
+        // check that src is not proxy
+        if (src.is_proxy())
+            throw invalid_argument("src Array1D cannot be proxy when move to another");
+        // check that there is enough space
+        if (dest_ind + src.get_size() > this->size)
+            throw invalid_argument("Not enough space to move Array1D into another Array1D");
+        // copy data
+        for (size_t i = 0; i < src.get_size(); i++)
+            this->data[dest_ind + i] = src.data[i];
+
+        // clean src data
+        delete[] src.data;
+
+        // change pointer
+        src.data = &this->data[dest_ind];
+
+        //set proxy flag
+        src.is_proxy_ = true;
+    }
 };
 
 

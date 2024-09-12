@@ -1,0 +1,41 @@
+# /home/users/lysogy36/acefit/GRACE/TDACE/FS-export/seed/1
+elements: [Mo, Nb, Ta, W]
+nnorm: 0.0173492815879129
+emb_spec: {params: [1.0, 1.0, 1.0, 0.5], type: FinnisSinclairShiftedScaled}
+radial_basis: {Z: [0.9309980452340629, 1.2614922977371636, -0.3272906611757781, 0.71165300140449,
+    -0.30123845101606994, 0.5228308972691108, 0.6499629861480888, 0.6284436482387074],
+  Z_shape: [4, 2], crad: [0.313936681771871, 1.0168338924813647, -0.9811623368752479,
+    0.3617097420000017], crad_shape: [2, 1, 2], cutoff: 6, n_rad_base: 2, nradmax: 2,
+  radbasename: SBessel}
+functions: 
+    0: 
+     - {mu0: 0, ns: 1, ls: [0], ms_combs: [0], gen_cgs: [1.0], ndensity: 2, coeff: [0.08563044921215866, 0.4470457691704677], rank: 1}
+     - {mu0: 0, ns: 2, ls: [0], ms_combs: [0], gen_cgs: [1.0], ndensity: 2, coeff: [0.47241803566450546, 0.20287804868484796], rank: 1}
+     - {mu0: 0, ns: 1, ls: [0, 0], ms_combs: [0, 0], gen_cgs: [1.0], ndensity: 2, coeff: [-0.0238811943687232, 1.3671608745574546], rank: 2}
+     - {mu0: 0, ns: 2, ls: [0, 0], ms_combs: [0, 0], gen_cgs: [1.0], ndensity: 2, coeff: [-0.5103439179294194, -0.18711320109127436], rank: 2}
+     - {mu0: 0, ns: 1, ls: [0, 0, 0], ms_combs: [0, 0, 0], gen_cgs: [1.0], ndensity: 2, coeff: [-0.5324182968359121, 1.171886633791288], rank: 3}
+     - {mu0: 0, ns: 2, ls: [0, 0, 0], ms_combs: [0, 0, 0], gen_cgs: [1.0], ndensity: 2, coeff: [-0.7382390734480386, 0.632059294460949], rank: 3}
+    1: 
+     - {mu0: 1, ns: 1, ls: [0], ms_combs: [0], gen_cgs: [1.0], ndensity: 2, coeff: [-0.3637024652311783, 0.5476963591511613], rank: 1}
+     - {mu0: 1, ns: 2, ls: [0], ms_combs: [0], gen_cgs: [1.0], ndensity: 2, coeff: [0.9081935283110572, 1.5968790425657338], rank: 1}
+     - {mu0: 1, ns: 1, ls: [0, 0], ms_combs: [0, 0], gen_cgs: [1.0], ndensity: 2, coeff: [0.031405552895863616, 2.0966704069954747], rank: 2}
+     - {mu0: 1, ns: 2, ls: [0, 0], ms_combs: [0, 0], gen_cgs: [1.0], ndensity: 2, coeff: [1.0485997599344958, 0.16707480013544004], rank: 2}
+     - {mu0: 1, ns: 1, ls: [0, 0, 0], ms_combs: [0, 0, 0], gen_cgs: [1.0], ndensity: 2, coeff: [-0.998818334244998, 1.9914104468306968], rank: 3}
+     - {mu0: 1, ns: 2, ls: [0, 0, 0], ms_combs: [0, 0, 0], gen_cgs: [1.0], ndensity: 2, coeff: [0.225415627926786, -1.6118200485179413], rank: 3}
+    2: 
+     - {mu0: 2, ns: 1, ls: [0], ms_combs: [0], gen_cgs: [1.0], ndensity: 2, coeff: [0.7227341673751824, -0.5637645841986675], rank: 1}
+     - {mu0: 2, ns: 2, ls: [0], ms_combs: [0], gen_cgs: [1.0], ndensity: 2, coeff: [0.9024895219543086, 0.17634768344374863], rank: 1}
+     - {mu0: 2, ns: 1, ls: [0, 0], ms_combs: [0, 0], gen_cgs: [1.0], ndensity: 2, coeff: [2.5217106507831772, -0.44086480135819617], rank: 2}
+     - {mu0: 2, ns: 2, ls: [0, 0], ms_combs: [0, 0], gen_cgs: [1.0], ndensity: 2, coeff: [-0.0007691526951637052, 1.1815139330564068], rank: 2}
+     - {mu0: 2, ns: 1, ls: [0, 0, 0], ms_combs: [0, 0, 0], gen_cgs: [1.0], ndensity: 2, coeff: [0.34349116954726977, 0.4378611844786709], rank: 3}
+     - {mu0: 2, ns: 2, ls: [0, 0, 0], ms_combs: [0, 0, 0], gen_cgs: [1.0], ndensity: 2, coeff: [-1.2071819898589273, 2.9196344982236653], rank: 3}
+    3: 
+     - {mu0: 3, ns: 1, ls: [0], ms_combs: [0], gen_cgs: [1.0], ndensity: 2, coeff: [-0.3139632951976988, 0.7800881603096272], rank: 1}
+     - {mu0: 3, ns: 2, ls: [0], ms_combs: [0], gen_cgs: [1.0], ndensity: 2, coeff: [-0.8685178025900058, -0.9853245760471054], rank: 1}
+     - {mu0: 3, ns: 1, ls: [0, 0], ms_combs: [0, 0], gen_cgs: [1.0], ndensity: 2, coeff: [-0.6179090607443187, -1.2818284282532995], rank: 2}
+     - {mu0: 3, ns: 2, ls: [0, 0], ms_combs: [0, 0], gen_cgs: [1.0], ndensity: 2, coeff: [-0.266852502045759, 0.3637979134713648], rank: 2}
+     - {mu0: 3, ns: 1, ls: [0, 0, 0], ms_combs: [0, 0, 0], gen_cgs: [1.0], ndensity: 2, coeff: [-1.1724793581834139, 0.10193739858088074], rank: 3}
+     - {mu0: 3, ns: 2, ls: [0, 0, 0], ms_combs: [0, 0, 0], gen_cgs: [1.0], ndensity: 2, coeff: [1.3735679398167813, -0.8303176534204201], rank: 3}
+E0: [-10.881599725662017, -10.146458813092114, -11.594690153361158, -12.73933999408068]
+shift: 0.0
+scale: 0.8142895310895377

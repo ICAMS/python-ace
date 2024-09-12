@@ -44,6 +44,7 @@ const DOUBLE_TYPE sq1o4pi = 0.28209479177387814347; // sqrt(1/(4*pi))
 const DOUBLE_TYPE sq4pi = 3.54490770181103176384; // sqrt(4*pi)
 const DOUBLE_TYPE sq3 = 1.73205080756887719318;//sqrt(3), numpy
 const DOUBLE_TYPE sq3o2 = 1.22474487139158894067;//sqrt(3/2), numpy
+const DOUBLE_TYPE sq2 = 1.4142135623730951;//sqrt(2), numpy
 
 //definition of common factor for spherical harmonics = Y00
 //const DOUBLE_TYPE Y00 = sq1o4pi;
@@ -128,6 +129,9 @@ public:
     Array2DLM<ACEComplex> ylm; ///< Values of all spherical harmonics after \code compute_ylm(rx,ry,rz, lmaxi) \endcode call
     Array2DLM<ACEDYcomponent> dylm;///< Values of gradients of all spherical harmonics after \code compute_ylm(rx,ry,rz, lmaxi) \endcode call
 
+    Array2DLM<DOUBLE_TYPE> real_ylm; ///< Values of all real spherical harmonics after \code compute_ylm(rx,ry,rz, lmaxi) \endcode call
+    Array2DLM<ACEDRealYcomponent> real_dylm;///< Values of gradients of all real spherical harmonics after \code compute_ylm(rx,ry,rz, lmaxi) \endcode call
+    void compute_real_ylm(DOUBLE_TYPE rx, DOUBLE_TYPE ry, DOUBLE_TYPE rz, LS_TYPE lmaxi);
 };
 
 

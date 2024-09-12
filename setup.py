@@ -186,18 +186,19 @@ setup(
                  CMakeExtension('pyace/evaluator', target='evaluator'),
                  CMakeExtension('pyace/catomicenvironment', target='catomicenvironment'),
                  CMakeExtension('pyace/calculator', target='calculator'),
+                 CMakeExtension('pyace/grace_fs', target='grace_fs'),
                  ],
     # add custom build_ext command
     cmdclass=versioneer.get_cmdclass(dict(install=InstallMaxVolPyLocalPackage,
                                           build_ext=CMakeBuild)),
     zip_safe=False,
     url='https://github.com/ICAMS/python-ace',
-    install_requires=['numpy<=1.26.4',
+    install_requires=['numpy<2.0.0',
                       'ase',
-                      'pandas<=2.0',
+                      'pandas',
                       'ruamel.yaml',
                       'psutil',
-                      'scikit-learn<=1.4.2'
+                      'scikit-learn'
                       ],
     classifiers=[
         'Programming Language :: Python :: 3',

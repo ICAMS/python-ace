@@ -168,12 +168,21 @@ class FitBackendAdapter:
                         loss_spec: LossFunctionSpecification,
                         trainable_parameters_dict: Dict
                         ) -> BBasisConfiguration:
-        from tensorpotential.potentials.ace import ACE
-        from tensorpotential.tensorpot import TensorPotential
-        from tensorpotential.fit import FitTensorPotential
-        from tensorpotential.utils.utilities import batching_data, init_gpu_config
-        from tensorpotential.constants import (LOSS_TYPE, LOSS_FORCE_FACTOR, LOSS_ENERGY_FACTOR, L1_REG,
-                                               L2_REG, AUX_LOSS_FACTOR)
+        try:
+            from tensorpotential.compat.pace.potentials.ace import ACE
+            from tensorpotential.compat.pace.tensorpot import TensorPotential
+            from tensorpotential.compat.pace.fit import FitTensorPotential
+            from tensorpotential.compat.pace.utils.utilities import batching_data, init_gpu_config
+            from tensorpotential.compat.pace.constants import (LOSS_TYPE, LOSS_FORCE_FACTOR, LOSS_ENERGY_FACTOR, L1_REG,
+                                                               L2_REG, AUX_LOSS_FACTOR)
+        except ImportError:
+            from tensorpotential.potentials.ace import ACE
+            from tensorpotential.tensorpot import TensorPotential
+            from tensorpotential.fit import FitTensorPotential
+            from tensorpotential.utils.utilities import batching_data, init_gpu_config
+            from tensorpotential.constants import (LOSS_TYPE, LOSS_FORCE_FACTOR, LOSS_ENERGY_FACTOR, L1_REG,
+                                                   L2_REG, AUX_LOSS_FACTOR)
+
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore", category=UserWarning)
 
@@ -303,9 +312,14 @@ class FitBackendAdapter:
             raise ValueError("`bbasisconfig` couldn't be None for FitAdapter.setup_backend_for_predict")
         log.info("Setting {} backend for predicting".format(self.backend_config.evaluator_name))
         if self.backend_config.evaluator_name == TENSORPOT_EVAL:
-            from tensorpotential.potentials.ace import ACE
-            from tensorpotential.tensorpot import TensorPotential
-            from tensorpotential.fit import FitTensorPotential
+            try:
+                from tensorpotential.compat.pace.potentials.ace import ACE
+                from tensorpotential.compat.pace.tensorpot import TensorPotential
+                from tensorpotential.compat.pace.fit import FitTensorPotential
+            except ImportError:
+                from tensorpotential.potentials.ace import ACE
+                from tensorpotential.tensorpot import TensorPotential
+                from tensorpotential.fit import FitTensorPotential
             ace_pot = ACE(bbasisconfig)
             tp = TensorPotential(ace_pot)
             self.fitter = FitTensorPotential(tensorpot=tp, eager=True)

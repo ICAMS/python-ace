@@ -41,12 +41,14 @@ void ACEEvaluator::init(ACEAbstractBasisSet *basis_set) {
 }
 
 void ACEEvaluator::init_timers() {
-    loop_over_neighbour_timer.init();
+    A_construction_timer.init();
     forces_calc_loop_timer.init();
     forces_calc_neighbour_timer.init();
     energy_calc_timer.init();
     per_atom_calc_timer.init();
     total_time_calc_timer.init();
+    setup_timer.init();
+    weights_and_theta_timer.init();
 }
 
 //================================================================================================================
@@ -257,7 +259,7 @@ ACECTildeEvaluator::compute_atom(int i, DOUBLE_TYPE **x, const SPECIES_TYPE *typ
     const Array1D<DOUBLE_TYPE> &gr = basis_set->radial_functions->gr;
     const Array1D<DOUBLE_TYPE> &dgr = basis_set->radial_functions->dgr;
 
-    loop_over_neighbour_timer.start();
+    A_construction_timer.start();
 
     int jj_actual = 0;
     SPECIES_TYPE type_j = 0;
@@ -377,7 +379,7 @@ ACECTildeEvaluator::compute_atom(int i, DOUBLE_TYPE **x, const SPECIES_TYPE *typ
             }
         }
     }    //now A's are constructed
-    loop_over_neighbour_timer.stop();
+    A_construction_timer.stop();
 
     // ==================== ENERGY ====================
 

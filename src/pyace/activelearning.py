@@ -2,18 +2,20 @@ import numpy as np
 import os
 
 from collections import Counter, defaultdict
+from typing import Dict, List, Optional, Union, Tuple
 
 import pandas as pd
 from ase import Atoms
 from ase.io.lammpsrun import read_lammps_dump_text
 from maxvolpy.maxvol import maxvol
 
-from pyace.asecalc import PyACECalculator
+from pyace.asecalc import PyACECalculator, PyGRACEFSCalculator
 from pyace.atomicenvironment import aseatoms_to_atomicenvironment, ACEAtomicEnvironment
 from pyace.basis import BBasisConfiguration, ACEBBasisSet
 from pyace.calculator import ACECalculator
 from pyace.evaluator import ACEBEvaluator
-from typing import Dict, List, Optional, Union, Tuple
+
+from pyace.grace_fs import GRACEFSBasisSet, GRACEFSBEvaluator, GRACEFSCalculator
 
 
 def simple_tqdm(iterable, **kwargs):
@@ -89,18 +91,19 @@ def count_number_total_atoms_per_species_type_by_batches(atomic_env_batches: Lis
     return dict(n_total_atoms_per_species_type)
 
 
-def compute_B_projections(bconf: Union[BBasisConfiguration, ACEBBasisSet, PyACECalculator],
-                          atomic_env_list: Union[List[Atoms], List[ACEAtomicEnvironment]],
-                          structure_ind_list: Optional[List[int]] = None,
-                          is_full=False,
-                          compute_forces_dict=False,
-                          return_structure_ind_dict=False,
-                          verbose=False
-                          ) -> Tuple[Dict[int, np.array], Optional[Dict[int, np.array]]]:
+def compute_B_projections(
+        bconf: Union[BBasisConfiguration, ACEBBasisSet, PyACECalculator, GRACEFSCalculator, GRACEFSBasisSet],
+        atomic_env_list: Union[List[Atoms], List[ACEAtomicEnvironment]],
+        structure_ind_list: Optional[List[int]] = None,
+        is_full=False,
+        compute_forces_dict=False,
+        return_structure_ind_dict=False,
+        verbose=False
+        ) -> Tuple[Dict[int, np.array], Optional[Dict[int, np.array]]]:
     """
     Function to compute the B-basis projection using basis configuration
     `bconf` for list of atomic environments `atomic_env_list`.
-    :param bconf: BBasisConfiguration
+    :param bconf: [BBasisConfiguration, ACEBBasisSet, PyACECalculator, GRACEFSCalculator, GRACEFSBasisSet]
     :param atomic_env_list: list of ACEAtomicEnvironment or ASE atoms
     :param structure_ind_list: optional, list of corresponding indices of structures/atomic envs.
     :param is_full: MaxVol on linear B-projections (false, default) or on full non-linear atomic energy (True)
@@ -142,9 +145,13 @@ def compute_B_projections(bconf: Union[BBasisConfiguration, ACEBBasisSet, PyACEC
     # count total number of atoms of each species type in whole dataset atomiv_env_list
     n_total_atoms_per_species_type = count_number_total_atoms_per_species_type(atomic_env_list)
 
-    beval = ACEBEvaluator(bbasis)
-
-    calc = ACECalculator(beval)
+    if isinstance(bbasis, ACEBBasisSet):
+        beval = ACEBEvaluator(bbasis)
+        calc = ACECalculator(beval)
+    elif isinstance(bbasis, GRACEFSBasisSet):
+        beval = GRACEFSBEvaluator()
+        beval.set_basis(bbasis)
+        calc = GRACEFSCalculator(beval)
 
     # prepare numpy arrays for A0_projections and  structure_ind_dict
     A0_projections_dict = {st: np.zeros((n_total_atoms_per_species_type[st],
@@ -191,9 +198,9 @@ def compute_B_projections(bconf: Union[BBasisConfiguration, ACEBBasisSet, PyACEC
 def convert_to_bbasis(bconf):
     if isinstance(bconf, BBasisConfiguration):
         bbasis = ACEBBasisSet(bconf)
-    elif isinstance(bconf, ACEBBasisSet):
+    elif isinstance(bconf, (ACEBBasisSet, GRACEFSBasisSet)):
         bbasis = bconf
-    elif isinstance(bconf, PyACECalculator):
+    elif isinstance(bconf, (PyACECalculator, PyGRACEFSCalculator)):
         bbasis = bconf.basis
     else:
         raise ValueError("Unsupported type of `bconf`: {}".format(type(bconf)))
@@ -233,7 +240,10 @@ def extract_reference_forces_dict(ase_atoms_list: List[Atoms],
 
 
 def compute_number_of_functions(pot):
-    return [len(b1) + len(b) for b1, b in zip(pot.basis_rank1, pot.basis)]
+    if isinstance(pot, ACEBBasisSet):
+        return [len(b1) + len(b) for b1, b in zip(pot.basis_rank1, pot.basis)]
+    elif isinstance(pot, GRACEFSBasisSet):
+        return pot.nfuncs
 
 
 def compute_extrapolation_grade(A0_projections_dict: Dict[int, np.array], A_active_set_inv_dict: Dict[int, np.array]) -> \
@@ -476,7 +486,7 @@ def compute_active_set_by_batches(bbasis: Union[BBasisConfiguration, ACEBBasisSe
     if structure_ind_list is None:
         structure_ind_list = np.arange(len(atomic_env_list), dtype=int)
 
-    bbasis = convert_to_bbasis(bbasis)
+    bbasis = convert_to_bbasis(bbasis) # ACEBBasisSet, GRACEFSBasisSet
     atomic_env_list = convert_to_atomic_env_list(atomic_env_list, bbasis)
     batch_splits_indices = np.array_split(np.arange(len(atomic_env_list)), n_batches)
     atomic_env_batches = [atomic_env_list[bsi] for bsi in batch_splits_indices]

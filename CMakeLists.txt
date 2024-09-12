@@ -23,6 +23,7 @@ endif()
 set(SOURCE_DIR "src/pyace")
 set(ACE_ROOT "lib/ace")
 set(ACE_SRC ${ACE_ROOT}/src/ace)
+set(ACE_EXTRA_SRC ${ACE_ROOT}/src/extra)
 set(ACE_INCLUDE ${ACE_ROOT}/src)
 
 set(ACE_EVALUATOR_ROOT ${ACE_ROOT}/ace-evaluator)
@@ -125,13 +126,22 @@ set(SOURCES_CALCULATOR
         "${ACE_EVALUATOR_SRC}/ace_evaluator.cpp"
         "${SOURCE_DIR}/utils/ace_calculator_binding.cpp")
 
+set(GRACE_FS_SOURCES
+        "${ACE_EVALUATOR_SRC}/ace_abstract_basis.cpp"
+        "${ACE_EVALUATOR_SRC}/ace_radial.cpp"
+        "${ACE_EVALUATOR_SRC}/ace_spherical_cart.cpp"
+        "${SOURCE_DIR}/ace/grace_fs_binding.cpp"
+        "${ACE_SRC}/grace_fs_evaluator.cpp"
+        "${ACE_EXTRA_SRC}/grace_fs_calculator.cpp"
+)
+
 
 # C++ FLAGS
 #---------------------------------------------------------
 #set(CMAKE_CXX_FLAGS "-Wall -Wextra")
 #set(CMAKE_CXX_FLAGS_DEBUG "-g")
-set(CMAKE_CXX_FLAGS_RELEASE "-Ofast") #  -DNDEBUG
-#set(CMAKE_CXX_FLAGS_DEBUG "-Ofast -DNDEBUG")
+set(CMAKE_CXX_FLAGS_RELEASE "-Ofast -DNDEBUG")
+set(CMAKE_CXX_FLAGS_DEBUG "-Ofast -DNDEBUG")
 
 #Finally create the package
 #--------------------------------------------------------
@@ -163,6 +173,15 @@ target_link_libraries(evaluator PRIVATE yaml-cpp-pace)
 target_link_libraries(evaluator PRIVATE cnpy)
 if (CMAKE_COMPILER_IS_GNUCC)
   target_compile_options(evaluator PRIVATE -Wunused-variable -Wvla -Wno-effc++ -Werror=vla)
+endif ()
+
+
+
+pybind11_add_module(grace_fs  ${GRACE_FS_SOURCES})
+target_link_libraries(grace_fs PRIVATE yaml-cpp-pace)
+target_link_libraries(grace_fs PRIVATE cnpy)
+if (CMAKE_COMPILER_IS_GNUCC)
+    target_compile_options(grace_fs PRIVATE -Wunused-variable -Wvla -Wno-effc++ -Werror=vla)
 endif ()
 
 pybind11_add_module(calculator ${SOURCES_CALCULATOR} )

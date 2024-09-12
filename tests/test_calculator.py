@@ -3,7 +3,7 @@ import os
 import pytest
 from ase.atoms import Atoms
 from ase.build import bulk
-from pyace.asecalc import PyACECalculator, PyACEEnsembleCalculator
+from pyace.asecalc import PyACECalculator, PyACEEnsembleCalculator, PyGRACEFSCalculator
 from pyace.atomicenvironment import aseatoms_to_atomicenvironment, create_cube, create_linear_chain
 from pyace.basis import ACECTildeBasisSet, ACEBBasisSet, FexpShiftedScaled
 from pyace.calculator import ACECalculator
@@ -148,8 +148,6 @@ def test_calculator_bbasis_projections():
     print("z: z_projs=", z_projs)
 
     print("x: x_projs=", x_projs)
-
-
 
     print("x: x_projs=", x_projs)
 
@@ -448,3 +446,73 @@ def test_PyACECalculator_active_set_dump_extrapolation():
 
     assert len(asecalc.extrapolative_structures_gamma) == 2
     assert len(asecalc.extrapolative_structures_list) == 2
+
+
+def test_GRACEFSCalculator():
+    calc = PyGRACEFSCalculator("lib/ace/test/fitting/potentials/FS_model_shift_scale.yaml")
+
+    at = Atoms("Mo3", positions=[[0.0, 0.0, 0.0], [0.0, 0.0, 1.0], [0.0, 0.0, 2.0]], pbc=False)
+    at.calc = calc
+
+    e = at.get_potential_energy()
+    f = at.get_forces()
+    print("calc.results=", calc.results)
+    print("E=", e, "f=", f[0, 2])
+
+    eref = -32.70577226767949
+    fref = 0.030252962190919178
+    energies_ref = np.array([-10.89918829, -10.90739569, -10.89918829])
+
+    assert np.abs(e - eref) < 1e-15
+    assert np.abs(f[0, 2] - fref) < 1e-14
+    assert np.allclose(calc.results["energies"], energies_ref, atol=1e-6)
+
+
+def test_GRACEFScalculator_projections():
+    calc = PyGRACEFSCalculator("lib/ace/test/fitting/potentials/FS_model_shift_scale.yaml")
+    calc.compute_projections = True
+
+    at = Atoms("Mo3", positions=[[0.0, 0.0, 0.0], [0.0, 0.0, 1.0], [0.0, 0.0, 2.0]], pbc=False)
+    at.calc = calc
+
+    e = at.get_potential_energy()
+    f = at.get_forces()
+    print("calc.results=", calc.results)
+    print("E=", e, "f=", f[0, 2])
+
+    eref = -32.70577226767949
+    fref = 0.030252962190919178
+    energies_ref = np.array([-10.89918829, -10.90739569, -10.89918829])
+
+    assert np.abs(e - eref) < 1e-15
+    assert np.abs(f[0, 2] - fref) < 1e-14
+    assert np.allclose(calc.results["energies"], energies_ref, atol=1e-6)
+
+    print("Projections=", calc.projections)
+    proj_ref=[-0.007184322195427408,
+              -0.023008841969645075,
+              5.161448540771089e-05,
+              0.0005294068087841006,
+              -3.708150931201814e-07,
+              -1.218103760096748e-05]
+    assert np.allclose(calc.projections[0], proj_ref)
+
+def test_GRACEFScalculator_ASI():
+    calc = PyGRACEFSCalculator("lib/ace/test/fitting/potentials/FS_model_shift_scale.yaml")
+    calc.set_active_set("lib/ace/test/fitting/potentials/FS_model_shift_scale.asi")
+
+    at = Atoms("Mo3", positions=[[0.0, 0.0, 0.0], [0.0, 0.0, 1.0], [0.0, 0.0, 2.0]], pbc=False)
+    at.calc = calc
+
+    e = at.get_potential_energy()
+    f = at.get_forces()
+    print("calc.results=", calc.results)
+    print("E=", e, "f=", f[0, 2])
+    print(calc.results['gamma'])
+
+
+    gamma_ref = np.array([1.00645231, 1.73907975, 1.00645231])
+
+
+    assert np.allclose(calc.results["gamma"], gamma_ref, atol=1e-6)
+

@@ -400,7 +400,7 @@ DOUBLE_TYPE dsinc(DOUBLE_TYPE x) {
  * @param n degree
  * @return
  */
-DOUBLE_TYPE fn(DOUBLE_TYPE x, DOUBLE_TYPE rc, int n) {
+DOUBLE_TYPE simplified_bessel_aux(DOUBLE_TYPE x, DOUBLE_TYPE rc, int n) {
     return pow(-1, n) * sqrt(2) * pi / pow(rc, 1.5) * (n + 1) * (n + 2) / sqrt(sqr(n + 1) + sqr(n + 2)) *
            (sinc(x * (n + 1) * pi / rc) + sinc(x * (n + 2) * pi / rc));
 }
@@ -412,7 +412,7 @@ DOUBLE_TYPE fn(DOUBLE_TYPE x, DOUBLE_TYPE rc, int n) {
  * @param n degree
  * @return
  */
-DOUBLE_TYPE dfn(DOUBLE_TYPE x, DOUBLE_TYPE rc, int n) {
+DOUBLE_TYPE dsimplified_bessel_aux(DOUBLE_TYPE x, DOUBLE_TYPE rc, int n) {
     return pow(-1, n) * sqrt(2) * pi / pow(rc, 1.5) * (n + 1) * (n + 2) / sqrt(sqr(n + 1) + sqr(n + 2)) *
            (dsinc(x * (n + 1) * pi / rc) * (n + 1) * pi / rc +
             dsinc(x * (n + 2) * pi / rc) * (n + 2) * pi / rc);
@@ -425,15 +425,15 @@ DOUBLE_TYPE dfn(DOUBLE_TYPE x, DOUBLE_TYPE rc, int n) {
  */
 void ACERadialFunctions::simplified_bessel(DOUBLE_TYPE rc, DOUBLE_TYPE x) {
     if (x < rc) {
-        gr(0) = fn(x, rc, 0);
-        dgr(0) = dfn(x, rc, 0);
+        gr(0) = simplified_bessel_aux(x, rc, 0);
+        dgr(0) = dsimplified_bessel_aux(x, rc, 0);
 
         DOUBLE_TYPE d_prev = 1.0, en, dn;
         for (NS_TYPE n = 1; n < nradbase; n++) {
             en = sqr(n) * sqr(n + 2) / (4 * pow(n + 1, 4) + 1);
             dn = 1 - en / d_prev;
-            gr(n) = 1 / sqrt(dn) * (fn(x, rc, n) + sqrt(en / d_prev) * gr(n - 1));
-            dgr(n) = 1 / sqrt(dn) * (dfn(x, rc, n) + sqrt(en / d_prev) * dgr(n - 1));
+            gr(n) = 1 / sqrt(dn) * (simplified_bessel_aux(x, rc, n) + sqrt(en / d_prev) * gr(n - 1));
+            dgr(n) = 1 / sqrt(dn) * (dsimplified_bessel_aux(x, rc, n) + sqrt(en / d_prev) * dgr(n - 1));
             d_prev = dn;
         }
     } else {

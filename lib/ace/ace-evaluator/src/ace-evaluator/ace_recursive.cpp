@@ -854,7 +854,7 @@ ACERecursiveEvaluator::compute_atom(int i, DOUBLE_TYPE **x, const SPECIES_TYPE *
     const Array1D<DOUBLE_TYPE> &gr = basis_set->radial_functions->gr;
     const Array1D<DOUBLE_TYPE> &dgr = basis_set->radial_functions->dgr;
 
-    loop_over_neighbour_timer.start();
+    A_construction_timer.start();
 
     int jj_actual = 0;
     SPECIES_TYPE type_j = 0;
@@ -973,7 +973,7 @@ ACERecursiveEvaluator::compute_atom(int i, DOUBLE_TYPE **x, const SPECIES_TYPE *
             }
         }
     }    //now A's are constructed
-    loop_over_neighbour_timer.stop();
+    A_construction_timer.stop();
 
     // ==================== ENERGY ====================
 
@@ -1073,7 +1073,7 @@ ACERecursiveEvaluator::compute_atom(int i, DOUBLE_TYPE **x, const SPECIES_TYPE *
                 rhos(p) += AAcur_re * dag_coefs[idx_coefs];
         }
 
-    } else {
+    } else { // not recursive
 #ifdef DEBUG_ENERGY_CALCULATIONS
         printf("non-recursive Julia-style evaluator\n");
 #endif

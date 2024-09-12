@@ -1,4 +1,5 @@
 import numpy as np
+import time
 
 from ase.calculators.calculator import Calculator, all_changes
 from ase.io import write
@@ -8,6 +9,8 @@ from pyace.basis import ACEBBasisSet, ACECTildeBasisSet, BBasisConfiguration
 from pyace.calculator import ACECalculator
 from pyace.catomicenvironment import ACEAtomicEnvironment
 from pyace.evaluator import ACEBEvaluator, ACECTildeEvaluator, ACERecursiveEvaluator
+
+from pyace.grace_fs import GRACEFSBasisSet, GRACEFSBEvaluator, GRACEFSCalculator
 
 
 class PyACECalculator(Calculator):
@@ -329,3 +332,126 @@ PyACE ASE ensemble calculator
             self.results["stress"] = self.stress
             self.results["stress_std"] = self.stress_std
             self.results["stress_dev"] = self.stress_dev
+
+
+# TODO: made this calculator part of PyACECalculator
+class PyGRACEFSCalculator(Calculator):
+    """
+    Python ASE calculator wrapper for GRACE/FS C++ native implementation
+    :param basis_set - ".yaml" potential filename
+
+    """
+    implemented_properties = ['energy', 'forces', 'stress', 'energies', 'free_energy']
+
+    def __init__(self, basis_set, **kwargs):
+        """
+PyGRACEFSCalculator calculator
+:param basis_set - specification of GRACE/FS potential, could be in following forms:
+                  ".yaml" potential filename
+"""
+        if "fast_nl" not in kwargs:
+            kwargs["fast_nl"] = True
+
+        Calculator.__init__(self, basis_set=basis_set, **kwargs)
+        self.nl = None
+        self.skin = 0.
+        # self.reset_nl = True  # Set to False for MD simulations
+        self.ae = ACEAtomicEnvironment()
+
+        self._create_evaluator()
+
+        self.cutoff = self.basis.cutoffmax  # self.parameters.basis_config.funcspecs_blocks[0].rcutij
+
+        self.energy = None
+        self.energies = None
+        self.forces = None
+        self.virial = None
+        self.stress = None
+        self.projections = None
+        self.current_extrapolation_structure_index = 0
+        self.is_active_set_configured = False
+        self.extrapolative_structures_list = []
+        self.extrapolative_structures_gamma = []
+        self.ace = GRACEFSCalculator(self.evaluator)
+        # self.ace.set_evaluator()
+        self.compute_projections = False
+
+    def _create_evaluator(self):
+
+        basis_set = self.parameters.basis_set
+        if isinstance(basis_set, GRACEFSBasisSet):
+            self.basis = basis_set
+        elif isinstance(basis_set, str):
+            if basis_set.endswith(".yaml"):
+                self.basis = GRACEFSBasisSet(basis_set)
+            else:
+                raise ValueError("Unrecognized file format: " + basis_set)
+        else:
+            raise ValueError("Unrecognized basis set specification")
+
+        self.elements_name = np.array(self.basis.elements_name).astype(dtype="S2")
+        self.elements_mapper_dict = {el: i for i, el in enumerate(self.elements_name)}
+
+        if isinstance(self.basis, GRACEFSBasisSet):
+            self.evaluator = GRACEFSBEvaluator()
+            self.evaluator.set_basis(self.basis)
+
+    def get_atomic_env(self, atoms):
+        try:
+            if self.parameters.fast_nl:
+                self.ae = aseatoms_to_atomicenvironment(atoms, cutoff=self.cutoff,
+                                                        elements_mapper_dict=self.elements_mapper_dict)
+            else:
+                self.ae = aseatoms_to_atomicenvironment_old(atoms, cutoff=self.cutoff,
+                                                            skin=self.skin,
+                                                            elements_mapper_dict=self.elements_mapper_dict)
+        except KeyError as e:
+            raise ValueError("Unsupported species type: " + str(e) + ". Supported elements: " + str(self.elements_name))
+        return self.ae
+
+    def calculate(self, atoms=None, properties=('energy', 'forces', 'stress', 'energies'),
+                  system_changes=all_changes):
+        Calculator.calculate(self, atoms, properties, system_changes)
+
+        self.energy = 0.0
+        self.energies = np.zeros(len(atoms))
+        self.forces = np.empty((len(atoms), 3))
+
+        self.get_atomic_env(atoms)
+        t0 = time.perf_counter()
+        self.ace.compute(self.ae, compute_projections=self.compute_projections)
+        self.perf = (time.perf_counter() - t0)
+
+        nat = len(atoms)
+        try:
+            self.projections = np.reshape(self.ace.projections, (nat, -1))
+        except ValueError:
+            # if projections has different shapes
+            self.projections = self.ace.projections
+
+        self.energy, self.forces = np.array(self.ace.energy), np.array(self.ace.forces)
+
+        self.energies = np.array(self.ace.energies)
+
+        self.results = {
+            'energy': np.float64(self.energy.reshape(-1, )),
+            'free_energy': np.float64(self.energy.reshape(-1, )),
+            'forces': self.forces.astype(np.float64),
+            'energies': self.energies.astype(np.float64),
+            'gamma': np.array(self.ace.gamma_grade, dtype=np.float64)
+        }
+        if self.atoms.cell.rank == 3:
+            self.volume = atoms.get_volume()
+            self.virial = np.array(self.ace.virial)  # order is: xx, yy, zz, xy, xz, yz
+            # swap order of the virials to fullfill ASE Voigt stresses order:  (xx, yy, zz, yz, xz, xy)
+            self.stress = self.virial[[0, 1, 2, 5, 4, 3]] / self.volume
+            self.results["stress"] = self.stress
+
+    def set_active_set(self, filename_or_list_of_active_set_inv):
+        if isinstance(filename_or_list_of_active_set_inv, str):
+            self.evaluator.load_active_set(filename_or_list_of_active_set_inv)
+            self.is_active_set_configured = True
+            self.compute_projections = True
+        else:
+            raise ValueError("Unsupported type for `filename_or_list_of_active_set_inv`: {}".format(
+                type(filename_or_list_of_active_set_inv)))

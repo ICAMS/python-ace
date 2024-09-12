@@ -197,6 +197,21 @@ inline ACEComplex operator+(const DOUBLE_TYPE &real, const ACEComplex &cm) {
     return cm + real;
 }
 
+struct ACEDRealYcomponent {
+public:
+    DOUBLE_TYPE a[3];
+
+
+    ACEDRealYcomponent operator*(const DOUBLE_TYPE &rhs) const {
+        ACEDRealYcomponent res{0};
+        res.a[0] = this->a[0] * rhs;
+        res.a[1] = this->a[1] * rhs;
+        res.a[2] = this->a[2] * rhs;
+        return res;
+    }
+
+};
+
 /**
 A structure to store the derivative of \f$ Y_{lm} \f$
 */
@@ -259,6 +274,25 @@ public:
         this->a[1].conjugate();
         this->a[2].conjugate();
     }
+
+    ACEDRealYcomponent real() const {
+        ACEDRealYcomponent res;
+        res.a[0] = this->a[0].real;
+        res.a[1] = this->a[1].real;
+        res.a[2] = this->a[2].real;
+
+        return res;
+    }
+
+    ACEDRealYcomponent img() const {
+        ACEDRealYcomponent res;
+        res.a[0] = this->a[0].img;
+        res.a[1] = this->a[1].img;
+        res.a[2] = this->a[2].img;
+
+        return res;
+    }
+
 
 };
 

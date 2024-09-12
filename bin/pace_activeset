@@ -20,7 +20,7 @@ from pyace.activelearning import compute_B_projections, compute_active_set, comp
 from pyace.preparedata import sizeof_fmt
 
 from pyace.aceselect import compute_mem_limit, compute_batch_size, compute_required_memory, load_datasets
-
+from pyace.grace_fs import GRACEFSBasisSet
 
 def build_parser():
     parser = argparse.ArgumentParser(prog="pace_activeset",
@@ -101,9 +101,14 @@ def main():
     if verbose:
         log.info("Potential file: {}".format(potential_file))
 
-    bconf = BBasisConfiguration(potential_file)
+    try:
+        bconf = BBasisConfiguration(potential_file)
+        bbasis = ACEBBasisSet(bconf)
+        log.info("ACEBBasisSet loaded")
+    except RuntimeError:
+        bbasis = GRACEFSBasisSet(potential_file)
+        log.info("GRACEFSBasisSet loaded")
 
-    bbasis = ACEBBasisSet(bconf)
     nfuncs = compute_number_of_functions(bbasis)
     if is_full:
         n_projections = [p * bbasis.map_embedding_specifications[st].ndensity for st, p in enumerate(nfuncs)]
@@ -207,21 +212,21 @@ def main():
             sel_mask_dict = {}
             for symb, st in elements_to_index_map.items():
                 dforces = ref_forces_dict[st] - forces_dict[st]
-                dforces_norm = np.linalg.norm(dforces, axis=1)
+                dforces_comp = np.linalg.norm(dforces, axis=1)/np.sqrt(3)
 
                 if error_based_threshold <= 0:
-                    q1, q2, q3 = np.quantile(dforces_norm, q=[0.25, 0.5, 0.75], )
+                    q1, q2, q3 = np.quantile(dforces_comp, q=[0.25, 0.5, 0.75], )
                     iqr = q3 - q1
                     upper_bound = q3 + 1.5 * iqr
                 else:
                     upper_bound = error_based_threshold
 
-                sel_mask = dforces_norm <= upper_bound
+                sel_mask = dforces_comp <= upper_bound
                 sel_mask_dict[st] = sel_mask
 
-                f_rmse_before = np.sqrt(np.mean(dforces_norm ** 2))
+                f_rmse_before = np.sqrt(np.mean(dforces_comp ** 2))
 
-                f_rmse_after = np.sqrt(np.mean(dforces_norm[sel_mask] ** 2))
+                f_rmse_after = np.sqrt(np.mean(dforces_comp[sel_mask] ** 2))
 
                 if verbose:
                     log.info("\tElement: {}, specie type: {}".format(symb, st))
