@@ -1,14 +1,46 @@
 # Installation
 
-## (optional) Creating a conda environment
-It is common practice creating a separate `conda environment` to avoid dependencies mixing.
-You can create the new environment named `ace` with minimal amount of required packages with the following command: 
+## (Optional) Creating a Separate Environment
 
+It is a common practice to create a separate Python environment to avoid dependency conflicts. You can create a new environment named `ace` with the minimal required packages using the following command:
+
+
+### Using `mamba` (Recommended)
+
+[Mamba](https://mamba.readthedocs.io/en/latest/index.html) is a fast, robust, and cross-platform package manager. Check the [Mamba installation guide](https://mamba.readthedocs.io/en/latest/installation/mamba-installation.html) for details.
+
+Installation steps:
+1. Download the Miniforge3 distribution from [here](https://github.com/conda-forge/miniforge?tab=readme-ov-file#miniforge3).
+2. Run the downloaded file:
+   ```bash
+   sh Miniforge3-Linux-x86_64.sh
+   ```
+   and follow the installation instructions.
+3. Create the `mamba` environment:
+   ```bash
+   mamba create -n ace python=3.9
+   ```
+
+Then, activate the environment with either:
+```bash
+source activate ace
 ```
+or
+```bash
+mamba activate ace
+```
+To deactivate the environment, use the command:
+```bash
+mamba deactivate
+```
+
+### Using `conda`
+> **Note:** Due to recent changes in Anaconda's licensing, please ensure you are permitted to use it. The `mamba` package manager might be a preferable alternative.
+
+To create the environment with `conda`:
+```bash
 conda create -n ace python=3.9
 ```
-Then, activate the environment with 
-`source activate ace` or `conda activate ace`. To deactivate the environment, use `deactivate` command 
 
 ## Installation of `tensorpotential`
 
