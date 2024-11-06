@@ -16,7 +16,7 @@ Thank you for contributing to our project! Please review the checklist and fill 
 
 By submitting this pull request, I agree that:
 - The code submitted in this pull request will be distributed under the Academic Software License.
-- All copyrights for the submitted code belong to Ruhr University Bochum.
+- The copyright for the code, including the submitted code, remains with Ruhr University Bochum.  Ruhr University Bochum retains the right to transfer or modify the copyright.
 
 ---
 
