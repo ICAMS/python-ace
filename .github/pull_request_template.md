@@ -15,7 +15,7 @@ Thank you for contributing to our project! Please review the checklist and fill 
 ## License Agreement
 
 By submitting this pull request, I agree that:
-- The code submitted in this pull request will be distributed under the Academic Software License.
+- The code submitted in this pull request will be distributed under the Academic Software License (free for academic non-commercial use, not free for commercial use), see [LICENSE.md](https://github.com/ICAMS/python-ace/blob/master/LICENSE.md) for more details.
 - The copyright for the code, including the submitted code, remains with Ruhr University Bochum.  Ruhr University Bochum retains the right to transfer or modify the copyright.
 
 ---
