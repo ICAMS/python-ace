@@ -100,7 +100,7 @@ def main(args):
     parser.add_argument("--no-predict", help="Do not compute and save the predictions", dest="no_predict",
                         action="store_true", default=False)
 
-    parser.add_argument("--verbose-tf", help="Make tensorflow more verbose (off by defeault)",
+    parser.add_argument("--verbose-tf", help="Make tensorflow more verbose (off by default)",
                         dest="verbose_tf", action="store_true", default=False
                         )
     args_parse = parser.parse_args(args)

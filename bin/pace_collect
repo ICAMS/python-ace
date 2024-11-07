@@ -34,7 +34,7 @@ def walk_file_or_dir(root_directory):
             yield path, dirnames, filenames
 
 
-def get_ase_atoms_energy_forces(configuration):
+def get_ase_atoms_properties(configuration):
     cell = configuration.get_cell()
     positions = configuration.get_positions()
     symbols = configuration.get_chemical_symbols()
@@ -44,8 +44,10 @@ def get_ase_atoms_energy_forces(configuration):
 
     free_energy = configuration.get_potential_energy(force_consistent=True)
     forces = configuration.get_forces()
+    stress = configuration.get_stress()
+    results = configuration.calc.results
 
-    return ase_atoms, free_energy, forces
+    return ase_atoms, free_energy, forces, stress, results
 
 
 def generate_selected_indices(selection, number_of_structures):
@@ -108,7 +110,7 @@ def read_vasp_output(root_directory, vasp_output_file_name, format, selection="l
     number_of_structures = len(vasp_output)
     selected_index = generate_selected_indices(selection, number_of_structures)
 
-    vasp_output_dict = {"name": [], "energy": [], "forces": [], "ase_atoms": []}
+    vasp_output_dict = defaultdict(list)  # {"name": [], "energy": [], "forces": [], "stress":[], "ase_atoms": []}
     for index, configuration in enumerate(vasp_output):
         if index not in selected_index:
             continue
@@ -116,10 +118,12 @@ def read_vasp_output(root_directory, vasp_output_file_name, format, selection="l
         vasp_output_dict["name"].append(
             '{}/{}##{}'.format(root_directory, os.path.basename(vasp_output_file_name), index))
 
-        ase_atoms, free_energy, forces = get_ase_atoms_energy_forces(configuration)
+        ase_atoms, free_energy, forces, stress, results = get_ase_atoms_properties(configuration)
         vasp_output_dict["ase_atoms"].append(ase_atoms)
         vasp_output_dict["energy"].append(free_energy)
         vasp_output_dict["forces"].append(forces)
+        vasp_output_dict["stress"].append(stress)
+        vasp_output_dict["results"].append(results)
 
     return vasp_output_dict
 
@@ -198,15 +202,15 @@ def main(args):
     logger.info('Selection from multiple configurations of single calculation: {}'.format(selection))
     vasprun_file = 'vasprun.xml'
     outcar_file = 'OUTCAR'
-    data = {"name": [], "energy": [], "forces": [], "ase_atoms": []}
+    data = defaultdict(list)  # {"name": [], "energy": [], "forces": [], "ase_atoms": []}
 
     def collect_and_update(root, fname, format):
         vasp_output_dict = read_vasp_output(root, fname, format, selection)
         for key, value in vasp_output_dict.items():
             data[key] += value
         logger.info('Data collected successfully from {} with entries {}'.format(
-                os.path.join(root, fname),
-                len(vasp_output_dict["name"])))
+            os.path.join(root, fname),
+            len(vasp_output_dict["name"])))
 
     for root, _, filenames in walk_file_or_dir(working_dir):
         try:
@@ -217,14 +221,14 @@ def main(args):
                 elif vasprun_file in filenames:
                     # 2. check if vasprun.xml is presented
                     collect_and_update(root, vasprun_file, "vasp-xml")
-                # 3. scan for modifications of OUTCAR or vasprun.xml
+                # 3. scan for modifications of OUTCAR or vasprun.xml, i.e. OUTCAR_000, etc.
                 else:
                     for fname in filenames:
                         if outcar_file in fname:
                             collect_and_update(root, fname, "vasp-out")
                         elif vasprun_file in fname:
                             collect_and_update(root, fname, "vasp-xml")
-                    
+
         except InvalidArgumentError as e:
             logger.error('Invalid argument: {}'.format(str(e)))
             raise e
