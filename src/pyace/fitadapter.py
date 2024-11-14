@@ -174,14 +174,14 @@ class FitBackendAdapter:
             from tensorpotential.compat.pace.fit import FitTensorPotential
             from tensorpotential.compat.pace.utils.utilities import batching_data, init_gpu_config
             from tensorpotential.compat.pace.constants import (LOSS_TYPE, LOSS_FORCE_FACTOR, LOSS_ENERGY_FACTOR, L1_REG,
-                                                               L2_REG, AUX_LOSS_FACTOR)
+                                                   L2_REG, AUX_LOSS_FACTOR)
         except ImportError:
             from tensorpotential.potentials.ace import ACE
             from tensorpotential.tensorpot import TensorPotential
             from tensorpotential.fit import FitTensorPotential
             from tensorpotential.utils.utilities import batching_data, init_gpu_config
             from tensorpotential.constants import (LOSS_TYPE, LOSS_FORCE_FACTOR, LOSS_ENERGY_FACTOR, L1_REG,
-                                                   L2_REG, AUX_LOSS_FACTOR)
+                                                               L2_REG, AUX_LOSS_FACTOR)
 
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore", category=UserWarning)

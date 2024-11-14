@@ -10,8 +10,9 @@ import pandas as pd
 from ase.io import write
 
 from pyace import ACEBBasisSet
-from pyace.activelearning import compute_B_projections, compute_active_set_by_batches, read_extrapolation_data, \
-    compute_number_of_functions, count_number_total_atoms_per_species_type_aseatom, compute_active_set
+from pyace.activelearning import (compute_B_projections, compute_active_set_by_batches, read_extrapolation_data,
+    compute_number_of_functions, count_number_total_atoms_per_species_type_aseatom, compute_active_set,
+    convert_to_bbasis)
 from pyace.preparedata import sizeof_fmt
 
 LOG_FMT = '%(asctime)s %(levelname).1s - %(message)s'
@@ -38,7 +39,9 @@ def select_structures_maxvol(df, bconf, extra_A0_projections_dict=None, batch_si
 
     :return: df_selected  - subset of input "df"
     """
-    bbasis = ACEBBasisSet(bconf)
+    # create BBasis configuration
+    bbasis = convert_to_bbasis(bconf)
+
     nfuncs = compute_number_of_functions(bbasis)
     elements_to_index_map = bbasis.elements_to_index_map
     elements_name = bbasis.elements_name

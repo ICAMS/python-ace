@@ -8,6 +8,7 @@ import sys
 from pyace import BBasisConfiguration
 from pyace.activelearning import compute_A_active_inverse, load_active_inverse_set
 from pyace.aceselect import load_multiple_datasets, select_structures_maxvol, save_selected_structures
+from pyace.grace_fs import GRACEFSBasisSet
 
 LOG_FMT = '%(asctime)s %(levelname).1s - %(message)s'
 logging.basicConfig(level=logging.INFO, format=LOG_FMT, datefmt="%Y/%m/%d %H:%M:%S")
@@ -48,7 +49,13 @@ def main():
     if verbose:
         log.info(f"{len(df['ase_atoms'])} structures in candidate list")
         log.info(f"Loading B-basis configuration from {potential_file}")
-    bconf = BBasisConfiguration(potential_file)
+    try:
+        bconf = BBasisConfiguration(potential_file)
+        log.info("ACEBBasisSet loaded")
+    except RuntimeError:
+        bconf = GRACEFSBasisSet(potential_file)
+        log.info("GRACEFSBasisSet loaded")
+
 
     if active_set_inv_fname:
         if verbose:
