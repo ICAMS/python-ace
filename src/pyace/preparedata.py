@@ -669,9 +669,18 @@ class ACEDataset:
             self.fitting_data, self.test_data = train_test_split(self.fitting_data, test_size=test_size)
         self.test_data = self.process_dataset(self.test_data)
 
-        # apply weights (TODO: for joint train+test?)
-        self.fitting_data = apply_weights(self.fitting_data, self.weighting_policy_spec, self.ignore_weights)
-        self.test_data = apply_weights(self.test_data, self.weighting_policy_spec, self.ignore_weights)
+        # apply weights
+        if self.test_data is not None:
+            # for joint train+test
+            self.fitting_data["train"] = True
+            self.test_data["train"] = False
+            joint_df = pd.concat([self.fitting_data, self.test_data], axis=0)
+            joint_df = apply_weights(joint_df, self.weighting_policy_spec, self.ignore_weights)
+            self.fitting_data = joint_df.query("train").reset_index(drop=True)
+            self.test_data = joint_df.query("~train").reset_index(drop=True)
+            # self.test_data = apply_weights(self.test_data, self.weighting_policy_spec, self.ignore_weights)
+        else:
+            self.fitting_data = apply_weights(self.fitting_data, self.weighting_policy_spec, self.ignore_weights)
 
         # decrease augmented weights
         aug_factor = self.data_config.get("aug_factor", 1e-4)
@@ -803,12 +812,12 @@ class ACEDataset:
         if epa_min < -20 or epa_max > 250:
             # re-run with self.reference_energy='auto'
             if self.reference_energy is None:
-                big_warning(f"Some values of corrected energy {epa_min:.3g} eV/atom are too extreme,\n" +
+                big_warning(f"Some values of corrected energy (min={epa_min:.3g} eV/atom, max={epa_max:.3g} eV/atom) are too extreme,\n" +
                             "i.e. <-20 eV/atom or >250 eV/atom\n" +
                             "`reference_energy` will be computed automatically.")
                 self.reference_energy = 'auto'
                 return self.process_dataset(df)
-            big_warning(f"Some values of corrected energy {epa_min:.3g} eV/atom are too extreme,\n" +
+            big_warning(f"Some values of corrected energy (min={epa_min:.3g} eV/atom, max={epa_max:.3g} eV/atom) are too extreme,\n" +
                         "i.e. <-20 eV/atom or >250 eV/atom\n" +
                         "Correct your energy or use data::reference_energy: auto option !!!")
         # enforce attach single point calculator to avoid mistakes

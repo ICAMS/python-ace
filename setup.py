@@ -192,12 +192,12 @@ setup(
                                           build_ext=CMakeBuild)),
     zip_safe=False,
     url='https://github.com/ICAMS/python-ace',
-    install_requires=['numpy',
+    install_requires=['numpy<=1.26.4',
                       'ase',
-                      'pandas',
+                      'pandas<=2.0',
                       'ruamel.yaml',
                       'psutil',
-                      'scikit-learn'
+                      'scikit-learn<=1.4.2'
                       ],
     classifiers=[
         'Programming Language :: Python :: 3',

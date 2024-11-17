@@ -332,8 +332,12 @@ fit:
     ##                will not be added until the list of functions of the previous body-order is exhausted
     ## power_order -  the order of adding new basis functions is defined by the "power rank" p of a function.
     ##                p = len(ns) + sum(ns) + sum(ls). Functions with the smallest p are added first      
-  #ladder_type: body_order    
-
+  #ladder_type: body_order
+    
+  # early stoppping
+    ##  min_relative_train_loss_per_iter: 5e-5
+    ##  min_relative_test_loss_per_iter: 1e-5
+    ##  early_stopping_patience: 200
 
   ## callbacks during the fitting. Module quick_validation.py should be available for import
   ## see example/pacemaker_with_callback for more details and examples

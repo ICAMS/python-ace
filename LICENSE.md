@@ -10,7 +10,7 @@ ASL is a reciprocal licence very similar to GPL and the core terms are identical
 
 The non-commercial limitation makes ASL incompatible with the GPL and other open-source licences with copyleft provisions because these licences require that modified versions of the original program are made available free of charge for any type of use, including commercial, and this is prevented by ASL.  As the two sets of reciprocal terms are incompatible, any modified version of the original program combining ASL and copylefted open-source code can be used internally but cannot be licensed out.
 
-The non-commercial restriction is an integral part of the license and you may not remove it without the consent of the rights holder in the ASL licensed code. Please contact __ICAMS, Ruhr University Bochum__ for any questions and/or to enquire about commercial use rights. 
+The non-commercial restriction is an integral part of the license and you may not remove it without the consent of the rights holder in the ASL licensed code. Please contact __ACEworks GbmH__  (e-mail: contact@aceworks.works) for any questions and/or to enquire about commercial use rights. 
 
 *The changes to the GPLv2 are: removing the Preamble, replacing the reference to the “General Public License” in clause 0 with a reference to the “ASL”, removing clause 9 and adding clause 13 with the non-commercial restriction and limited patent grant
 
@@ -80,14 +80,14 @@ Use other than academic and non-commercial use as above is deemed to be commerci
 ## END OF TERMS AND CONDITIONS
 
 ## Appendix: Suggested code header and licensing information
-[Program name] is © 2021, [Name of copyright holder]
+__pacemaker__ is © 2022, __Ruhr University Bochum__
 
-[Program name] is published and distributed under the Academic Software License v1.0 (ASL). 
+__pacemaker__  is published and distributed under the Academic Software License v1.0 (ASL). 
 
-[Program name] is distributed in the hope that it will be useful for non-commercial academic research, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the ASL for more details. 
+__pacemaker__  is distributed in the hope that it will be useful for non-commercial academic research, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the ASL for more details. 
 
-You should have received a copy of the ASL along with this program; if not, write to [Contact details of copyright holder].  It is also published at [URL where licence terms are published].
+You should have received a copy of the ASL along with this program;  It is also published at https://github.com/ICAMS/python-ace/blob/master/LICENSE.md .
 
-You may contact the original licensor at [Contact details of original licensor].
+You may contact the licensor at __contact@aceworks.works__
 
 
