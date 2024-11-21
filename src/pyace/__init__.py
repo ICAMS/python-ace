@@ -4,7 +4,7 @@ logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
                     # datefmt='%Y-%m-%d %H:%M:%S.%f'
                     )
-logging.getLogger().setLevel(logging.INFO)
+logging.getLogger(__name__).setLevel(logging.INFO)
 
 from pyace.asecalc import PyACECalculator, PyACEEnsembleCalculator
 
