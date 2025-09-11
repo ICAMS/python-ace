@@ -105,7 +105,7 @@ public:
     void init(LS_TYPE lmax, string array_name = "Array2DLM") {
         if (is_proxy) {
             char s[1024];
-            sprintf(s, "Could not re-initialize proxy-array %s\n", this->array_name.c_str());
+            snprintf(s, sizeof(s), "Could not re-initialize proxy-array %s\n", this->array_name.c_str());
             throw logic_error(s);
         }
         this->lmax = lmax;

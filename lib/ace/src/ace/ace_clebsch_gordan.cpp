@@ -30,7 +30,7 @@ double anotherClebschGordan(LS_TYPE j1, MS_TYPE m1, LS_TYPE j2, MS_TYPE m2, LS_T
     if (abs(m1) > j1) {
         stringstream s;
         char buf[1024];
-        sprintf(buf, "C_L(%d|%d,%d)_M(%d|%d,%d): ", J, j1, j2, M, m1, m2);
+        snprintf(buf, sizeof(buf), "C_L(%d|%d,%d)_M(%d|%d,%d): ", J, j1, j2, M, m1, m2);
         s << buf;
         s << "Non-sense coefficient C_L: |m1|>l1";
         throw invalid_argument(s.str());
@@ -38,7 +38,7 @@ double anotherClebschGordan(LS_TYPE j1, MS_TYPE m1, LS_TYPE j2, MS_TYPE m2, LS_T
     if (abs(m2) > j2) {
         stringstream s;
         char buf[1024];
-        sprintf(buf, "C_L(%d|%d,%d)_M(%d|%d,%d): ", J, j1, j2, M, m1, m2);
+        snprintf(buf, sizeof(buf), "C_L(%d|%d,%d)_M(%d|%d,%d): ", J, j1, j2, M, m1, m2);
         s << buf;
         s << "Non-sense coefficient: |m2|>l2";
         throw invalid_argument(s.str());
@@ -46,7 +46,7 @@ double anotherClebschGordan(LS_TYPE j1, MS_TYPE m1, LS_TYPE j2, MS_TYPE m2, LS_T
     if (abs(M) > J) {
         stringstream s;
         char buf[1024];
-        sprintf(buf, "C_L(%d|%d,%d)_M(%d|%d,%d): ", J, j1, j2, M, m1, m2);
+        snprintf(buf, sizeof(buf), "C_L(%d|%d,%d)_M(%d|%d,%d): ", J, j1, j2, M, m1, m2);
         s << buf;
         s << "Non-sense coefficient: |M|>L";
         throw invalid_argument(s.str());

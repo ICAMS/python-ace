@@ -130,7 +130,7 @@ set(SOURCES_CALCULATOR
 #---------------------------------------------------------
 #set(CMAKE_CXX_FLAGS "-Wall -Wextra")
 #set(CMAKE_CXX_FLAGS_DEBUG "-g")
-set(CMAKE_CXX_FLAGS_RELEASE "-Ofast") #  -DNDEBUG
+set(CMAKE_CXX_FLAGS_RELEASE "-O3") #  -DNDEBUG
 #set(CMAKE_CXX_FLAGS_DEBUG "-Ofast -DNDEBUG")
 
 # Set output directory for libraries to match setuptools expectations

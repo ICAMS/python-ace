@@ -183,7 +183,7 @@ Function that computes Chebyshev polynomials of first and second kind
 void ACERadialFunctions::calcCheb(NS_TYPE n, DOUBLE_TYPE x) {
     if (n < 0) {
         char s[1024];
-        sprintf(s, "The order n of the polynomials should be positive %d\n", n);
+        snprintf(s, sizeof(s), "The order n of the polynomials should be positive %d\n", n);
         throw std::invalid_argument(s);
     }
     DOUBLE_TYPE twox = 2.0 * x;
