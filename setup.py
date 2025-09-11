@@ -4,35 +4,36 @@ import subprocess
 import sys
 from pathlib import Path
 import platform
-from distutils.version import LooseVersion
-from setuptools import Extension, setup, find_packages
+
+# Handle distutils removal in Python 3.12+
+try:
+    from distutils.version import LooseVersion
+except ImportError:
+    from packaging.version import Version as LooseVersion
+
+from setuptools import Extension, setup
 from setuptools.command.build_ext import build_ext
 from setuptools.command.install import install
 
-import versioneer
-
-with open('README.md') as readme_file:
-    readme = readme_file.read()
-
 
 class InstallMaxVolPyLocalPackage(install):
+    """Custom install command to handle maxvolpy dependency."""
+    
     def run(self):
         install.run(self)
         cmd = "cd lib/maxvolpy; python setup.py install; cd ../.."
         if platform.system() != "Windows":
             cmd = "pip install Cython; " + cmd
-        returncode = subprocess.call(
-            cmd, shell=True
-        )
+        returncode = subprocess.call(cmd, shell=True)
         if returncode != 0:
             print("=" * 40)
             print("=" * 16, "WARNING", "=" * 17)
             print("=" * 40)
-            print("Installation of `lib/maxvolpy` return {} code!".format(returncode))
+            print(f"Installation of `lib/maxvolpy` returned {returncode} code!")
             print("Active learning/selection of active set will not work!")
 
 
-# Convert distutils Windows platform specifiers to CMake -A arguments
+# Convert Windows platform specifiers to CMake -A arguments
 PLAT_TO_CMAKE = {
     "win32": "Win32",
     "win-amd64": "x64",
@@ -41,10 +42,9 @@ PLAT_TO_CMAKE = {
 }
 
 
-# A CMakeExtension needs a sourcedir instead of a file list.
-# The name must be the _single_ output extension from the CMake build.
-# If you need multiple extensions, see scikit-build.
 class CMakeExtension(Extension):
+    """A CMakeExtension needs a sourcedir instead of a file list."""
+    
     def __init__(self, name: str, target=None, sourcedir: str = "") -> None:
         super().__init__(name, sources=[])
         self.sourcedir = os.fspath(Path(sourcedir).resolve())
@@ -52,57 +52,49 @@ class CMakeExtension(Extension):
 
 
 class CMakeBuild(build_ext):
+    """Custom build extension for CMake-based builds."""
 
     def build_extension(self, ext: CMakeExtension) -> None:
+        # Check if CMake is available
         try:
-            out = subprocess.check_output(['cmake', '--version'])
+            subprocess.check_output(['cmake', '--version'])
         except OSError:
-            raise RuntimeError(
-                "CMake must be installed to build the extensions")
+            raise RuntimeError("CMake must be installed to build the extensions")
+        
+        # Set up parallel build
         self.parallel = os.cpu_count() - 1
         if self.parallel < 1:
             self.parallel = 1
-        # Must be in this form due to bug in .resolve() only fixed in Python 3.10+
+            
+        # Get extension paths
         ext_fullpath = Path.cwd() / self.get_ext_fullpath(ext.name)
         extdir = ext_fullpath.parent.resolve()
 
-        # Using this requires trailing slash for auto-detection & inclusion of
-        # auxiliary "native" libs
-
+        # Build configuration
         debug = int(os.environ.get("DEBUG", 0)) if self.debug is None else self.debug
         cfg = "Debug" if debug else "Release"
 
-        # CMake lets you override the generator - we need to check this.
-        # Can be set with Conda-Build, for example.
+        # CMake generator
         cmake_generator = os.environ.get("CMAKE_GENERATOR", "")
 
-        # Set Python_EXECUTABLE instead if you use PYBIND11_FINDPYTHON
-        # EXAMPLE_VERSION_INFO shows you how to pass a value into the C++ code
-        # from Python.
+        # Set up CMake arguments
         cmake_args = [
             f"-DCMAKE_LIBRARY_OUTPUT_DIRECTORY={extdir}{os.sep}",
             f"-DPYTHON_EXECUTABLE={sys.executable}",
-            f"-DCMAKE_BUILD_TYPE={cfg}",  # not used on MSVC, but no harm
+            f"-DCMAKE_BUILD_TYPE={cfg}",
         ]
         build_args = []
-        # Adding CMake arguments set as environment variable
-        # (needed e.g. to build for ARM OSx on conda-forge)
+        
+        # Add environment CMake arguments
         if "CMAKE_ARGS" in os.environ:
             cmake_args += [item for item in os.environ["CMAKE_ARGS"].split(" ") if item]
 
-        # In this example, we pass in the version to C++. You might not need to.
-        # cmake_args += [f"-DEXAMPLE_VERSION_INFO={self.distribution.get_version()}"]
-
+        # Handle different compilers and generators
         if self.compiler.compiler_type != "msvc":
-            # Using Ninja-build since it a) is available as a wheel and b)
-            # multithreads automatically. MSVC would require all variables be
-            # exported for Ninja to pick it up, which is a little tricky to do.
-            # Users can override the generator with CMAKE_GENERATOR in CMake
-            # 3.15+.
+            # Try to use Ninja if available
             if not cmake_generator or cmake_generator == "Ninja":
                 try:
                     import ninja
-
                     ninja_executable_path = Path(ninja.BIN_DIR) / "ninja"
                     cmake_args += [
                         "-GNinja",
@@ -110,106 +102,83 @@ class CMakeBuild(build_ext):
                     ]
                 except ImportError:
                     pass
-
         else:
-            # Single config generators are handled "normally"
+            # Windows MSVC handling
             single_config = any(x in cmake_generator for x in {"NMake", "Ninja"})
-
-            # CMake allows an arch-in-generator style for backward compatibility
             contains_arch = any(x in cmake_generator for x in {"ARM", "Win64"})
 
-            # Specify the arch if using MSVC generator, but only if it doesn't
-            # contain a backward-compatibility arch spec already in the
-            # generator name.
             if not single_config and not contains_arch:
                 cmake_args += ["-A", PLAT_TO_CMAKE[self.plat_name]]
 
-            # Multi-config generators have a different way to specify configs
             if not single_config:
                 cmake_args += [
                     f"-DCMAKE_LIBRARY_OUTPUT_DIRECTORY_{cfg.upper()}={extdir}"
                 ]
                 build_args += ["--config", cfg]
 
+        # Add target if specified
         if ext.target is not None:
             build_args += ["--target", ext.target]
 
+        # macOS cross-compilation support
         if sys.platform.startswith("darwin"):
-            # Cross-compile support for macOS - respect ARCHFLAGS if set
             archs = re.findall(r"-arch (\S+)", os.environ.get("ARCHFLAGS", ""))
             if archs:
-                cmake_args += ["-DCMAKE_OSX_ARCHITECTURES={}".format(";".join(archs))]
+                cmake_args += [f"-DCMAKE_OSX_ARCHITECTURES={';'.join(archs)}"]
 
-        # Set CMAKE_BUILD_PARALLEL_LEVEL to control the parallel build level
-        # across all generators.
+        # Set parallel build level
         if "CMAKE_BUILD_PARALLEL_LEVEL" not in os.environ:
-            # self.parallel is a Python 3 only way to set parallel jobs by hand
-            # using -j in the build_ext call, not supported by pip or PyPA-build.
             if hasattr(self, "parallel") and self.parallel:
-                # CMake 3.12+ only.
                 build_args += [f"-j{self.parallel}"]
 
+        # Create build directory
         build_temp = Path(self.build_temp) / ext.name
         if not build_temp.exists():
             build_temp.mkdir(parents=True)
 
+        # Run CMake configure and build
         subprocess.run(
-            ["cmake", ext.sourcedir, *cmake_args], cwd=build_temp, check=True
+            ["cmake", ext.sourcedir, *cmake_args], 
+            cwd=build_temp, 
+            check=True
         )
-        args = ["cmake", "--build", ".", *build_args]
         subprocess.run(
-            args, cwd=build_temp, check=True
+            ["cmake", "--build", ".", *build_args], 
+            cwd=build_temp, 
+            check=True
         )
 
 
-# The information here can also be placed in setup.cfg - better separation of
-# logic and declaration, and simpler if you include description/version in a file.
-setup(
-    name='pyace',
-    version=versioneer.get_version(),
-    author='Yury Lysogorskiy, Anton Bochkarev, Sarath Menon, Ralf Drautz',
-    author_email='yury.lysogorskiy@rub.de',
-    description='Python bindings, utilities  for PACE and fitting code "pacemaker"',
-    long_description=readme,
-    long_description_content_type='text/markdown',
+# Define extensions
+ext_modules = [
+    CMakeExtension('pyace/sharmonics', target='sharmonics'),
+    CMakeExtension('pyace/coupling', target='coupling'),
+    CMakeExtension('pyace/basis', target='basis'),
+    CMakeExtension('pyace/evaluator', target='evaluator'),
+    CMakeExtension('pyace/catomicenvironment', target='catomicenvironment'),
+    CMakeExtension('pyace/calculator', target='calculator'),
+]
 
-    # tell setuptools to look for any packages under 'src'
-    packages=find_packages('src'),
-    # tell setuptools that all packages will be under the 'src' directory
-    # and nowhere else
-    package_dir={'': 'src'},
+# Define custom commands
+cmdclass = {
+    'install': InstallMaxVolPyLocalPackage,
+    'build_ext': CMakeBuild,
+}
 
-    # add an extension module named 'python_cpp_example' to the package
-    ext_modules=[CMakeExtension('pyace/sharmonics', target='sharmonics'),
-                 CMakeExtension('pyace/coupling', target='coupling'),
-                 CMakeExtension('pyace/basis', target='basis'),
-                 CMakeExtension('pyace/evaluator', target='evaluator'),
-                 CMakeExtension('pyace/catomicenvironment', target='catomicenvironment'),
-                 CMakeExtension('pyace/calculator', target='calculator'),
-                 ],
-    # add custom build_ext command
-    cmdclass=versioneer.get_cmdclass(dict(install=InstallMaxVolPyLocalPackage,
-                                          build_ext=CMakeBuild)),
-    zip_safe=False,
-    url='https://github.com/ICAMS/python-ace',
-    install_requires=['numpy<=1.26.4',
-                      'ase',
-                      'pandas<=2.0',
-                      'ruamel.yaml',
-                      'psutil',
-                      'scikit-learn<=1.4.2'
-                      ],
-    classifiers=[
-        'Programming Language :: Python :: 3',
-    ],
-    package_data={"pyace.data": [
-        "mus_ns_uni_to_rawlsLS_np_rank.pckl",
-        "input_template.yaml"
-    ]},
-    scripts=["bin/pacemaker", "bin/pace_yaml2yace",
-             "bin/pace_timing", "bin/pace_info",
-             "bin/pace_activeset", "bin/pace_select",
-             "bin/pace_collect", "bin/pace_augment", "bin/pace_corerep"],
+# Try to get version from versioneer if available
+try:
+    import versioneer
+    version = versioneer.get_version()
+    cmdclass.update(versioneer.get_cmdclass())
+except ImportError:
+    # Fallback version
+    version = "0.0.0+unknown"
 
-    python_requires=">=3.8"
-)
+# Run setup
+if __name__ == "__main__":
+    setup(
+        ext_modules=ext_modules,
+        cmdclass=cmdclass,
+        version=version,
+        zip_safe=False,
+    )

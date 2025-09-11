@@ -1,0 +1,88 @@
+[build-system]
+requires = ["setuptools>=45", "wheel", "pybind11>=2.6.0", "cmake>=3.12", "ninja"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pyace"
+# version managed by versioneer through setup.py
+description = "Python bindings, utilities for PACE and fitting code 'pacemaker'"
+readme = "README.md"
+requires-python = ">=3.9,<3.14"
+license = {text = "Apache-2.0"}
+authors = [
+    {name = "Yury Lysogorskiy", email = "yury.lysogorskiy@rub.de"},
+    {name = "Anton Bochkarev"},
+    {name = "Sarath Menon"},
+    {name = "Ralf Drautz"},
+]
+maintainers = [
+    {name = "Yury Lysogorskiy", email = "yury.lysogorskiy@rub.de"},
+]
+keywords = ["machine learning", "interatomic potentials", "ACE", "PACE", "materials science"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: C++",
+    "Topic :: Scientific/Engineering :: Physics",
+    "Topic :: Scientific/Engineering :: Chemistry",
+]
+dependencies = [
+    "numpy>=1.19.0",
+    "ase>=3.22.0",
+    "pandas>=1.3.0",
+    "ruamel.yaml>=0.15.0",
+    "psutil>=5.0.0",
+    "scikit-learn>=1.0.0",
+    "packaging>=20.0; python_version>='3.12'",
+]
+
+[project.urls]
+Homepage = "https://github.com/ICAMS/python-ace"
+Repository = "https://github.com/ICAMS/python-ace"
+Documentation = "https://pacemaker.readthedocs.io/"
+"Bug Tracker" = "https://github.com/ICAMS/python-ace/issues"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=6.0",
+    "pytest-cov",
+    "black",
+    "isort",
+    "flake8",
+]
+docs = [
+    "sphinx>=4.0",
+    "sphinx-rtd-theme",
+    "myst-parser",
+]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+"pyace.data" = ["*.pckl", "*.yaml"]
+
+[tool.black]
+line-length = 88
+target-version = ["py39"]
+
+[tool.isort]
+profile = "black"
+line_length = 88
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]

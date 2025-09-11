@@ -1,0 +1,23 @@
+# Development requirements
+pytest>=6.0
+pytest-cov
+black
+isort
+flake8
+mypy
+pre-commit
+
+# Build requirements
+setuptools>=45
+wheel
+build
+twine
+
+# Documentation
+sphinx>=4.0
+sphinx-rtd-theme
+myst-parser
+
+# Jupyter for examples
+jupyter
+matplotlib

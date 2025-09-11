@@ -144,3 +144,4 @@ media
 static
 
 cmake-build-*/
+.DS_Store

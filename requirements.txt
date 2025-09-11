@@ -1,6 +1,7 @@
-numpy
-ase
-pandas
-ruamel.yaml
-psutil
-scikit-learn
+numpy>=1.19.0
+ase>=3.22.0
+pandas>=1.3.0
+ruamel.yaml>=0.15.0
+psutil>=5.0.0
+scikit-learn>=1.0.0
+packaging>=20.0; python_version>="3.12"

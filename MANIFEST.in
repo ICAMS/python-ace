@@ -1,2 +1,11 @@
 include versioneer.py
 include src/pyace/_version.py
+include README.md
+include LICENSE.md
+include requirements.txt
+include requirements-dev.txt
+include pyproject.toml
+include test_compatibility.py
+recursive-include src/pyace/data *
+recursive-include lib *
+recursive-include bin *
