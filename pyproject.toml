@@ -9,9 +9,6 @@ requires = [
 ]
 build-backend = "setuptools.build_meta"
 
-# Minimal project configuration - most handled by setup.py
-# This ensures modern build tools while maintaining versioneer compatibility
-
 # Tool configurations for development
 
 [tool.versioneer]

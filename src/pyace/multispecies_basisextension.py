@@ -1,7 +1,7 @@
 import logging
 import numpy as np
 import pickle
-import pkg_resources
+from importlib import resources
 import re
 
 from collections import defaultdict
@@ -44,8 +44,7 @@ PERIODIC_ELEMENTS = chemical_symbols = [
     'Rf', 'Db', 'Sg', 'Bh', 'Hs', 'Mt', 'Ds', 'Rg', 'Cn', 'Nh', 'Fl', 'Mc',
     'Lv', 'Ts', 'Og']
 
-default_mus_ns_uni_to_rawlsLS_np_rank_filename = pkg_resources.resource_filename('pyace.data',
-                                                                                 'mus_ns_uni_to_rawlsLS_np_rank.pckl')
+# Modern approach using importlib.resources - will be used directly in the function
 
 def clean_bbasisconfig(initial_bbasisconfig):
     for block in initial_bbasisconfig.funcspecs_blocks:
@@ -625,7 +624,8 @@ def create_multispecies_basisblocks_list(potential_config: Dict,
     blocks_specifications_dict = generate_blocks_specifications_dict(potential_config)
 
     if unif_mus_ns_to_lsLScomb_dict is None:
-        with open(default_mus_ns_uni_to_rawlsLS_np_rank_filename, "rb") as f:
+        # Use modern importlib.resources instead of deprecated pkg_resources
+        with resources.files('pyace.data').joinpath('mus_ns_uni_to_rawlsLS_np_rank.pckl').open('rb') as f:
             unif_mus_ns_to_lsLScomb_dict = pickle.load(f)
 
     element_ndensity_dict =  element_ndensity_dict or {}

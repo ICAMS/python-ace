@@ -1,12 +1,13 @@
 """
-Modern setup.py for pyace package.
-All metadata is in pyproject.toml. This file only handles CMake extensions.
+Modern setup.py for pyace package with proper CMake integration.
+All metadata is in pyproject.toml. This file handles CMake extensions properly.
 """
 
 import os
 import re
 import subprocess
 import sys
+import shutil
 from pathlib import Path
 import platform
 
@@ -51,120 +52,96 @@ PLAT_TO_CMAKE = {
 
 
 class CMakeExtension(Extension):
-    """A CMakeExtension needs a sourcedir instead of a file list."""
+    """Extension that uses CMake to build."""
     
-    def __init__(self, name: str, target=None, sourcedir: str = "") -> None:
-        super().__init__(name, sources=[])
-        self.sourcedir = os.fspath(Path(sourcedir).resolve())
+    def __init__(self, name, target=None, sourcedir=""):
+        Extension.__init__(self, name, sources=[])
+        self.sourcedir = os.path.abspath(sourcedir)
         self.target = target
 
 
 class CMakeBuild(build_ext):
-    """Custom build extension for CMake-based builds."""
-
-    def build_extension(self, ext: CMakeExtension) -> None:
-        # Check if CMake is available
+    """Build extension using CMake."""
+    
+    def run(self):
+        """Run the build process."""
         try:
             subprocess.check_output(['cmake', '--version'])
         except OSError:
-            raise RuntimeError("CMake must be installed to build the extensions")
-        
-        # Set up parallel build
-        self.parallel = os.cpu_count() - 1
-        if self.parallel < 1:
-            self.parallel = 1
-            
-        # Get extension paths
-        ext_fullpath = Path.cwd() / self.get_ext_fullpath(ext.name)
-        extdir = ext_fullpath.parent.resolve()
+            raise RuntimeError("CMake must be installed to build the following extensions: " +
+                             ", ".join(e.name for e in self.extensions))
 
-        # Build configuration
+        # Call parent to set up compiler
+        super().run()
+
+    def build_extension(self, ext):
+        """Build a single extension using CMake."""
+        extdir = os.path.abspath(os.path.dirname(self.get_ext_fullpath(ext.name)))
+        
+        # Required for auto-detection & inclusion of auxiliary "native" libs
+        if not extdir.endswith(os.path.sep):
+            extdir += os.path.sep
+
         debug = int(os.environ.get("DEBUG", 0)) if self.debug is None else self.debug
         cfg = "Debug" if debug else "Release"
 
-        # CMake generator
-        cmake_generator = os.environ.get("CMAKE_GENERATOR", "")
-
-        # Set up CMake arguments
         cmake_args = [
-            f"-DCMAKE_LIBRARY_OUTPUT_DIRECTORY={extdir}{os.sep}",
+            f"-DCMAKE_LIBRARY_OUTPUT_DIRECTORY={extdir}",
             f"-DPYTHON_EXECUTABLE={sys.executable}",
             f"-DCMAKE_BUILD_TYPE={cfg}",
         ]
         build_args = []
-        
-        # Add environment CMake arguments
+
+        # Adding CMake arguments set as environment variable
         if "CMAKE_ARGS" in os.environ:
             cmake_args += [item for item in os.environ["CMAKE_ARGS"].split(" ") if item]
 
-        # Handle different compilers and generators
-        if self.compiler.compiler_type != "msvc":
-            # Try to use Ninja if available
-            if not cmake_generator or cmake_generator == "Ninja":
-                try:
-                    import ninja
-                    ninja_executable_path = Path(ninja.BIN_DIR) / "ninja"
-                    cmake_args += [
-                        "-GNinja",
-                        f"-DCMAKE_MAKE_PROGRAM:FILEPATH={ninja_executable_path}",
-                    ]
-                except ImportError:
-                    pass
-        else:
-            # Windows MSVC handling
-            single_config = any(x in cmake_generator for x in {"NMake", "Ninja"})
-            contains_arch = any(x in cmake_generator for x in {"ARM", "Win64"})
+        # Set up build parallelism
+        if "CMAKE_BUILD_PARALLEL_LEVEL" not in os.environ:
+            if hasattr(self, "parallel") and self.parallel:
+                build_args += [f"-j{self.parallel}"]
 
-            if not single_config and not contains_arch:
-                cmake_args += ["-A", PLAT_TO_CMAKE[self.plat_name]]
-
-            if not single_config:
+        # Handle ninja generator
+        cmake_generator = os.environ.get("CMAKE_GENERATOR", "")
+        if not cmake_generator or cmake_generator == "Ninja":
+            try:
+                import ninja
+                ninja_executable_path = Path(ninja.BIN_DIR) / "ninja"
                 cmake_args += [
-                    f"-DCMAKE_LIBRARY_OUTPUT_DIRECTORY_{cfg.upper()}={extdir}"
+                    "-GNinja",
+                    f"-DCMAKE_MAKE_PROGRAM:FILEPATH={ninja_executable_path}",
                 ]
-                build_args += ["--config", cfg]
+            except ImportError:
+                pass
 
-        # Add target if specified
         if ext.target is not None:
             build_args += ["--target", ext.target]
 
-        # macOS cross-compilation support
+        # Cross-compile support for macOS
         if sys.platform.startswith("darwin"):
             archs = re.findall(r"-arch (\S+)", os.environ.get("ARCHFLAGS", ""))
             if archs:
                 cmake_args += [f"-DCMAKE_OSX_ARCHITECTURES={';'.join(archs)}"]
 
-        # Set parallel build level
-        if "CMAKE_BUILD_PARALLEL_LEVEL" not in os.environ:
-            if hasattr(self, "parallel") and self.parallel:
-                build_args += [f"-j{self.parallel}"]
+        if not os.path.exists(self.build_temp):
+            os.makedirs(self.build_temp)
 
-        # Create build directory
-        build_temp = Path(self.build_temp) / ext.name
-        if not build_temp.exists():
-            build_temp.mkdir(parents=True)
-
-        # Run CMake configure and build
-        subprocess.run(
-            ["cmake", ext.sourcedir, *cmake_args], 
-            cwd=build_temp, 
-            check=True
+        subprocess.check_call(
+            ["cmake", ext.sourcedir] + cmake_args, cwd=self.build_temp
         )
-        subprocess.run(
-            ["cmake", "--build", ".", *build_args], 
-            cwd=build_temp, 
-            check=True
+        subprocess.check_call(
+            ["cmake", "--build", "."] + build_args, cwd=self.build_temp
         )
 
 
 # Define extensions
 ext_modules = [
-    CMakeExtension('pyace/sharmonics', target='sharmonics'),
-    CMakeExtension('pyace/coupling', target='coupling'), 
-    CMakeExtension('pyace/basis', target='basis'),
-    CMakeExtension('pyace/evaluator', target='evaluator'),
-    CMakeExtension('pyace/catomicenvironment', target='catomicenvironment'),
-    CMakeExtension('pyace/calculator', target='calculator'),
+    CMakeExtension('pyace.sharmonics', target='sharmonics'),
+    CMakeExtension('pyace.coupling', target='coupling'), 
+    CMakeExtension('pyace.basis', target='basis'),
+    CMakeExtension('pyace.evaluator', target='evaluator'),
+    CMakeExtension('pyace.catomicenvironment', target='catomicenvironment'),
+    CMakeExtension('pyace.calculator', target='calculator'),
 ]
 
 # Set up command classes
