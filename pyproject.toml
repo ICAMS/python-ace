@@ -1,81 +1,44 @@
 [build-system]
-requires = ["setuptools>=45", "wheel", "pybind11>=2.6.0", "cmake>=3.12", "ninja"]
+requires = [
+    "setuptools>=64",
+    "wheel", 
+    "pybind11>=2.6.0", 
+    "cmake>=3.12", 
+    "ninja",
+    "versioneer[toml]"
+]
 build-backend = "setuptools.build_meta"
 
-[project]
-name = "pyace"
-# version managed by versioneer through setup.py
-description = "Python bindings, utilities for PACE and fitting code 'pacemaker'"
-readme = "README.md"
-requires-python = ">=3.9,<3.14"
-license = {text = "Apache-2.0"}
-authors = [
-    {name = "Yury Lysogorskiy", email = "yury.lysogorskiy@rub.de"},
-    {name = "Anton Bochkarev"},
-    {name = "Sarath Menon"},
-    {name = "Ralf Drautz"},
-]
-maintainers = [
-    {name = "Yury Lysogorskiy", email = "yury.lysogorskiy@rub.de"},
-]
-keywords = ["machine learning", "interatomic potentials", "ACE", "PACE", "materials science"]
-classifiers = [
-    "Development Status :: 4 - Beta",
-    "Intended Audience :: Science/Research",
-    "License :: OSI Approved :: Apache Software License",
-    "Operating System :: OS Independent",
-    "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.9",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
-    "Programming Language :: Python :: 3.12",
-    "Programming Language :: Python :: 3.13",
-    "Programming Language :: C++",
-    "Topic :: Scientific/Engineering :: Physics",
-    "Topic :: Scientific/Engineering :: Chemistry",
-]
-dependencies = [
-    "numpy>=1.19.0",
-    "ase>=3.22.0",
-    "pandas>=1.3.0",
-    "ruamel.yaml>=0.15.0",
-    "psutil>=5.0.0",
-    "scikit-learn>=1.0.0",
-    "packaging>=20.0; python_version>='3.12'",
-]
+# Minimal project configuration - most handled by setup.py
+# This ensures modern build tools while maintaining versioneer compatibility
 
-[project.urls]
-Homepage = "https://github.com/ICAMS/python-ace"
-Repository = "https://github.com/ICAMS/python-ace"
-Documentation = "https://pacemaker.readthedocs.io/"
-"Bug Tracker" = "https://github.com/ICAMS/python-ace/issues"
+# Tool configurations for development
 
-[project.optional-dependencies]
-dev = [
-    "pytest>=6.0",
-    "pytest-cov",
-    "black",
-    "isort",
-    "flake8",
-]
-docs = [
-    "sphinx>=4.0",
-    "sphinx-rtd-theme",
-    "myst-parser",
-]
-
-[tool.setuptools]
-package-dir = {"" = "src"}
-
-[tool.setuptools.packages.find]
-where = ["src"]
-
-[tool.setuptools.package-data]
-"pyace.data" = ["*.pckl", "*.yaml"]
+[tool.versioneer]
+VCS = "git"
+style = "pep440"
+versionfile_source = "src/pyace/_version.py"
+versionfile_build = "pyace/_version.py"
+tag_prefix = ""
+parentdir_prefix = ""
 
 [tool.black]
 line-length = 88
 target-version = ["py39"]
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  # directories
+  \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | build
+  | dist
+)/
+'''
 
 [tool.isort]
 profile = "black"
@@ -86,3 +49,33 @@ testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
+addopts = "-v --strict-markers"
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+]
+
+[tool.mypy]
+python_version = "3.9"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+strict_equality = true
+
+[[tool.mypy.overrides]]
+module = [
+    "ase.*",
+    "pandas.*", 
+    "ruamel.*",
+    "psutil.*",
+    "sklearn.*",
+]
+ignore_missing_imports = true

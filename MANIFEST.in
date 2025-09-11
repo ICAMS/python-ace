@@ -6,6 +6,10 @@ include requirements.txt
 include requirements-dev.txt
 include pyproject.toml
 include test_compatibility.py
+include PYTHON_COMPATIBILITY.md
 recursive-include src/pyace/data *
 recursive-include lib *
 recursive-include bin *
+include src/pyace/py.typed
+global-exclude *.pyc
+global-exclude __pycache__

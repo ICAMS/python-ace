@@ -1,3 +1,8 @@
+"""
+Modern setup.py for pyace package.
+All metadata is in pyproject.toml. This file only handles CMake extensions.
+"""
+
 import os
 import re
 import subprocess
@@ -11,9 +16,12 @@ try:
 except ImportError:
     from packaging.version import Version as LooseVersion
 
-from setuptools import Extension, setup
+from setuptools import Extension, setup, find_packages
 from setuptools.command.build_ext import build_ext
 from setuptools.command.install import install
+
+# Import versioneer
+import versioneer
 
 
 class InstallMaxVolPyLocalPackage(install):
@@ -36,7 +44,7 @@ class InstallMaxVolPyLocalPackage(install):
 # Convert Windows platform specifiers to CMake -A arguments
 PLAT_TO_CMAKE = {
     "win32": "Win32",
-    "win-amd64": "x64",
+    "win-amd64": "x64", 
     "win-arm32": "ARM",
     "win-arm64": "ARM64",
 }
@@ -152,33 +160,80 @@ class CMakeBuild(build_ext):
 # Define extensions
 ext_modules = [
     CMakeExtension('pyace/sharmonics', target='sharmonics'),
-    CMakeExtension('pyace/coupling', target='coupling'),
+    CMakeExtension('pyace/coupling', target='coupling'), 
     CMakeExtension('pyace/basis', target='basis'),
     CMakeExtension('pyace/evaluator', target='evaluator'),
     CMakeExtension('pyace/catomicenvironment', target='catomicenvironment'),
     CMakeExtension('pyace/calculator', target='calculator'),
 ]
 
-# Define custom commands
-cmdclass = {
+# Set up command classes
+cmdclass = versioneer.get_cmdclass()
+cmdclass.update({
     'install': InstallMaxVolPyLocalPackage,
     'build_ext': CMakeBuild,
-}
+})
 
-# Try to get version from versioneer if available
-try:
-    import versioneer
-    version = versioneer.get_version()
-    cmdclass.update(versioneer.get_cmdclass())
-except ImportError:
-    # Fallback version
-    version = "0.0.0+unknown"
-
-# Run setup
+# Run setup with full configuration since pyproject.toml only has build info
 if __name__ == "__main__":
     setup(
+        name="pyace",
+        version=versioneer.get_version(),
+        author="Yury Lysogorskiy, Anton Bochkarev, Sarath Menon, Ralf Drautz",
+        author_email="yury.lysogorskiy@rub.de",
+        description="Python bindings, utilities for PACE and fitting code 'pacemaker'",
+        long_description=open('README.md').read(),
+        long_description_content_type='text/markdown',
+        url="https://github.com/ICAMS/python-ace",
+        packages=find_packages('src'),
+        package_dir={'': 'src'},
+        python_requires=">=3.9,<3.14",
+        install_requires=[
+            "numpy>=1.19.0",
+            "ase>=3.22.0", 
+            "pandas>=1.3.0",
+            "ruamel.yaml>=0.15.0",
+            "psutil>=5.0.0",
+            "scikit-learn>=1.0.0",
+            "packaging>=20.0; python_version>='3.12'",
+        ],
+        classifiers=[
+            "Development Status :: 4 - Beta",
+            "Intended Audience :: Science/Research",
+            "License :: OSI Approved :: Apache Software License",
+            "Operating System :: OS Independent",
+            "Programming Language :: Python :: 3",
+            "Programming Language :: Python :: 3.9",
+            "Programming Language :: Python :: 3.10",
+            "Programming Language :: Python :: 3.11",
+            "Programming Language :: Python :: 3.12",
+            "Programming Language :: Python :: 3.13",
+            "Programming Language :: C++",
+            "Topic :: Scientific/Engineering :: Physics",
+            "Topic :: Scientific/Engineering :: Chemistry",
+        ],
+        package_data={
+            "pyace.data": ["*.pckl", "*.yaml", "*.gzip"],
+            "pyace": ["py.typed"],
+        },
+        entry_points={
+            "console_scripts": [
+                "pacemaker=pyace.cli:pacemaker_main",
+            ],
+        },
         ext_modules=ext_modules,
         cmdclass=cmdclass,
-        version=version,
         zip_safe=False,
+        # Keep the original scripts available
+        scripts=[
+            "bin/pacemaker",
+            "bin/pace_yaml2yace", 
+            "bin/pace_timing",
+            "bin/pace_info",
+            "bin/pace_activeset",
+            "bin/pace_select",
+            "bin/pace_collect",
+            "bin/pace_augment",
+            "bin/pace_corerep",
+        ],
     )

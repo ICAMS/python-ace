@@ -47,18 +47,32 @@ This document summarizes the changes made to make pyace compatible with Python 3
 
 ### For Users
 ```bash
+# Install from source
 pip install .
+
+# Or editable install for development
+pip install -e .
 ```
 
 ### For Developers
 ```bash
+# Install development dependencies
 pip install -r requirements-dev.txt
+
+# Install package in editable mode
 pip install -e .
+
+# Run tests
+pytest tests/
 ```
 
 ### Testing Compatibility
 ```bash
+# Run compatibility test
 python test_compatibility.py
+
+# Test with specific Python version
+python3.11 test_compatibility.py
 ```
 
 ## Key Dependencies
