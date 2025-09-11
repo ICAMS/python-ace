@@ -19,7 +19,7 @@ ACEClebschGordan clebsch_gordan(10);
 string B_basis_function_to_string(const ACEBBasisFunction &func) {
     stringstream sstream;
     char s[1024];
-    sprintf(s, "ACEBBasisFunction: ndensity= %d, mu0 = %d mus = (", func.ndensity, func.mu0);
+    snprintf(s, sizeof(s), "ACEBBasisFunction: ndensity= %d, mu0 = %d mus = (", func.ndensity, func.mu0);
     sstream << s;
     cout << s;
 
@@ -47,7 +47,7 @@ string B_basis_function_to_string(const ACEBBasisFunction &func) {
     for (p = 0; p < func.ndensity - 1; ++p)
         sstream << func.coeff[p] << ", ";
     sstream << func.coeff[p] << ")";
-    sprintf(s, " %d m_s combinations: {\n", func.num_ms_combs);
+    snprintf(s, sizeof(s), " %d m_s combinations: {\n", func.num_ms_combs);
     sstream << s;
     cout << s;
 

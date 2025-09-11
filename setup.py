@@ -174,10 +174,10 @@ if __name__ == "__main__":
             "scikit-learn>=1.0.0",
             "packaging>=20.0; python_version>='3.12'",
         ],
+        license="Apache-2.0",
         classifiers=[
             "Development Status :: 4 - Beta",
             "Intended Audience :: Science/Research",
-            "License :: OSI Approved :: Apache Software License",
             "Operating System :: OS Independent",
             "Programming Language :: Python :: 3",
             "Programming Language :: Python :: 3.9",

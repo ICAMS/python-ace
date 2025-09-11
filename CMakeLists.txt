@@ -1,4 +1,9 @@
-cmake_minimum_required(VERSION 3.7)
+cmake_minimum_required(VERSION 3.10)
+
+# Suppress warning about deprecated FindPythonInterp and FindPythonLibs
+if(POLICY CMP0148)
+  cmake_policy(SET CMP0148 OLD)
+endif()
 
 find_program(CMAKE_C_COMPILER NAMES $ENV{CC} gcc PATHS ENV PATH NO_DEFAULT_PATH)
 find_program(CMAKE_CXX_COMPILER NAMES $ENV{CXX} g++ PATHS ENV PATH NO_DEFAULT_PATH)

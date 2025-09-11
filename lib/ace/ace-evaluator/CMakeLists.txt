@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.7)  # CMake version check
+cmake_minimum_required(VERSION 3.10)  # CMake version check
 project(ace-evaluator)
 set(CMAKE_CXX_STANDARD 11) # Enable c++11 standard
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)

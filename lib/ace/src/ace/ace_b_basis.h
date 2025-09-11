@@ -242,7 +242,7 @@ public:
 
     void initialize_basis(BBasisConfiguration &basisSetup);
 
-    void _clean_contiguous_arrays();
+    void _clean_contiguous_arrays() override;
 
 
     vector<DOUBLE_TYPE> get_all_coeffs() const override;

@@ -512,7 +512,7 @@ void order_and_compress_b_basis_function(ACEBBasisFunction &func) {
                 s << "->>sorted XS-ns-ls-ms combinations: {\n";
                 char buf[1024];
                 for (const auto &tup: v) {
-                    sprintf(buf, "(%d, %d, %d, %d)\n", get<0>(tup), get<1>(tup), get<2>(tup), get<3>(tup));
+                    snprintf(buf, sizeof(buf), "(%d, %d, %d, %d)\n", get<0>(tup), get<1>(tup), get<2>(tup), get<3>(tup));
                     s << buf;
                 }
                 s << "}";
