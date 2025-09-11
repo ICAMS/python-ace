@@ -133,6 +133,12 @@ set(SOURCES_CALCULATOR
 set(CMAKE_CXX_FLAGS_RELEASE "-Ofast") #  -DNDEBUG
 #set(CMAKE_CXX_FLAGS_DEBUG "-Ofast -DNDEBUG")
 
+# Set output directory for libraries to match setuptools expectations
+if(DEFINED CMAKE_LIBRARY_OUTPUT_DIRECTORY)
+    set(CMAKE_LIBRARY_OUTPUT_DIRECTORY_RELEASE ${CMAKE_LIBRARY_OUTPUT_DIRECTORY})
+    set(CMAKE_LIBRARY_OUTPUT_DIRECTORY_DEBUG ${CMAKE_LIBRARY_OUTPUT_DIRECTORY})
+endif()
+
 #Finally create the package
 #--------------------------------------------------------
 pybind11_add_module(sharmonics ${SOURCES_SHARMONICS} )
