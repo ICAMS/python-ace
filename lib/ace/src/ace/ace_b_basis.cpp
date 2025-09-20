@@ -205,10 +205,18 @@ void ACEBBasisSet::flatten_basis() {
 
 
         total_basis_size_rank1[mu] = tot_size_rank1;
-        basis_rank1[mu] = new ACEBBasisFunction[tot_size_rank1];
+        if (tot_size_rank1 > 0) {
+            basis_rank1[mu] = new ACEBBasisFunction[tot_size_rank1];
+        } else {
+            basis_rank1[mu] = nullptr;  // Explicitly set to nullptr for empty arrays
+        }
 
         total_basis_size[mu] = tot_size;
-        basis[mu] = new ACEBBasisFunction[tot_size];
+        if (tot_size > 0) {
+            basis[mu] = new ACEBBasisFunction[tot_size];
+        } else {
+            basis[mu] = nullptr;  // Explicitly set to nullptr for empty arrays
+        }
     }
 
 
@@ -237,39 +245,95 @@ void ACEBBasisSet::_clean() {
 }
 
 void ACEBBasisSet::_clean_contiguous_arrays() {
-    if (full_gencg_rank1 != nullptr) delete[] full_gencg_rank1;
-    full_gencg_rank1 = nullptr;
+    if (full_gencg_rank1 != nullptr) {
+        delete[] full_gencg_rank1;
+        full_gencg_rank1 = nullptr;
+    }
 
-    if (full_gencg != nullptr) delete[] full_gencg;
-    full_gencg = nullptr;
+    if (full_gencg != nullptr) {
+        delete[] full_gencg;
+        full_gencg = nullptr;
+    }
 
-    if (full_coeff_rank1 != nullptr) delete[] full_coeff_rank1;
-    full_coeff_rank1 = nullptr;
+    if (full_coeff_rank1 != nullptr) {
+        delete[] full_coeff_rank1;
+        full_coeff_rank1 = nullptr;
+    }
 
-    if (full_coeff != nullptr) delete[] full_coeff;
-    full_coeff = nullptr;
+    if (full_coeff != nullptr) {
+        delete[] full_coeff;
+        full_coeff = nullptr;
+    }
 
-    if (full_LS != nullptr) delete[] full_LS;
-    full_LS = nullptr;
+    if (full_LS != nullptr) {
+        delete[] full_LS;
+        full_LS = nullptr;
+    }
+
+    // Clean the new nullable arrays
+    if (full_ns_rank1 != nullptr) {
+        delete[] full_ns_rank1;
+        full_ns_rank1 = nullptr;
+    }
+    
+    if (full_ls_rank1 != nullptr) {
+        delete[] full_ls_rank1;
+        full_ls_rank1 = nullptr;
+    }
+    
+    if (full_mus_rank1 != nullptr) {
+        delete[] full_mus_rank1;
+        full_mus_rank1 = nullptr;
+    }
+    
+    if (full_ms_rank1 != nullptr) {
+        delete[] full_ms_rank1;
+        full_ms_rank1 = nullptr;
+    }
+    
+    if (full_ns != nullptr) {
+        delete[] full_ns;
+        full_ns = nullptr;
+    }
+    
+    if (full_ls != nullptr) {
+        delete[] full_ls;
+        full_ls = nullptr;
+    }
+    
+    if (full_mus != nullptr) {
+        delete[] full_mus;
+        full_mus = nullptr;
+    }
+    
+    if (full_ms != nullptr) {
+        delete[] full_ms;
+        full_ms = nullptr;
+    }
 }
 
 void ACEBBasisSet::_clean_basis_arrays() {
-    if (basis_rank1 != nullptr)
+    if (basis_rank1 != nullptr) {
         for (SPECIES_TYPE mu = 0; mu < nelements; ++mu) {
-            delete[] basis_rank1[mu];
-            basis_rank1[mu] = nullptr;
+            if (basis_rank1[mu] != nullptr) {  // Check for nullptr before deleting
+                delete[] basis_rank1[mu];
+                basis_rank1[mu] = nullptr;
+            }
         }
+        delete[] basis_rank1;
+        basis_rank1 = nullptr;
+    }
 
-    if (basis != nullptr)
+    if (basis != nullptr) {
         for (SPECIES_TYPE mu = 0; mu < nelements; ++mu) {
-            delete[] basis[mu];
-            basis[mu] = nullptr;
+            if (basis[mu] != nullptr) {  // Check for nullptr before deleting
+                delete[] basis[mu];
+                basis[mu] = nullptr;
+            }
         }
-    delete[] basis;
-    basis = nullptr;
-
-    delete[] basis_rank1;
-    basis_rank1 = nullptr;
+        delete[] basis;
+        basis = nullptr;
+    }
 }
 
 void ACEBBasisSet::_copy_scalar_memory(const ACEBBasisSet &src) {
@@ -295,15 +359,24 @@ void ACEBBasisSet::_copy_dynamic_memory(const ACEBBasisSet &src) {//allocate new
 
     //copy basis arrays
     for (SPECIES_TYPE mu = 0; mu < nelements; ++mu) {
-        basis_rank1[mu] = new ACEBBasisFunction[total_basis_size_rank1[mu]];
-
-        for (size_t i = 0; i < total_basis_size_rank1[mu]; i++) {
-            this->basis_rank1[mu][i] = src.basis_rank1[mu][i];
+        // Handle rank-1 basis
+        if (total_basis_size_rank1[mu] > 0 && src.basis_rank1[mu] != nullptr) {
+            basis_rank1[mu] = new ACEBBasisFunction[total_basis_size_rank1[mu]];
+            for (size_t i = 0; i < total_basis_size_rank1[mu]; i++) {
+                this->basis_rank1[mu][i] = src.basis_rank1[mu][i];
+            }
+        } else {
+            basis_rank1[mu] = nullptr;
         }
 
-        basis[mu] = new ACEBBasisFunction[total_basis_size[mu]];
-        for (size_t i = 0; i < total_basis_size[mu]; i++) {
-            basis[mu][i] = src.basis[mu][i];
+        // Handle higher rank basis
+        if (total_basis_size[mu] > 0 && src.basis[mu] != nullptr) {
+            basis[mu] = new ACEBBasisFunction[total_basis_size[mu]];
+            for (size_t i = 0; i < total_basis_size[mu]; i++) {
+                basis[mu][i] = src.basis[mu][i];
+            }
+        } else {
+            basis[mu] = nullptr;
         }
     }
 
@@ -314,24 +387,61 @@ void ACEBBasisSet::pack_flatten_basis() {
     compute_array_sizes(basis_rank1, basis);
 
     //2. allocate contiguous arrays
-    full_ns_rank1 = new NS_TYPE[rank_array_total_size_rank1];
-    full_ls_rank1 = new NS_TYPE[rank_array_total_size_rank1];
-    full_mus_rank1 = new SPECIES_TYPE[rank_array_total_size_rank1];
-    full_ms_rank1 = new MS_TYPE[rank_array_total_size_rank1];
+    // Only allocate if we have non-zero sizes
+    if (rank_array_total_size_rank1 > 0) {
+        full_ns_rank1 = new NS_TYPE[rank_array_total_size_rank1];
+        full_ls_rank1 = new NS_TYPE[rank_array_total_size_rank1];
+        full_mus_rank1 = new SPECIES_TYPE[rank_array_total_size_rank1];
+        full_ms_rank1 = new MS_TYPE[rank_array_total_size_rank1];
+    } else {
+        full_ns_rank1 = nullptr;
+        full_ls_rank1 = nullptr;
+        full_mus_rank1 = nullptr;
+        full_ms_rank1 = nullptr;
+    }
 
-    full_gencg_rank1 = new DOUBLE_TYPE[total_num_of_ms_comb_rank1];
-    full_coeff_rank1 = new DOUBLE_TYPE[coeff_array_total_size_rank1];
+    if (total_num_of_ms_comb_rank1 > 0) {
+        full_gencg_rank1 = new DOUBLE_TYPE[total_num_of_ms_comb_rank1];
+    } else {
+        full_gencg_rank1 = nullptr;
+    }
+    
+    if (coeff_array_total_size_rank1 > 0) {
+        full_coeff_rank1 = new DOUBLE_TYPE[coeff_array_total_size_rank1];
+    } else {
+        full_coeff_rank1 = nullptr;
+    }
 
+    // Higher rank arrays
+    if (rank_array_total_size > 0) {
+        full_ns = new NS_TYPE[rank_array_total_size];
+        full_ls = new LS_TYPE[rank_array_total_size];
+        full_mus = new SPECIES_TYPE[rank_array_total_size];
+        full_ms = new MS_TYPE[ms_array_total_size];
+    } else {
+        full_ns = nullptr;
+        full_ls = nullptr;
+        full_mus = nullptr;
+        full_ms = nullptr;
+    }
 
-    full_ns = new NS_TYPE[rank_array_total_size];
-    full_ls = new LS_TYPE[rank_array_total_size];
-    full_LS = new LS_TYPE[total_LS_size];
+    if (total_LS_size > 0) {
+        full_LS = new LS_TYPE[total_LS_size];
+    } else {
+        full_LS = nullptr;
+    }
 
-    full_mus = new SPECIES_TYPE[rank_array_total_size];
-    full_ms = new MS_TYPE[ms_array_total_size];
-
-    full_gencg = new DOUBLE_TYPE[total_num_of_ms_comb];
-    full_coeff = new DOUBLE_TYPE[coeff_array_total_size];
+    if (total_num_of_ms_comb > 0) {
+        full_gencg = new DOUBLE_TYPE[total_num_of_ms_comb];
+    } else {
+        full_gencg = nullptr;
+    }
+    
+    if (coeff_array_total_size > 0) {
+        full_coeff = new DOUBLE_TYPE[coeff_array_total_size];
+    } else {
+        full_coeff = nullptr;
+    }
 
     //3. copy the values from private C_tilde_B_basis_function arrays to new contigous space
     //4. clean private memory
@@ -774,6 +884,8 @@ void ACEBBasisSet::compute_array_sizes(ACEBBasisFunction **basis_rank1, ACEBBasi
             rank_array_total_size_rank1 += total_basis_size_rank1[mu];
             //only one ms-comb per rank-1 basis func
             total_num_of_ms_comb_rank1 += total_basis_size_rank1[mu]; // compute size for full_gencg_rank1
+            
+            // Safe to access basis_rank1[mu][0] only after confirming size > 0
             ACEAbstractBasisFunction &func = basis_rank1[mu][0];
             coeff_array_total_size_rank1 += total_basis_size_rank1[mu] * func.ndensity;// *size of full_coeff_rank1
         }
@@ -799,8 +911,11 @@ void ACEBBasisSet::compute_array_sizes(ACEBBasisFunction **basis_rank1, ACEBBasi
         cur_ms_size = 0;
         cur_ms_rank_size = 0;
         if (total_basis_size[mu] == 0) continue;
-        ACEAbstractBasisFunction &func = basis[mu][0];
-        coeff_array_total_size += total_basis_size[mu] * func.ndensity; // size of full_coeff
+        
+        // Get first function to determine ndensity (only safe after size check)
+        ACEAbstractBasisFunction &first_func = basis[mu][0];
+        coeff_array_total_size += total_basis_size[mu] * first_func.ndensity; // size of full_coeff
+        
         for (int func_ind = 0; func_ind < total_basis_size[mu]; ++func_ind) {
             auto &func = basis[mu][func_ind];
             rank_array_total_size += func.rank;
