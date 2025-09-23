@@ -133,10 +133,13 @@ set(SOURCES_CALCULATOR
 
 # C++ FLAGS
 #---------------------------------------------------------
-#set(CMAKE_CXX_FLAGS "-Wall -Wextra")
-#set(CMAKE_CXX_FLAGS_DEBUG "-g")
-set(CMAKE_CXX_FLAGS_RELEASE "-O3") #  -DNDEBUG
-#set(CMAKE_CXX_FLAGS_DEBUG "-Ofast -DNDEBUG")
+if(CMAKE_BUILD_TYPE MATCHES Debug)
+    set(CMAKE_CXX_FLAGS_DEBUG "-g3 -O0 -DDEBUG -fno-omit-frame-pointer")
+    set(CMAKE_C_FLAGS_DEBUG "-g3 -O0 -DDEBUG -fno-omit-frame-pointer")
+else()
+    set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG")
+    set(CMAKE_C_FLAGS_RELEASE "-O3 -DNDEBUG")
+endif()
 
 # Set output directory for libraries to match setuptools expectations
 if(DEFINED CMAKE_LIBRARY_OUTPUT_DIRECTORY)
