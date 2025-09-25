@@ -145,4 +145,4 @@ static
 
 cmake-build-*/
 .DS_Store
-/build_test
+*.dSYM
