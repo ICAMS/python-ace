@@ -168,6 +168,9 @@ public:
 
     void set_all_coeffs(const vector<DOUBLE_TYPE> &coeffs) override;
 
+    // added by @alphataubio, needed by FitSNAP PR278
+    vector<DOUBLE_TYPE> get_basis_coeffs() const;
+    void set_basis_coeffs(const vector<DOUBLE_TYPE> &coeffs);
 
     void _post_load_radial_SHIPsBasic(SHIPsRadialFunctions *ships_radial_functions);
 };

@@ -1128,6 +1128,56 @@ void ACECTildeBasisSet::set_all_coeffs(const vector<DOUBLE_TYPE> &coeffs) {
     }
 }
 
+vector<DOUBLE_TYPE> ACECTildeBasisSet::get_basis_coeffs() const {
+    vector<DOUBLE_TYPE> coeffs;
+
+    for (SPECIES_TYPE mu = 0; mu < nelements; mu++) {
+        for (int func_ind = 0; func_ind < total_basis_size_rank1[mu]; func_ind++) {
+            auto ndens = basis_rank1[mu][func_ind].ndensity;
+            for (int ms_ind = 0; ms_ind < basis_rank1[mu][func_ind].num_ms_combs; ms_ind++) {
+                for (DENSITY_TYPE p = 0; p < ndens; p++)
+                    coeffs.emplace_back(basis_rank1[mu][func_ind].ctildes[ms_ind * ndens + p]);
+            }
+        }
+
+        for (int func_ind = 0; func_ind < total_basis_size[mu]; func_ind++) {
+            auto ndens = basis[mu][func_ind].ndensity;
+            for (int ms_ind = 0; ms_ind < basis[mu][func_ind].num_ms_combs; ms_ind++) {
+                for (DENSITY_TYPE p = 0; p < ndens; p++)
+                    coeffs.emplace_back(basis[mu][func_ind].ctildes[ms_ind * ndens + p]);
+            }
+        }
+    }
+
+    return coeffs;
+}
+
+void ACECTildeBasisSet::set_basis_coeffs(const vector<DOUBLE_TYPE> &coeffs) {
+    vector<DOUBLE_TYPE> basis_coeffs_vector(coeffs.begin(), coeffs.end());
+
+    int coeffs_ind = 0;
+    for (SPECIES_TYPE mu = 0; mu < nelements; mu++) {
+        for (int func_ind = 0; func_ind < total_basis_size_rank1[mu]; func_ind++, coeffs_ind++) {
+            auto ndens = basis_rank1[mu][func_ind].ndensity;
+            for (int ms_ind = 0; ms_ind < basis_rank1[mu][func_ind].num_ms_combs; ms_ind++) {
+                for (DENSITY_TYPE p = 0; p < ndens; p++) {
+                    basis_rank1[mu][func_ind].ctildes[ms_ind * ndens + p] *= basis_coeffs_vector[coeffs_ind];
+                }
+            }
+        }
+
+        for (int func_ind = 0; func_ind < total_basis_size[mu]; func_ind++, coeffs_ind++) {
+            auto ndens = basis[mu][func_ind].ndensity;
+            for (int ms_ind = 0; ms_ind < basis[mu][func_ind].num_ms_combs; ms_ind++) {
+                for (DENSITY_TYPE p = 0; p < ndens; p++) {
+                    basis[mu][func_ind].ctildes[ms_ind * ndens + p] *= basis_coeffs_vector[coeffs_ind];
+                }
+            }
+        }
+    }
+}
+
+
 void ACECTildeBasisSet::save_yaml(const string &yaml_file_name) const {
     YAML_PACE::Node ctilde_basis_yaml;
 
