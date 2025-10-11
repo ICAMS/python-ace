@@ -1185,6 +1185,145 @@ void ACECTildeBasisSet::set_E0vals(const vector<DOUBLE_TYPE> &vals) {
     E0vals = vals;
 }
 
+void ACECTildeBasisSet::trim_basis_by_mask(const vector<bool> &mask) {
+    // Calculate total number of basis functions
+    int total_basis_funcs = 0;
+    for (SPECIES_TYPE mu = 0; mu < nelements; mu++) {
+        total_basis_funcs += total_basis_size_rank1[mu];
+        total_basis_funcs += total_basis_size[mu];
+    }
+    
+    if (mask.size() != total_basis_funcs) {
+        throw invalid_argument("Mask size (" + to_string(mask.size()) + 
+                             ") does not match total basis functions (" + to_string(total_basis_funcs) + ")");
+    }
+    
+    // Count how many basis functions we'll keep for each species
+    vector<int> new_total_basis_size_rank1(nelements, 0);
+    vector<int> new_total_basis_size(nelements, 0);
+    
+    size_t mask_idx = 0;
+    
+    // Count rank1 functions to keep
+    for (SPECIES_TYPE mu = 0; mu < nelements; mu++) {
+        for (int func_ind = 0; func_ind < total_basis_size_rank1[mu]; func_ind++, mask_idx++) {
+            if (mask[mask_idx]) {
+                new_total_basis_size_rank1[mu]++;
+            }
+        }
+    }
+    
+    // Count higher rank functions to keep
+    for (SPECIES_TYPE mu = 0; mu < nelements; mu++) {
+        for (int func_ind = 0; func_ind < total_basis_size[mu]; func_ind++, mask_idx++) {
+            if (mask[mask_idx]) {
+                new_total_basis_size[mu]++;
+            }
+        }
+    }
+    
+    // Create new basis arrays
+    ACECTildeBasisFunction **new_basis_rank1 = new ACECTildeBasisFunction *[nelements];
+    ACECTildeBasisFunction **new_basis = new ACECTildeBasisFunction *[nelements];
+    
+    for (SPECIES_TYPE mu = 0; mu < nelements; mu++) {
+        new_basis_rank1[mu] = new ACECTildeBasisFunction[new_total_basis_size_rank1[mu]];
+        new_basis[mu] = new ACECTildeBasisFunction[new_total_basis_size[mu]];
+    }
+    
+    // Copy functions that pass the mask (allocate new memory for non-proxy copies)
+    mask_idx = 0;
+    
+    // Copy rank1 functions
+    for (SPECIES_TYPE mu = 0; mu < nelements; mu++) {
+        int new_func_idx = 0;
+        for (int func_ind = 0; func_ind < total_basis_size_rank1[mu]; func_ind++, mask_idx++) {
+            if (mask[mask_idx]) {
+                auto &old_func = basis_rank1[mu][func_ind];
+                auto &new_func = new_basis_rank1[mu][new_func_idx];
+                
+                // Copy all metadata
+                new_func.rank = old_func.rank;
+                new_func.ndensity = old_func.ndensity;
+                new_func.mu0 = old_func.mu0;
+                new_func.num_ms_combs = old_func.num_ms_combs;
+                new_func.is_half_ms_basis = old_func.is_half_ms_basis;
+                new_func.is_proxy = false; // Not a proxy, we allocate new memory
+                
+                // Allocate new memory
+                new_func.mus = new SPECIES_TYPE[new_func.rank];
+                new_func.ns = new NS_TYPE[new_func.rank];
+                new_func.ls = new LS_TYPE[new_func.rank];
+                new_func.ms_combs = new MS_TYPE[new_func.rank * new_func.num_ms_combs];
+                new_func.ctildes = new DOUBLE_TYPE[new_func.ndensity * new_func.num_ms_combs];
+                
+                // Copy all data
+                memcpy(new_func.mus, old_func.mus, new_func.rank * sizeof(SPECIES_TYPE));
+                memcpy(new_func.ns, old_func.ns, new_func.rank * sizeof(NS_TYPE));
+                memcpy(new_func.ls, old_func.ls, new_func.rank * sizeof(LS_TYPE));
+                memcpy(new_func.ms_combs, old_func.ms_combs, 
+                       new_func.rank * new_func.num_ms_combs * sizeof(MS_TYPE));
+                memcpy(new_func.ctildes, old_func.ctildes,
+                       new_func.ndensity * new_func.num_ms_combs * sizeof(DOUBLE_TYPE));
+                
+                new_func_idx++;
+            }
+        }
+    }
+    
+    // Copy higher rank functions
+    for (SPECIES_TYPE mu = 0; mu < nelements; mu++) {
+        int new_func_idx = 0;
+        for (int func_ind = 0; func_ind < total_basis_size[mu]; func_ind++, mask_idx++) {
+            if (mask[mask_idx]) {
+                auto &old_func = basis[mu][func_ind];
+                auto &new_func = new_basis[mu][new_func_idx];
+                
+                // Copy all metadata
+                new_func.rank = old_func.rank;
+                new_func.ndensity = old_func.ndensity;
+                new_func.mu0 = old_func.mu0;
+                new_func.num_ms_combs = old_func.num_ms_combs;
+                new_func.is_half_ms_basis = old_func.is_half_ms_basis;
+                new_func.is_proxy = false; // Not a proxy, we allocate new memory
+                
+                // Allocate new memory
+                new_func.mus = new SPECIES_TYPE[new_func.rank];
+                new_func.ns = new NS_TYPE[new_func.rank];
+                new_func.ls = new LS_TYPE[new_func.rank];
+                new_func.ms_combs = new MS_TYPE[new_func.rank * new_func.num_ms_combs];
+                new_func.ctildes = new DOUBLE_TYPE[new_func.ndensity * new_func.num_ms_combs];
+                
+                // Copy all data
+                memcpy(new_func.mus, old_func.mus, new_func.rank * sizeof(SPECIES_TYPE));
+                memcpy(new_func.ns, old_func.ns, new_func.rank * sizeof(NS_TYPE));
+                memcpy(new_func.ls, old_func.ls, new_func.rank * sizeof(LS_TYPE));
+                memcpy(new_func.ms_combs, old_func.ms_combs, 
+                       new_func.rank * new_func.num_ms_combs * sizeof(MS_TYPE));
+                memcpy(new_func.ctildes, old_func.ctildes,
+                       new_func.ndensity * new_func.num_ms_combs * sizeof(DOUBLE_TYPE));
+                
+                new_func_idx++;
+            }
+        }
+    }
+    
+    // Clean old basis arrays (including contiguous arrays)
+    _clean_basis_arrays();
+    
+    // Update pointers and sizes
+    basis_rank1 = new_basis_rank1;
+    basis = new_basis;
+    
+    for (SPECIES_TYPE mu = 0; mu < nelements; mu++) {
+        total_basis_size_rank1[mu] = new_total_basis_size_rank1[mu];
+        total_basis_size[mu] = new_total_basis_size[mu];
+    }
+    
+    // Re-pack the flattened basis (converts non-proxy functions to proxy)
+    pack_flatten_basis();
+}
+
 
 void ACECTildeBasisSet::save_yaml(const string &yaml_file_name) const {
     YAML_PACE::Node ctilde_basis_yaml;

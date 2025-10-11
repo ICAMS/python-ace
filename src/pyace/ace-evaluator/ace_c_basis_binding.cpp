@@ -347,7 +347,37 @@ PYBIND11_MODULE(basis, m) {
                           [](ACECTildeBasisSet &bset, vector<DOUBLE_TYPE> coeff) { bset.set_basis_coeffs(coeff); })
             .def_property("E0vals",
                           [](const ACECTildeBasisSet &bset) { return bset.get_E0vals(); },
-                          [](ACECTildeBasisSet &bset, vector<DOUBLE_TYPE> vals) { bset.set_E0vals(vals); });
+                          [](ACECTildeBasisSet &bset, vector<DOUBLE_TYPE> vals) { bset.set_E0vals(vals); })
+            .def("trim_basis_by_mask", &ACECTildeBasisSet::trim_basis_by_mask,
+                 py::arg("mask"),
+                 R"mydelimiter(
+                 Trim basis functions based on a per-function boolean mask.
+                 
+                 Parameters
+                 ----------
+                 mask : list of bool
+                     Boolean mask with length equal to total number of basis functions.
+                     True = keep entire basis function, False = remove entire basis function.
+                     Size must equal sum of total_basis_size_rank1 + total_basis_size across all elements.
+                 
+                 Notes
+                 -----
+                 This method removes entire basis functions, not individual coefficients.
+                 It's designed to work with ARD (Automatic Relevance Determination) results
+                 where keep_lambda is a per-feature (per-basis-function) mask.
+                 
+                 The mask corresponds to the flattened basis functions in order:
+                 - First all rank1 functions for element 0, then element 1, etc.
+                 - Then all higher rank functions for element 0, then element 1, etc.
+                 
+                 Example
+                 -------
+                 >>> basis = ACECTildeBasisSet("potential.yace")
+                 >>> n_funcs = sum(basis.total_basis_size_rank1) + sum(basis.total_basis_size)
+                 >>> keep_mask = [True] * n_funcs  # Keep all functions
+                 >>> keep_mask[10] = False  # Remove 11th function
+                 >>> basis.trim_basis_by_mask(keep_mask)
+                 )mydelimiter");
 
     py::class_<BBasisFunctionSpecification>(m, "BBasisFunctionSpecification", R"mydelimiter(
         B-basis function specification class. Example:

@@ -176,6 +176,9 @@ public:
     vector<DOUBLE_TYPE> get_E0vals() const;
     void set_E0vals(const vector<DOUBLE_TYPE> &vals);
 
+    // added by @alphataubio, trim basis functions based on flatten mask (e.g., from ARD)
+    void trim_basis_by_mask(const vector<bool> &mask);
+
     void _post_load_radial_SHIPsBasic(SHIPsRadialFunctions *ships_radial_functions);
 };
 
