@@ -663,9 +663,16 @@ def create_species_block(elements_vec: List, block_spec_dict: Dict,
     if "nradmax_by_orders" in block_spec_dict and "lmax_by_orders" in block_spec_dict:
         max_rank = len(block_spec_dict["nradmax_by_orders"])
         unif_abs_combs_set = set()
-        for rank, nmax, lmax in zip(range(1, max_rank + 1),
+        lmax_by_orders = block_spec_dict["lmax_by_orders"]
+        
+        if "lmin_by_orders" in block_spec_dict:
+            lmin_by_orders = block_spec_dict["lmin_by_orders"]
+        else:
+            lmin_by_orders = [0] * len(lmax_by_orders)
+            
+        for rank, nmax, lmin, lmax in zip(range(1, max_rank + 1),
                                     block_spec_dict["nradmax_by_orders"],
-                                    block_spec_dict["lmax_by_orders"]):
+                                    lmin_by_orders, lmax_by_orders):
 
             ns_range = range(1, nmax + 1)
 
@@ -689,7 +696,7 @@ def create_species_block(elements_vec: List, block_spec_dict: Dict,
 
                     mus_ns_white_list = unif_mus_ns_to_lsLScomb_dict[unif_comb]  # only ls, LS are important
                     for (pre_ls, pre_LS) in mus_ns_white_list:
-                        if max(pre_ls) <= lmax:
+                        if lmin <= min(pre_ls) and max(pre_ls) <= lmax:
                             if "coefs_init" in block_spec_dict:
                                 func_coefs_initializer = block_spec_dict["coefs_init"]
 
@@ -745,7 +752,7 @@ def single_to_multispecies_converter(potential_config):
     new_multi_species_potential_config["bonds"] = {element: bonds}
 
     functions = {}
-    functions_kw_list = ["nradmax_by_orders", "lmax_by_orders", ]
+    functions_kw_list = ["nradmax_by_orders", "lmin_by_orders", "lmax_by_orders", ]
     for kw in functions_kw_list:
         if kw in potential_config:
             functions[kw] = potential_config[kw]
