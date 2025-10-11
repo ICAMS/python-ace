@@ -172,6 +172,10 @@ public:
     vector<DOUBLE_TYPE> get_basis_coeffs() const;
     void set_basis_coeffs(const vector<DOUBLE_TYPE> &coeffs);
 
+    // added by @alphataubio, needed for E0vals property binding
+    vector<DOUBLE_TYPE> get_E0vals() const;
+    void set_E0vals(const vector<DOUBLE_TYPE> &vals);
+
     void _post_load_radial_SHIPsBasic(SHIPsRadialFunctions *ships_radial_functions);
 };
 

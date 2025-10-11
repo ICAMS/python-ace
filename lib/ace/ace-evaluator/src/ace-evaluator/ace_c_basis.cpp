@@ -1177,6 +1177,14 @@ void ACECTildeBasisSet::set_basis_coeffs(const vector<DOUBLE_TYPE> &coeffs) {
     }
 }
 
+vector<DOUBLE_TYPE> ACECTildeBasisSet::get_E0vals() const {
+    return E0vals.to_vector();
+}
+
+void ACECTildeBasisSet::set_E0vals(const vector<DOUBLE_TYPE> &vals) {
+    E0vals = vals;
+}
+
 
 void ACECTildeBasisSet::save_yaml(const string &yaml_file_name) const {
     YAML_PACE::Node ctilde_basis_yaml;

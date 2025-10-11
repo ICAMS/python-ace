@@ -344,7 +344,10 @@ PYBIND11_MODULE(basis, m) {
             .def(py::pickle(&ACECTildeBasisSet_getstate, &ACECTildeBasisSet_setstate))
             .def_property("basis_coeffs",
                           [](const ACECTildeBasisSet &bset) { return bset.get_basis_coeffs(); },
-                          [](ACECTildeBasisSet &bset, vector<DOUBLE_TYPE> coeff) { bset.set_basis_coeffs(coeff); });
+                          [](ACECTildeBasisSet &bset, vector<DOUBLE_TYPE> coeff) { bset.set_basis_coeffs(coeff); })
+            .def_property("E0vals",
+                          [](const ACECTildeBasisSet &bset) { return bset.get_E0vals(); },
+                          [](ACECTildeBasisSet &bset, vector<DOUBLE_TYPE> vals) { bset.set_E0vals(vals); });
 
     py::class_<BBasisFunctionSpecification>(m, "BBasisFunctionSpecification", R"mydelimiter(
         B-basis function specification class. Example:
