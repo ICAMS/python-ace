@@ -511,12 +511,16 @@ def generate_functions_ext(potential_config):
         print(f"*** functions {functions}")
         max_rank = len(functions['ALL']['nradmax_by_orders'])
         for rank in range(1,max_rank+1):
-            for key in generate_species_keys(elements, r=rank):
-                functions_ext[key].update(functions['ALL'])
+            for species in generate_species_keys(elements, r=rank):
+                for k,v in functions['ALL'].items():
+                    functions_ext[species][k] = v[:rank]
+                    
     for nary_key, nary_val in NARY_MAP.items():
         if nary_key in functions:
-            for key in generate_species_keys(elements, r=nary_val):
-                functions_ext[key].update(functions[nary_key])
+            for species in generate_species_keys(elements, r=nary_val):
+                for k,v in functions['ALL'].items():
+                    functions_ext[species][k] = v[:nary_val]
+                    
     for k in functions:
         if k not in KEYWORDS:
             if isinstance(k, str):  # single species string
@@ -641,7 +645,7 @@ def create_multispecies_basisblocks_list(potential_config: Dict,
                                          element_ndensity_dict: Dict = None,
                                          func_coefs_initializer="zero",
                                          unif_mus_ns_to_lsLScomb_dict=None,
-                                         verbose=False) -> List[BBasisFunctionsSpecificationBlock]:
+                                         verbose=True) -> List[BBasisFunctionsSpecificationBlock]:
     blocks_specifications_dict = generate_blocks_specifications_dict(potential_config)
 
     if unif_mus_ns_to_lsLScomb_dict is None:
@@ -695,6 +699,8 @@ def create_species_block(elements_vec: List, block_spec_dict: Dict,
                                     block_spec_dict["nradmax_by_orders"],
                                     lmin_by_orders, lmax_by_orders):
 
+            print(f"*** rank {rank} nmax {nmax} lmin {lmin} lmax {lmax}")
+
             ns_range = range(1, nmax + 1)
 
             for mus_comb in combinations_with_replacement(elms, rank):
@@ -729,6 +735,8 @@ def create_species_block(elements_vec: List, block_spec_dict: Dict,
                                 raise ValueError(
                                     "Unknown func_coefs_initializer={}. Could be only 'zero' or 'random'".format(
                                         func_coefs_initializer))
+                                        
+                            print(f"*** elements {mus_comb_ext} ns {ns_comb} ls {pre_ls} LS {pre_LS} coeffs {coefs}")
 
                             new_spec = BBasisFunctionSpecification(elements=mus_comb_ext,
                                                                    ns=ns_comb,
