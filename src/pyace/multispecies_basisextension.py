@@ -187,22 +187,38 @@ def create_species_block_without_funcs(elements_vec: List[str], block_spec: Dict
 
 def generate_species_keys(elements, r):
     """
-    Generate all ordered permutations of the elements if size `r`
+    Generate all PACE-compatible species blocks (chemical channels) of body order `r`.
 
-    :param elements: list of elements
-    :param r: permutations size
-    :return: list of speices blocks names (permutation) of size `r`
+    In the PACE / ACE framework, species blocks represent the distinct chemical
+    channels associated with an invariant of body order `r`. Each block is a multiset
+    of chemical species of length `r`, because the basis functions are symmetrized
+    over all permutations and depend only on the multiset, not on ordering.
+
+    This function enumerates all such multisets using combinations-with-replacement.
+    For example, with elements = ['Al', 'Ni'] and r = 3, the valid species blocks are:
+
+        ('Al','Al','Al'),
+        ('Al','Al','Ni'),
+        ('Al','Ni','Ni'),
+        ('Ni','Ni','Ni')
+
+    These multisets form the canonical species-channel keys used to index and group
+    the polynomial basis functions in PACE.
+
+    Parameters
+    ----------
+    elements : list of str
+        List of chemical species, such as ['Al', 'Ni'].
+    r : int
+        Body order of the invariant; r >= 1.
+
+    Returns
+    -------
+    list of tuple
+        Canonical species multisets of length `r`, sorted lexicographically, suitable
+        for direct use as PACE species-channel identifiers.
     """
-    keys = set()
-    for el in elements:
-        rest_elements = [e for e in elements if e != el]
-
-        for rst in product(rest_elements, repeat=r - 1):
-            rst = list(dict.fromkeys(sorted(rst)))
-            key = tuple([el] + rst)
-            if len(key) == r:
-                keys.add(key)
-    return sorted(keys)
+    return [tuple(c) for c in combinations_with_replacement(sorted(elements), r)]
 
 
 def generate_all_species_keys(elements):
@@ -492,9 +508,11 @@ def generate_functions_ext(potential_config):
     functions_ext = defaultdict(dict)
 
     if ALL in functions:
-        all_species_keys = generate_all_species_keys(elements)
-        for key in all_species_keys:
-            functions_ext[key].update(functions[ALL])
+        print(f"*** functions {functions}")
+        max_rank = len(functions['ALL']['nradmax_by_orders'])
+        for rank in range(1,max_rank+1):
+            for key in generate_species_keys(elements, r=rank):
+                functions_ext[key].update(functions['ALL'])
     for nary_key, nary_val in NARY_MAP.items():
         if nary_key in functions:
             for key in generate_species_keys(elements, r=nary_val):
@@ -511,6 +529,9 @@ def generate_functions_ext(potential_config):
     # drop all keys, that has no specifications
     functions_ext = {k: v for k, v in functions_ext.items() if len(v) > 0}
 
+    for k,v in functions_ext.items():
+        print(f"*** {k} {v}")
+        
     return functions_ext
 
 
