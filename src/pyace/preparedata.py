@@ -58,7 +58,7 @@ def attach_single_point_calculator(row):
     energy = row["energy_corrected"]
     forces = row["forces"]
     calc = SinglePointCalculator(atoms, energy=energy, forces=forces)
-    atoms.set_calculator(calc)
+    atoms.calc=calc
     return atoms
 
 
