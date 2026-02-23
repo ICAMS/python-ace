@@ -5,7 +5,7 @@ import getpass  # for getpass.getuser()
 import glob
 import logging
 import os
-import pkg_resources
+from importlib.resources import files
 import re
 
 try:
@@ -343,7 +343,7 @@ def generate_template_input():
         weighting = None
         print("Use UniformWeightingPolicy")
 
-    template_input_yaml_filename = pkg_resources.resource_filename('pyace.data', 'input_template.yaml')
+    template_input_yaml_filename = str(files('pyace.data').joinpath('input_template.yaml'))
     copyfile(template_input_yaml_filename, "input.yaml")
     with open("input.yaml", "r") as f:
         input_yaml_text = f.read()
