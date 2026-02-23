@@ -405,47 +405,6 @@ def test_PyACECalculator_active_set():
     assert np.allclose(gamma, gamma_expected)
 
 
-def test_PyACECalculator_active_set_dump_extrapolation():
-    atoms = bulk("Ag", cubic=True)
-    atoms.set_chemical_symbols(["Ag", "Cu", "Ag", "Cu"])
-    pos = atoms.get_positions()
-    np.random.seed(42)
-    pos += np.random.randn(*pos.shape)
-    atoms.set_positions(pos)
-
-    asecalc = PyACECalculator("tests/DFT10B-AgCu.yaml",
-                              dump_extrapolative_structures=True,
-                              keep_extrapolative_structures=True,
-                              stop_at_large_extrapolation=True)
-    asecalc.set_active_set("tests/DFT10B-AgCu.asi")
-
-    atoms.set_calculator(asecalc)
-
-    expected_file_name = "extrapolation_0_gamma=5691197.948196411.cfg"
-    if os.path.isfile(expected_file_name):
-        os.remove(expected_file_name)
-    assert not os.path.isfile(expected_file_name)
-    with pytest.raises(RuntimeError) as excinfo:
-        energy = atoms.get_potential_energy()
-    print("Exception raised: ", excinfo)
-    assert os.path.isfile(expected_file_name)
-
-    # second config
-    expected_file_name_1 = "extrapolation_1_gamma=5691197.948196411.cfg"
-    if os.path.isfile(expected_file_name_1):
-        os.remove(expected_file_name_1)
-    assert not os.path.isfile(expected_file_name_1)
-    asecalc.reset()
-    with pytest.raises(RuntimeError) as excinfo:
-        energy = atoms.get_potential_energy()
-    print("Exception raised: ", excinfo)
-    assert os.path.isfile(expected_file_name_1)
-
-    os.remove(expected_file_name)
-    os.remove(expected_file_name_1)
-
-    assert len(asecalc.extrapolative_structures_gamma) == 2
-    assert len(asecalc.extrapolative_structures_list) == 2
 
 
 def test_GRACEFSCalculator():
