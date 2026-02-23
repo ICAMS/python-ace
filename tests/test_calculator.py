@@ -203,7 +203,7 @@ def test_ASE_calculator_Voigt_stress_order():
     new_cell = np.dot(cell, deform_matrix)
     test_Al.set_cell(new_cell, scale_atoms=True)
 
-    test_Al.set_calculator(calculator)
+    test_Al.calc = calculator
     stresses = test_Al.get_stress()
     print("stresses=", stresses)
     stresses_ref = [1.39710511e-01, 1.53093581e-01, 1.39710511e-01, -9.67787622e-05,
@@ -219,7 +219,7 @@ def test_ASE_calculator_multispecies_AlNi(potname):
     chemsymb[0] = "Ni"
     test_Al.set_chemical_symbols(chemsymb)
 
-    test_Al.set_calculator(calculator)
+    test_Al.calc = calculator
 
     e = test_Al.get_potential_energy()
     ee = test_Al.get_potential_energies()
@@ -254,7 +254,7 @@ def test_Ni_2dens_FexpShiftedScaled_manual_e_consistency():
     print("f2.coeffs=", f2.coeffs)
 
     trimer = Atoms('Ni3', positions=[[1, 0, 0], [0, 1, 0], [0, 0, 1]], pbc=0)
-    trimer.set_calculator(calc)
+    trimer.calc = calc
 
     e = trimer.get_potential_energy()
     proj = calc.projections
@@ -362,7 +362,7 @@ def test_PyACEEnsembleCalculator():
     fcc_at = bulk("Al", "fcc", a=4.05, cubic=True)
     fnames = ["tests/Al.pbe.rhocore.ace", "tests/Al.pbe.rhocore.ace"]
     calc = PyACEEnsembleCalculator(fnames)
-    fcc_at.set_calculator(calc)
+    fcc_at.calc = calc
 
     e = fcc_at.get_potential_energy()
     print("e=", e)
@@ -393,7 +393,7 @@ def test_PyACECalculator_active_set():
     asecalc = PyACECalculator("tests/DFT10B-AgCu.yaml")
     asecalc.set_active_set("tests/DFT10B-AgCu.asi")
 
-    atoms.set_calculator(asecalc)
+    atoms.calc = asecalc
     energy = atoms.get_potential_energy()
     gamma = asecalc.results["gamma"]
     print("energy = ", energy)

@@ -129,7 +129,8 @@ def compare_coefficients(all_coeffs, all_coeffs_ref, abs_threshold=2e-7, rel_thr
     print("abs diff max = ", np.max(dcoeff))
     print("abs diff norm = ", np.linalg.norm(dcoeff))
 
-    rel_err = 2 * dcoeff / (all_coeffs + all_coeffs_ref)
+    with np.errstate(divide='ignore', invalid='ignore'):
+        rel_err = 2 * dcoeff / (all_coeffs + all_coeffs_ref)
     print("rel_err = ", rel_err)
     rel_norm = np.linalg.norm(rel_err)
     print("rel_err max= ", np.max(rel_err))

@@ -17,7 +17,7 @@ def integrate(xs, table):
         frs = np.abs(table)
         sum_frs = np.sum(frs, axis=(1, 2))
         integrand = sum_frs * xs ** 2
-        integral = np.trapz(integrand, x=xs)
+        integral = np.trapezoid(integrand, x=xs)
         return integral
     else:
         return 0

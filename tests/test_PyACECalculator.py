@@ -43,7 +43,7 @@ def test_setup():
     a = create_dimer(1)
     print(a)
     calc = PyACECalculator(basis_set=basisConfiguration)
-    a.set_calculator(calc)
+    a.calc = calc
     e1 = (a.get_potential_energy())
     f1 = a.get_forces()
     print(e1)
@@ -54,7 +54,7 @@ def test_load_YAML():
     a = create_dimer(1)
     print(a)
     calc = PyACECalculator(basis_set="tests/Al.pbe.13.2.yaml")
-    a.set_calculator(calc)
+    a.calc = calc
     e1 = (a.get_potential_energy())
     f1 = a.get_forces()
     print(e1)
@@ -65,7 +65,7 @@ def test_load_ace():
     a = create_dimer(1)
     print(a)
     calc = PyACECalculator(basis_set="tests/Al.pbe.rhocore.ace")
-    a.set_calculator(calc)
+    a.calc = calc
     e1 = (a.get_potential_energy())
     f1 = a.get_forces()
     print(e1)
@@ -82,7 +82,7 @@ def test_load_ace_recursive():
     a = create_dimer(1)
     print(a)
     calc = PyACECalculator(basis_set="tests/Al.pbe.rhocore.ace", recursive_evaluator=True, recursive=True)
-    a.set_calculator(calc)
+    a.calc = calc
     e1 = (a.get_potential_energy())
     f1 = a.get_forces()
     print(e1)
@@ -99,7 +99,7 @@ def test_dimer_r1_energy_forces():
     a = create_dimer(1)
     print(a)
     calc = PyACECalculator(basis_set="tests/Al-r1l0.yaml")
-    a.set_calculator(calc)
+    a.calc = calc
     energy = a.get_potential_energy()
     forces = a.get_forces()
     print(energy)
@@ -113,7 +113,7 @@ def test_trimer_r234_energy_forces():
     a = create_trimer(1)
     print(a)
     calculator = PyACECalculator(basis_set="tests/Al-r234.yaml")
-    a.set_calculator(calculator)
+    a.calc = calculator
     energy = a.get_potential_energy()
     forces = a.get_forces()
     print(energy)
@@ -128,7 +128,7 @@ def test_load_YAML_pbc_symmetry_cubic():
     print("a=", a)
     calc = PyACECalculator(basis_set="tests/Al.pbe.13.2.yaml")
     calc.cutoff = np.sqrt(2) * 1
-    a.set_calculator(calc)
+    a.calc = calc
     e1 = a.get_potential_energy()
     f1 = a.get_forces()
     print("ae=", calc.ae)
@@ -146,7 +146,7 @@ def test_load_YAML_pbc_symmetry_fcc_supercell():
     a = bulk("Al", "fcc", cubic=True) * (1, 2, 3)
     print("a=", a)
     calc = PyACECalculator(basis_set="tests/Al.pbe.13.2.yaml")
-    a.set_calculator(calc)
+    a.calc = calc
     e1 = a.get_potential_energy()
     f1 = a.get_forces()
     print("ae=", calc.ae)
@@ -165,7 +165,7 @@ def test_non_supported_element():
     print("a=", a)
     calc = PyACECalculator(basis_set="tests/Al.pbe.13.2.yaml")
     with pytest.raises(ValueError):
-        a.set_calculator(calc)
+        a.calc = calc
         e1 = a.get_potential_energy()
 
 
@@ -173,7 +173,7 @@ def test_fcc_stress():
     a = bulk("Al", "fcc", a=4.03, cubic=True) * (1, 1, 1)
     print("a=", a)
     calc = PyACECalculator(basis_set="tests/Al.pbe.in-rank1.ace")
-    a.set_calculator(calc)
+    a.calc = calc
     e1 = a.get_potential_energy()
     f1 = a.get_forces()
     s1 = a.get_stress()
@@ -188,12 +188,12 @@ def test_fcc_stress():
 
 
 def test_relaxation():
-    from ase.constraints import UnitCellFilter
+    from ase.filters import UnitCellFilter
     from ase.optimize import QuasiNewton
 
     calc = PyACECalculator(basis_set="tests/Al.pbe.rhocore-v2.ace")
     fcc = bulk("Al", cubic=True)
-    fcc.set_calculator(calc)
+    fcc.calc = calc
     print("Atoms before = ", fcc)
     e0 = fcc.get_potential_energy()
     f0 = fcc.get_forces()
@@ -225,7 +225,7 @@ def test_PyACEEnsembleCalculator():
     basis_sets = ["tests/Al.pbe.13.2.yaml", "tests/Al.pbe.rhocore.ace"]
     calc = PyACEEnsembleCalculator(basis_set=basis_sets)
     a = create_dimer(1)
-    a.set_calculator(calc)
+    a.calc = calc
     e1 = (a.get_potential_energy())
     f1 = a.get_forces()
     print(e1)
@@ -236,8 +236,11 @@ def test_ZBL_analytical_derivative():
     calc = PyACECalculator("tests/ZBL_rep.yaml")
 
     def check(at, msg):
-        at.set_calculator(calc)
-        num_forces = calc.calculate_numerical_forces(at, d=1e-6)
+        at.calc = calc
+        import warnings
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", FutureWarning)
+            num_forces = calc.calculate_numerical_forces(at, d=1e-6)
         an_forces = at.get_forces()
         print(f"{num_forces=}, {an_forces=}")
         assert np.allclose(num_forces, an_forces), msg+f": {num_forces=}, {an_forces=}"
