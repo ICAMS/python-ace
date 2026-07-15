@@ -5,8 +5,15 @@ import getpass  # for getpass.getuser()
 import glob
 import logging
 import os
-import pkg_resources
 import re
+
+try:
+    from importlib.resources import files as _importlib_files
+
+    def _resource_filename(package, resource):
+        return str(_importlib_files(package) / resource)
+except ImportError:  # Python 3.8: importlib.resources.files is not available
+    from pkg_resources import resource_filename as _resource_filename
 
 try:
     import readline
@@ -343,7 +350,7 @@ def generate_template_input():
         weighting = None
         print("Use UniformWeightingPolicy")
 
-    template_input_yaml_filename = pkg_resources.resource_filename('pyace.data', 'input_template.yaml')
+    template_input_yaml_filename = _resource_filename('pyace.data', 'input_template.yaml')
     copyfile(template_input_yaml_filename, "input.yaml")
     with open("input.yaml", "r") as f:
         input_yaml_text = f.read()
