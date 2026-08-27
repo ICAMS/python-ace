@@ -1,4 +1,3 @@
-cutoff: {{CUTOFF}} # cutoff for neighbour list construction
 seed: 42  # random seed
 
 #################################################################
@@ -25,7 +24,7 @@ potential:
     ALL: {
       radbase: SBessel,
       radparameters: [ 5.25 ],
-      rcut: {{CUTOFF}},
+      rcut: {{RCUT}},
       dcut: 0.01,
       NameOfCutoffFunction: cos,
     }
