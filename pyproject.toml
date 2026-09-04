@@ -29,11 +29,12 @@ authors = [
 ]
 description = 'Python bindings, utilities  for PACE and fitting code "pacemaker"'
 readme = "README.md"
-# Upper bound tracks grace-tensorpotential, which pyace must stay installable
-# alongside. It declares only ">=3.9", so the real ceiling is its tensorflow<=2.20
-# dependency: tensorflow 2.20 publishes wheels for 3.9-3.13 and nothing newer,
-# so a grace environment cannot exist on 3.14. Revisit when tensorflow adds it.
-requires-python = ">=3.9,<3.14"
+# Matches grace-tensorpotential, which pyace must stay installable beside.
+# Deliberately no upper bound: a ceiling here would apply to the resolver
+# forever, making an already-published release unselectable on a python it
+# would actually work on. Where the limit is real it is enforced already --
+# tensorflow publishes no wheels for unsupported pythons.
+requires-python = ">=3.9"
 license = { text = "Academic Software License (ASL)" }
 classifiers = [
     "License :: Other/Proprietary License",
