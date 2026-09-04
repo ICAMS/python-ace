@@ -194,7 +194,7 @@ setup(
     url='https://github.com/ICAMS/python-ace',
     install_requires=['numpy<=1.26.4',
                       'ase',
-                      'pandas<=2.0',
+                      'pandas>=2,<4',
                       'ruamel.yaml',
                       'psutil',
                       'scikit-learn<=1.4.2'
