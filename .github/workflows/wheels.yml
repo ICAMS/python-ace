@@ -28,9 +28,9 @@ jobs:
     name: sdist
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
 
@@ -57,7 +57,7 @@ jobs:
           echo "sdist carries $cpp .cpp files"
           [ "$cpp" -ge 60 ] || { echo "expected >=60 .cpp files, got $cpp"; exit 1; }
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: sdist
           path: dist/*.tar.gz
@@ -66,7 +66,7 @@ jobs:
     name: wheels (linux x86_64)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Build wheels
         uses: pypa/cibuildwheel@v4.2.0
@@ -117,7 +117,7 @@ jobs:
             && python -c "from pyace.maxvol import c_maxvol; import numpy as np; i, c = c_maxvol(np.random.rand(64, 8), 1.05, 100, -1, 0); print('compiled maxvol ok, selected', len(i), 'rows')"
             && pace_info --help > /dev/null && echo 'entry points ok'
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: wheels-linux-x86_64
           path: wheelhouse/*.whl
@@ -131,7 +131,7 @@ jobs:
     permissions:
       id-token: write # trusted publishing; no API token in secrets
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           path: dist
           merge-multiple: true
