@@ -29,7 +29,11 @@ authors = [
 ]
 description = 'Python bindings, utilities  for PACE and fitting code "pacemaker"'
 readme = "README.md"
-requires-python = ">=3.9"
+# Upper bound tracks grace-tensorpotential, which pyace must stay installable
+# alongside. It declares only ">=3.9", so the real ceiling is its tensorflow<=2.20
+# dependency: tensorflow 2.20 publishes wheels for 3.9-3.13 and nothing newer,
+# so a grace environment cannot exist on 3.14. Revisit when tensorflow adds it.
+requires-python = ">=3.9,<3.14"
 license = { text = "Academic Software License (ASL)" }
 classifiers = [
     "License :: Other/Proprietary License",
@@ -53,24 +57,19 @@ dependencies = [
 [project.urls]
 "Homepage" = "https://github.com/ICAMS/python-ace"
 
+[project.scripts]
+pacemaker = "pyace.cli.pacemaker:main"
+pace_activeset = "pyace.cli.pace_activeset:main"
+pace_augment = "pyace.cli.pace_augment:main"
+pace_collect = "pyace.cli.pace_collect:main"
+pace_corerep = "pyace.cli.pace_corerep:main"
+pace_info = "pyace.cli.pace_info:main"
+pace_select = "pyace.cli.pace_select:main"
+pace_timing = "pyace.cli.pace_timing:main"
+pace_yaml2yace = "pyace.cli.pace_yaml2yace:main"
+
 [tool.setuptools]
 zip-safe = false
-# These are plain scripts with a shebang, not importable main() entry points,
-# so they are installed as files. Converting them to [project.scripts] console
-# entry points would also make them work on Windows, but needs each bin/ script
-# refactored into a module first.
-script-files = [
-    "bin/pacemaker",
-    "bin/pace_yaml2yace",
-    "bin/pace_timing",
-    "bin/pace_info",
-    "bin/pace_activeset",
-    "bin/pace_select",
-    "bin/pace_collect",
-    "bin/pace_augment",
-    "bin/pace_corerep",
-]
-
 [tool.setuptools.packages.find]
 where = ["src"]
 

@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 
 import glob
 import sys
@@ -171,7 +170,7 @@ def get_free_atom_energy(df, el):
     return ref_epa
 
 
-def main(args):
+def main(args=None):
     ##############################################################################################
     parser = argparse.ArgumentParser()
 
@@ -307,4 +306,4 @@ def main(args):
 
 
 if __name__ == "__main__":
-    main(sys.argv[1:])
+    main()

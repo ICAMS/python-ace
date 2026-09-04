@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 
 import argparse
 import getpass  # for getpass.getuser()
@@ -48,7 +47,7 @@ files_to_remove = ["fitting_data_info.csv", "fitting_data_info.pckl.gzip",
 DEFAULT_SEED = 42
 
 
-def main(args):
+def main(args=None):
     parser = argparse.ArgumentParser(prog="pacemaker", description="Fitting utility for atomic cluster expansion "
                                                                    "potentials.\n" +
                                                                    "version: {}".format(__version__))
@@ -397,4 +396,4 @@ def predict_and_save(general_fit, target_bbasisconfig, structures_dataframe, fna
 
 
 if __name__ == "__main__":
-    main(sys.argv[1:])
+    main()

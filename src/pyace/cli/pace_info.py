@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 import argparse
 from collections import defaultdict
 
@@ -119,14 +118,19 @@ def analyse_potential_shape(ace_potential):
     print("=" * 40)
 
 
-parser = argparse.ArgumentParser(prog="pace_info",
-                                 description="Utility to analyze PACE (.yaml) potential shape and other parameters")
+def main():
+    parser = argparse.ArgumentParser(prog="pace_info",
+                                     description="Utility to analyze PACE (.yaml) potential shape and other parameters")
 
-parser.add_argument("potential_file", help="B-basis file name (.yaml)", type=str, nargs='+', default=[])
+    parser.add_argument("potential_file", help="B-basis file name (.yaml)", type=str, nargs='+', default=[])
 
-args_parse = parser.parse_args()
-potential_files = args_parse.potential_file
+    args_parse = parser.parse_args()
+    potential_files = args_parse.potential_file
 
-for potential_file in potential_files:
-    # print("potential file: ", potential_file)
-    analyse_potential_shape(potential_file)
+    for potential_file in potential_files:
+        # print("potential file: ", potential_file)
+        analyse_potential_shape(potential_file)
+
+
+if __name__ == "__main__":
+    main()
