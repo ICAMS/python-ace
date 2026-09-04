@@ -4,7 +4,6 @@ import subprocess
 import sys
 from pathlib import Path
 import platform
-from distutils.version import LooseVersion
 from setuptools import Extension, setup, find_packages
 from setuptools.command.build_ext import build_ext
 from setuptools.command.install import install

@@ -1,8 +1,15 @@
 import logging
 import numpy as np
 import pickle
-import pkg_resources
 import re
+
+try:
+    from importlib.resources import files as _importlib_files
+
+    def _resource_filename(package, resource):
+        return str(_importlib_files(package) / resource)
+except ImportError:  # Python 3.8: importlib.resources.files is not available
+    from pkg_resources import resource_filename as _resource_filename
 
 from collections import defaultdict
 from copy import deepcopy
@@ -44,8 +51,8 @@ PERIODIC_ELEMENTS = chemical_symbols = [
     'Rf', 'Db', 'Sg', 'Bh', 'Hs', 'Mt', 'Ds', 'Rg', 'Cn', 'Nh', 'Fl', 'Mc',
     'Lv', 'Ts', 'Og']
 
-default_mus_ns_uni_to_rawlsLS_np_rank_filename = pkg_resources.resource_filename('pyace.data',
-                                                                                 'mus_ns_uni_to_rawlsLS_np_rank.pckl')
+default_mus_ns_uni_to_rawlsLS_np_rank_filename = _resource_filename('pyace.data',
+                                                                    'mus_ns_uni_to_rawlsLS_np_rank.pckl')
 
 def clean_bbasisconfig(initial_bbasisconfig):
     for block in initial_bbasisconfig.funcspecs_blocks:
