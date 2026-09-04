@@ -192,7 +192,11 @@ def test_fcc_stress():
 
 
 def test_relaxation():
-    from ase.constraints import UnitCellFilter
+    try:
+        # ASE >= 3.23
+        from ase.filters import UnitCellFilter
+    except ImportError:
+        from ase.constraints import UnitCellFilter
     from ase.optimize import QuasiNewton
 
     calc = PyACECalculator(basis_set="tests/Al.pbe.rhocore-v2.ace")

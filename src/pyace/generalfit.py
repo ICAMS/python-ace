@@ -113,6 +113,19 @@ def get_initial_potential(start_potential):
     return initial_bbasisconfig
 
 
+def get_maximal_rcut(bbasisconfig: BBasisConfiguration) -> float:
+    """
+    Maximal outer cutoff `rcut` over all bond (i.e. one- and two-species) blocks.
+
+    This is the same quantity as `ACEBBasisSet.cutoffmax`, which the ACE calculators
+    (ASE, LAMMPS) use to construct their neighbour lists. Deducing the fitting cutoff
+    from it guarantees that the atomic environments seen during the fit are identical
+    to those seen in production.
+    """
+    return max(block.rcutij for block in bbasisconfig.funcspecs_blocks
+               if len(block.elements_vec) <= 2)
+
+
 def save_dataset(dataframe, fname):
     # columns to save: w_energy, w_forces, NUMBER_OF_ATOMS, PROTOTYPE_NAME, prop_id,structure_id, gen_id, if any
     # columns_to_save = ["PROTOTYPE_NAME", "NUMBER_OF_ATOMS", "prop_id", "structure_id", "gen_id", "pbc"] + \
@@ -143,6 +156,11 @@ class GeneralACEFit:
     :param data_config:  training data specification
     :param backend_config: specification of potential evaluation and fitting backend (pyace / tensorpot)
                     - dict ['evaluator']
+    :param cutoff: cutoff for the neighbour lists construction. If None (default), it is deduced from
+                    `potential_config` as the maximum over the bonds' outer cutoffs `rcut`, which is what
+                    the ACE calculators use in production. Provide it explicitly only if the neighbour
+                    lists have to extend beyond the potential's own cutoff; note that neighbours
+                    further than the corresponding bond's `rcut` contribute exactly zero to the fit.
     """
 
     def __init__(self,
@@ -265,11 +283,13 @@ class GeneralACEFit:
             log.info("Ladder-scheme fitting is ON")
 
         if cutoff is None:
-            rcut = max(
-                [block.rcutij for block in self.target_bbasisconfig.funcspecs_blocks if len(block.elements_vec) <= 2])
-            self.cutoff = rcut
+            self.cutoff = get_maximal_rcut(self.target_bbasisconfig)
+            log.info("Cutoff for neighbour lists construction is deduced from the potential: "
+                     "{:.3f} A (maximum over bonds::rcut)".format(self.cutoff))
         else:
             self.cutoff = cutoff
+            log.info("Cutoff for neighbour lists construction is provided explicitly: "
+                     "{:.3f} A".format(self.cutoff))
 
         if self.ladder_scheme:
             if FIT_LADDER_TYPE_KW in fit_config:
