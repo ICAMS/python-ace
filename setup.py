@@ -192,7 +192,7 @@ setup(
                                           build_ext=CMakeBuild)),
     zip_safe=False,
     url='https://github.com/ICAMS/python-ace',
-    install_requires=['numpy<=1.26.4',
+    install_requires=['numpy<3',
                       'ase',
                       'pandas>=2,<4',
                       'ruamel.yaml',

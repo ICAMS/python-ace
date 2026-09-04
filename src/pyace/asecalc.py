@@ -164,8 +164,8 @@ PyACE ASE calculator
         self.energies = np.array(self.ace.energies)
 
         self.results = {
-            'energy': np.float64(self.energy.reshape(-1, )),
-            'free_energy': np.float64(self.energy.reshape(-1, )),
+            'energy': float(self.energy),
+            'free_energy': float(self.energy),
             'forces': self.forces.astype(np.float64),
             'energies': self.energies.astype(np.float64),
             'gamma': np.array(self.ace.gamma_grade, dtype=np.float64)
@@ -305,21 +305,21 @@ PyACE ASE ensemble calculator
 
         self.results = {
             # mean
-            'energy': np.float64(self.energy.reshape(-1, )),
-            'free_energy': np.float64(self.energy.reshape(-1, )),
+            'energy': float(self.energy),
+            'free_energy': float(self.energy),
             'forces': self.forces.astype(np.float64),
             'energies': self.energies.astype(np.float64),
 
             # std
-            'energy_std': np.float64(self.energy_std.reshape(-1, )),
-            'free_energy_std': np.float64(self.energy_std.reshape(-1, )),
+            'energy_std': float(self.energy_std),
+            'free_energy_std': float(self.energy_std),
             'forces_std': self.forces_std.astype(np.float64),
             'energies_std': self.energies_std.astype(np.float64),
 
             # dev
-            'energy_dev': np.float64(self.energy_dev),
-            'energies_dev': np.float64(self.energies_dev),
-            'forces_dev': np.float64(self.forces_dev)
+            'energy_dev': float(self.energy_dev),
+            'energies_dev': self.energies_dev.astype(np.float64),
+            'forces_dev': self.forces_dev.astype(np.float64)
         }
 
         if self.atoms.number_of_lattice_vectors == 3:
