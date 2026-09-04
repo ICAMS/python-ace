@@ -81,27 +81,26 @@ jobs:
                 && 'cp39-manylinux_x86_64 cp310-manylinux_x86_64 cp311-manylinux_x86_64 cp312-manylinux_x86_64 cp313-manylinux_x86_64'
                 || 'cp312-manylinux_x86_64' }}
 
-          # glibc 2.17 -- the lowest floor this project can reach, which needs
-          # two things to line up:
+          # glibc 2.28 -- RHEL/Alma/Rocky 8+, Ubuntu 20.04+, Debian 10+. This is
+          # the floor the dependency set allows, not a compromise.
           #
-          #  * PYACE_PORTABLE_MATH below. Default -Ofast pulls in libmvec and
-          #    GLIBC_2.22, and the manylinux_2_17 policy caps GLIBC at 2.17 and
-          #    does not whitelist libmvec, so auditwheel would refuse the tag.
-          #  * build-time numpy/scipy (needed for the cython_blas cimport in
-          #    _maxvol.pyx) must be installable *inside* this image. The newest
-          #    releases are manylinux_2_28-only, but pip skips those as
-          #    incompatible and resolves back to the newest 2_17 build --
-          #    numpy 2.0.2-2.2.x and scipy 1.13-1.16 all publish 2_17 wheels for
-          #    cp39-cp313. Runtime is unaffected: users still get current
-          #    numpy/scipy, which are forward-compatible with these headers.
-          #
-          # auditwheel enforces all of this: if a module ends up needing a
-          # symbol above the policy, the build fails rather than shipping a
-          # wheel that dies with a link error on an old machine.
-          CIBW_MANYLINUX_X86_64_IMAGE: manylinux2014
+          # An earlier revision tried manylinux2014 (glibc 2.17) on the theory
+          # that pip would resolve back to an older numpy/scipy that publishes
+          # 2_17 wheels. It does not: pip prefers the newest *version* and falls
+          # back to its sdist, so it downloaded numpy 2.5.2.tar.gz and died on
+          # "NumPy requires GCC >= 10.3". Pinning around that would not help
+          # either, because cibuildwheel installs the runtime dependencies in
+          # the same container to run the tests, and current pandas and
+          # scikit-learn publish x86_64 wheels only for 2_28 -- as would any
+          # actual glibc-2.17 user, who would get our wheel followed by a source
+          # build of pandas. There is no reach to be had below 2_28 while
+          # numpy, scipy, pandas and scikit-learn all stop there.
+          CIBW_MANYLINUX_X86_64_IMAGE: manylinux_2_28
 
-          # Only wheels are built portable; a source build keeps -Ofast.
-          CIBW_ENVIRONMENT: CMAKE_ARGS="-DPYACE_PORTABLE_MATH=ON"
+          # PYACE_PORTABLE_MATH is deliberately NOT set: 2_28 whitelists
+          # libmvec and permits GLIBC_2.22, so -Ofast costs nothing here. The
+          # option stays in CMakeLists.txt for whenever a lower floor is worth
+          # chasing again.
 
           # Each of these has actually been broken in this project at some point,
           # so the wheel is not accepted until all four hold.
