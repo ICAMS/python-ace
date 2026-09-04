@@ -1,0 +1,148 @@
+name: Build wheels
+
+# Publishing is deliberately never automatic. A PyPI filename can only be
+# uploaded once -- deleting or yanking a release does NOT free the version
+# number -- so a botched 0.4.0 would burn 0.4.0 permanently. Every trigger here
+# only produces downloadable artifacts; uploading is a separate manual run with
+# an explicit target, and the recommended first target is TestPyPI.
+on:
+  # Branch pushes and pull requests both give a build without touching master.
+  # Note workflow_dispatch below only appears in the Actions UI once this file
+  # is on the default branch -- that is a GitHub restriction, not a choice
+  # here -- so until then, pushing to one of these branches is how you run it.
+  push:
+    branches:
+      - master
+      - "feature/**"
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: "Upload the built distributions where?"
+        type: choice
+        default: none
+        options: [none, testpypi, pypi]
+
+jobs:
+  sdist:
+    name: sdist
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - run: pipx run build --sdist
+
+      # The sdist shipped no C++ at all from the initial release commit until
+      # MANIFEST.in was added: CMakeExtension declares sources=[], so setuptools
+      # cannot infer the build tree. It is invisible in a wheel-only world and
+      # only bites whoever falls back to building from source, so assert it here
+      # rather than find out from a bug report.
+      - name: Verify the sdist can actually build
+        run: |
+          set -euo pipefail
+          tar tzf dist/*.tar.gz > files.txt
+          for pattern in \
+            'CMakeLists\.txt$' \
+            'lib/pybind11/include/pybind11/pybind11\.h$' \
+            'lib/ace/ace-evaluator/CMakeLists\.txt$' \
+            'src/pyace/maxvol/_maxvol\.pyx$'
+          do
+            grep -qE "$pattern" files.txt || { echo "sdist is missing: $pattern"; exit 1; }
+          done
+          cpp=$(grep -cE '\.cpp$' files.txt)
+          echo "sdist carries $cpp .cpp files"
+          [ "$cpp" -ge 60 ] || { echo "expected >=60 .cpp files, got $cpp"; exit 1; }
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sdist
+          path: dist/*.tar.gz
+
+  wheels:
+    name: wheels (linux x86_64)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build wheels
+        uses: pypa/cibuildwheel@v4.2.0
+        env:
+          CIBW_ARCHS_LINUX: x86_64
+          # Only a deliberate manual run builds all five interpreters; pushes and
+          # pull requests build one, so routine commits cost a single build
+          # rather than five. Upper bound is pybind11 3.1, which supports 3.9
+          # through 3.14; the floor matches requires-python.
+          CIBW_BUILD: >-
+            ${{ github.event_name == 'workflow_dispatch'
+                && 'cp39-manylinux_x86_64 cp310-manylinux_x86_64 cp311-manylinux_x86_64 cp312-manylinux_x86_64 cp313-manylinux_x86_64'
+                || 'cp312-manylinux_x86_64' }}
+
+          # glibc 2.17 -- the lowest floor this project can reach, which needs
+          # two things to line up:
+          #
+          #  * PYACE_PORTABLE_MATH below. Default -Ofast pulls in libmvec and
+          #    GLIBC_2.22, and the manylinux_2_17 policy caps GLIBC at 2.17 and
+          #    does not whitelist libmvec, so auditwheel would refuse the tag.
+          #  * build-time numpy/scipy (needed for the cython_blas cimport in
+          #    _maxvol.pyx) must be installable *inside* this image. The newest
+          #    releases are manylinux_2_28-only, but pip skips those as
+          #    incompatible and resolves back to the newest 2_17 build --
+          #    numpy 2.0.2-2.2.x and scipy 1.13-1.16 all publish 2_17 wheels for
+          #    cp39-cp313. Runtime is unaffected: users still get current
+          #    numpy/scipy, which are forward-compatible with these headers.
+          #
+          # auditwheel enforces all of this: if a module ends up needing a
+          # symbol above the policy, the build fails rather than shipping a
+          # wheel that dies with a link error on an old machine.
+          CIBW_MANYLINUX_X86_64_IMAGE: manylinux2014
+
+          # Only wheels are built portable; a source build keeps -Ofast.
+          CIBW_ENVIRONMENT: CMAKE_ARGS="-DPYACE_PORTABLE_MATH=ON"
+
+          # Each of these has actually been broken in this project at some point,
+          # so the wheel is not accepted until all four hold.
+          #  1. importlib.metadata looks up the DISTRIBUTION name (python-ace),
+          #     not the import package (pyace) -- "unknown" means that broke.
+          #  2. all seven pybind11 modules load (pybind11 2.11 -> 3.1 upgrade).
+          #  3. the compiled maxvol kernel is present, not the slow scipy
+          #     fallback -- it silently vanished from wheels before.
+          #  4. a console entry point resolves, since bin/ scripts became
+          #     [project.scripts].
+          CIBW_TEST_COMMAND: >-
+            python -c "import pyace; print('version:', pyace.__version__); assert pyace.__version__ != 'unknown', 'distribution-name lookup failed'"
+            && python -c "import pyace.sharmonics, pyace.coupling, pyace.basis, pyace.evaluator, pyace.catomicenvironment, pyace.calculator, pyace.grace_fs; print('7 pybind11 modules ok')"
+            && python -c "from pyace.maxvol import c_maxvol; import numpy as np; i, c = c_maxvol(np.random.rand(64, 8), 1.05, 100, -1, 0); print('compiled maxvol ok, selected', len(i), 'rows')"
+            && pace_info --help > /dev/null && echo 'entry points ok'
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wheels-linux-x86_64
+          path: wheelhouse/*.whl
+
+  publish:
+    name: publish to ${{ github.event.inputs.publish }}
+    needs: [sdist, wheels]
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.publish != 'none'
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.publish }}
+    permissions:
+      id-token: write # trusted publishing; no API token in secrets
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - run: ls -l dist/
+
+      - name: Publish
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: >-
+            ${{ github.event.inputs.publish == 'testpypi'
+                && 'https://test.pypi.org/legacy/'
+                || 'https://upload.pypi.org/legacy/' }}
