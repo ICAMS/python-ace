@@ -230,6 +230,9 @@ def maxvol_extension():
             "pyace.maxvol._maxvol",
             ["src/pyace/maxvol/_maxvol.pyx"],
             include_dirs=[numpy.get_include()],
+            # Compile against the modern numpy C-API. Without this every build
+            # prints numpy's "Using deprecated NumPy API" #warning.
+            define_macros=[("NPY_NO_DEPRECATED_API", "NPY_1_7_API_VERSION")],
             # No -march=native: it bakes in the build machine's ISA and
             # SIGILLs on any older CPU, which makes wheels non-redistributable.
             # No -ffast-math either -- this is a pivoting algorithm whose

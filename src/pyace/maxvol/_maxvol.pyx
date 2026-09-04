@@ -15,6 +15,9 @@ Two deliberate differences from the original:
   swaps wrote -- and it was only ever safe because nothing passed -fopenmp.
 * the scratch buffers are released in a ``finally``, so an error raised by
   dgetrf no longer leaks them.
+* the pivot indices are initialised, and a zero-column matrix is rejected up
+  front; previously both were only assigned inside a loop the compiler cannot
+  prove executes, which for R == 0 meant reading them uninitialised.
 """
 __all__ = ['c_maxvol']
 
@@ -43,6 +46,8 @@ def c_maxvol(A, tol=1.05, max_iters=100, top_k_index=-1, int verbose=0):
         raise TypeError("argument must be of numpy.ndarray type")
     if A.ndim != 2:
         raise ValueError("argument must have 2 dimensions")
+    if A.shape[1] < 1:
+        raise ValueError("argument must have at least one column")
     if A.dtype != np.dtype(np.float64):
         raise TypeError("argument must be of float64 type, got {}".format(A.dtype))
     N, r = A.shape
@@ -64,7 +69,7 @@ cdef object dmaxvol(int N, int R, double *lu, double *coef, int *basis,
     cdef int *interchange = <int *> malloc(N * sizeof(int))
     cdef double *tmp_row = <double *> malloc(R * sizeof(double))
     cdef double *tmp_column = <double *> malloc(N * sizeof(double))
-    cdef int info = 0, i, j, tmp_int, i_one = 1, iters = 0
+    cdef int info = 0, i = 0, j = 0, tmp_int, i_one = 1, iters = 0
     cdef int k_row, k_col
     cdef char cR = b'R', cN = b'N', cU = b'U', cL = b'L'
     cdef double d_one = 1, alpha, max_value

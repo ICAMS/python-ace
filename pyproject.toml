@@ -4,16 +4,18 @@
 # make, which schedules this project's seven modules much less effectively, and
 # without Cython the maxvol extension is skipped entirely.
 #
-# Build against numpy>=2.0 for pyace.maxvol._maxvol: a binary compiled against
-# the 2.x C-API also runs under numpy 1.19+, so this is the widest-compatibility
-# choice rather than a floor imposed on users.
+# Build against numpy>=2.0 for pyace.maxvol._maxvol: the 2.x C-API is frozen, so
+# a binary compiled against any 2.x runs under every numpy >= 2.0 (verified:
+# built against 2.2.6, imports fine under 2.1.3). Capped below 3.0 because the
+# next ABI break would silently raise the built wheel's runtime floor above the
+# numpy>=2.0 we advertise in [project.dependencies].
 requires = [
-    "setuptools>=64",
+    "setuptools>=77",   # PEP 639 license/license-files support
     "wheel",
     "cmake>=3.15",
     "ninja; platform_system!='Windows'",
     "Cython>=0.29.32",
-    "numpy>=2.0",
+    "numpy>=2.0,<3",
     "scipy",
 ]
 build-backend = "setuptools.build_meta"
@@ -35,9 +37,11 @@ readme = "README.md"
 # would actually work on. Where the limit is real it is enforced already --
 # tensorflow publishes no wheels for unsupported pythons.
 requires-python = ">=3.9"
-license = { text = "Academic Software License (ASL)" }
+license = "LicenseRef-Academic-Software-License"
+license-files = ["LICENSE.md", "src/pyace/maxvol/LICENSE.maxvolpy.txt"]
 classifiers = [
-    "License :: Other/Proprietary License",
+    # No "License ::" classifier: PEP 639 deprecates them in favour of the
+    # SPDX expression above.
     "Programming Language :: Python :: 3",
 ]
 dependencies = [
