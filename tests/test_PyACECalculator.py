@@ -48,6 +48,10 @@ def test_setup():
     f1 = a.get_forces()
     print(e1)
     print(f1)
+    # regression check for numpy >= 2.4, where the energy leaked out as a
+    # 1-element array instead of a scalar
+    assert isinstance(e1, float)
+    assert f1.shape == (2, 3)
 
 
 def test_load_YAML():

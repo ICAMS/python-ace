@@ -45,17 +45,17 @@ classifiers = [
     "Programming Language :: Python :: 3",
 ]
 dependencies = [
-    # No numpy upper bound on purpose. The old "<2.2.0" came from tensorflow
-    # 2.19.1, which declares numpy<2.2.0 itself -- but pyace does not depend on
-    # tensorflow, and grace-tensorpotential allows tensorflow<=2.20, whose
-    # ceiling is gone (2.20.0 requires only numpy>=1.26.0). Repeating a stale
-    # ceiling here would block an otherwise valid grace environment.
-    "numpy>=2.0",
+    # Upper bounds follow master (numpy<3, pandas>=2,<4, scikit-learn<2), which
+    # widened them from the old numpy<=1.26.4 / pandas<=2.0 / scikit-learn<=1.4.2.
+    # numpy<3 also matches grace-tensorpotential. The >=2.0 floor is this
+    # branch's own (a7e19fa); note it makes the numpy-1.x compat shims master
+    # carries in radial.py unreachable, so they are dropped here.
+    "numpy>=2.0,<3",
     "ase",
-    "pandas",
+    "pandas>=2,<4",
     "ruamel.yaml",
     "psutil",
-    "scikit-learn",
+    "scikit-learn<2",
     "scipy",
 ]
 
