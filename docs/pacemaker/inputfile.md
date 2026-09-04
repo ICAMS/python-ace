@@ -5,11 +5,13 @@ particular settings of `pacemaker`. The sections are listed below.
 
 ## Cutoff and (optional) metadata
 
-* Global cutoff for the neighborlist constructor is setup as:
+* The cutoff for the neighbour list construction is **not** specified separately. It is deduced from the potential
+  as the maximum of the bonds' outer cutoffs `potential::bonds::rcut` (see the `potential` section below),
+  which is exactly the cutoff that the ACE calculators (ASE, LAMMPS) use. The atomic environments seen during
+  fitting are therefore identical to those seen in production, and changing `rcut` is enough - nothing else
+  has to be kept in sync.
 
-```YAML
-cutoff: 10.0
-```
+  A top-level `cutoff` key is deprecated: it is ignored and only produces a warning.
 
 * Metadata (optional)
 

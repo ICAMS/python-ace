@@ -1,4 +1,3 @@
-cutoff: 4 # cutoff for neighbour list construction
 seed: 42  # random seed
 
 

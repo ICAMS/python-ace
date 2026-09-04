@@ -34,8 +34,8 @@ In order to interactively generate default `pacemaker` input file `input.yaml`, 
 ```
 pacemaker -t
 ```
-and enter requested information, such as dataset filename, test set size (optional), list of elements, cutoff,
-number of functions.  Doing so will produce an `input.yaml` file with the most general
+and enter requested information, such as dataset filename, test set size (optional), list of elements,
+outer cutoff `rcut`, number of functions.  Doing so will produce an `input.yaml` file with the most general
 settings that can be adjusted for a particular task. Detailed overview of the input file parameters can be found in the [Input file](inputfile.md) section below.
 
 ## (optional) Manual fitting dataset preparation
