@@ -4,10 +4,9 @@
 # make, which schedules this project's seven modules much less effectively, and
 # without Cython the maxvol extension is skipped entirely.
 #
-# numpy>=2.0 is a *build* pin, not a preference: pyace.maxvol._maxvol is a
-# Cython extension against the numpy C-API, so the numpy it is compiled against
-# sets the minimum numpy it will import under at runtime. Keep this consistent
-# with install_requires in setup.py.
+# Build against numpy>=2.0 for pyace.maxvol._maxvol: a binary compiled against
+# the 2.x C-API also runs under numpy 1.19+, so this is the widest-compatibility
+# choice rather than a floor imposed on users.
 requires = [
     "setuptools>=64",
     "wheel",
@@ -18,3 +17,64 @@ requires = [
     "scipy",
 ]
 build-backend = "setuptools.build_meta"
+
+[project]
+name = "pyace"
+version = "0.4.0"
+authors = [
+    { name = "Yury Lysogorskiy", email = "yury.lysogorskiy@rub.de" },
+    { name = "Anton Bochkarev" },
+    { name = "Sarath Menon" },
+    { name = "Ralf Drautz" },
+]
+description = 'Python bindings, utilities  for PACE and fitting code "pacemaker"'
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "Academic Software License (ASL)" }
+classifiers = [
+    "License :: Other/Proprietary License",
+    "Programming Language :: Python :: 3",
+]
+dependencies = [
+    # No numpy upper bound on purpose. The old "<2.2.0" came from tensorflow
+    # 2.19.1, which declares numpy<2.2.0 itself -- but pyace does not depend on
+    # tensorflow, and grace-tensorpotential allows tensorflow<=2.20, whose
+    # ceiling is gone (2.20.0 requires only numpy>=1.26.0). Repeating a stale
+    # ceiling here would block an otherwise valid grace environment.
+    "numpy>=2.0",
+    "ase",
+    "pandas",
+    "ruamel.yaml",
+    "psutil",
+    "scikit-learn",
+    "scipy",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/ICAMS/python-ace"
+
+[tool.setuptools]
+zip-safe = false
+# These are plain scripts with a shebang, not importable main() entry points,
+# so they are installed as files. Converting them to [project.scripts] console
+# entry points would also make them work on Windows, but needs each bin/ script
+# refactored into a module first.
+script-files = [
+    "bin/pacemaker",
+    "bin/pace_yaml2yace",
+    "bin/pace_timing",
+    "bin/pace_info",
+    "bin/pace_activeset",
+    "bin/pace_select",
+    "bin/pace_collect",
+    "bin/pace_augment",
+    "bin/pace_corerep",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+"pyace.data" = ["mus_ns_uni_to_rawlsLS_np_rank.pckl", "input_template.yaml"]
+# MIT notice must travel with the vendored maxvol kernel
+"pyace.maxvol" = ["LICENSE.maxvolpy.txt"]

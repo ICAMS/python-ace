@@ -6,13 +6,8 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
-from setuptools import Extension, setup, find_packages
+from setuptools import Extension, setup
 from setuptools.command.build_ext import build_ext
-
-import versioneer
-
-with open('README.md') as readme_file:
-    readme = readme_file.read()
 
 
 # Convert distutils Windows platform specifiers to CMake -A arguments
@@ -83,8 +78,8 @@ def default_parallel_jobs() -> int:
 
     memory = _available_memory()
     if memory:
-        jobs = max(1, min(jobs, memory // (2 * 1024 ** 3)))
-    return jobs
+        jobs = min(jobs, memory // (2 * 1024 ** 3))
+    return max(1, jobs)
 
 
 def compiler_launcher() -> str | None:
@@ -244,24 +239,10 @@ def maxvol_extension():
     ], language_level=3)
 
 
-# The information here can also be placed in setup.cfg - better separation of
-# logic and declaration, and simpler if you include description/version in a file.
 setup(
-    name='pyace',
-    version=versioneer.get_version(),
-    author='Yury Lysogorskiy, Anton Bochkarev, Sarath Menon, Ralf Drautz',
-    author_email='yury.lysogorskiy@rub.de',
-    description='Python bindings, utilities  for PACE and fitting code "pacemaker"',
-    long_description=readme,
-    long_description_content_type='text/markdown',
-
-    # tell setuptools to look for any packages under 'src'
-    packages=find_packages('src'),
-    # tell setuptools that all packages will be under the 'src' directory
-    # and nowhere else
-    package_dir={'': 'src'},
-
-    # add an extension module named 'python_cpp_example' to the package
+    # Everything declarative -- name, version, dependencies, packages, scripts,
+    # package data -- lives in pyproject.toml. Only the pieces setuptools has
+    # no declarative form for stay here.
     ext_modules=[CMakeExtension('pyace/sharmonics'),
                  CMakeExtension('pyace/coupling'),
                  CMakeExtension('pyace/basis'),
@@ -271,32 +252,5 @@ setup(
                  CMakeExtension('pyace/grace_fs'),
                  *maxvol_extension(),
                  ],
-    # add custom build_ext command
-    cmdclass=versioneer.get_cmdclass(dict(build_ext=CMakeBuild)),
-    zip_safe=False,
-    url='https://github.com/ICAMS/python-ace',
-    install_requires=['numpy>=2.0,<2.2.0',
-                      'ase',
-                      'pandas',
-                      'ruamel.yaml',
-                      'psutil',
-                      'scikit-learn',
-                      'scipy'
-                      ],
-    classifiers=[
-        'Programming Language :: Python :: 3',
-    ],
-    package_data={"pyace.data": [
-        "mus_ns_uni_to_rawlsLS_np_rank.pckl",
-        "input_template.yaml"
-    ],
-        # MIT notice must travel with the vendored maxvol kernel
-        "pyace.maxvol": ["LICENSE.maxvolpy.txt"],
-    },
-    scripts=["bin/pacemaker", "bin/pace_yaml2yace",
-             "bin/pace_timing", "bin/pace_info",
-             "bin/pace_activeset", "bin/pace_select",
-             "bin/pace_collect", "bin/pace_augment", "bin/pace_corerep"],
-
-    python_requires=">=3.8"
+    cmdclass={"build_ext": CMakeBuild},
 )

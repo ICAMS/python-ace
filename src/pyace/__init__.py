@@ -38,6 +38,9 @@ __all__ = ["ACEAtomicEnvironment", "create_cube", "create_linear_chain", "aseato
            "create_multispecies_basis_config",
            ]
 
-from . import _version
+from importlib.metadata import PackageNotFoundError, version as _package_version
 
-__version__ = _version.get_versions()['version']
+try:
+    __version__ = _package_version("pyace")
+except PackageNotFoundError:  # imported from a source tree that was never installed
+    __version__ = "unknown"
