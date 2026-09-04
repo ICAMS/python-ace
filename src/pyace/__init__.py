@@ -41,6 +41,7 @@ __all__ = ["ACEAtomicEnvironment", "create_cube", "create_linear_chain", "aseato
 from importlib.metadata import PackageNotFoundError, version as _package_version
 
 try:
-    __version__ = _package_version("pyace")
+    # The distribution on PyPI is "python-ace"; the import package is "pyace".
+    __version__ = _package_version("python-ace")
 except PackageNotFoundError:  # imported from a source tree that was never installed
     __version__ = "unknown"
