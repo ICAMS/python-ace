@@ -1,2 +1,0 @@
-include maxvolpy/_maxvol.pyx.src
-include LICENSE.txt
