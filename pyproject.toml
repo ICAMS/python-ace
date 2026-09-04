@@ -75,6 +75,14 @@ pace_yaml2yace = "pyace.cli.pace_yaml2yace:main"
 
 [tool.setuptools]
 zip-safe = false
+# MANIFEST.in has to name the C++ sources so the sdist can build, but those
+# live inside the package tree, and include-package-data (which defaults to
+# true here) would then install them into every wheel as well -- 17 .cpp/.h
+# files, the generated _maxvol.c, and pyace/ace-evaluator/, which is not even
+# an importable package. Turning it off makes MANIFEST.in govern the sdist and
+# the package-data table below govern what ships installed; sdist contents are
+# unaffected. Anything a user needs at runtime must be listed there.
+include-package-data = false
 [tool.setuptools.packages.find]
 where = ["src"]
 

@@ -123,6 +123,22 @@ jobs:
             && python -c "from pyace.maxvol import c_maxvol; import numpy as np; i, c = c_maxvol(np.random.rand(64, 8), 1.05, 100, -1, 0); print('compiled maxvol ok, selected', len(i), 'rows')"
             && pace_info --help > /dev/null && echo 'entry points ok'
 
+      # MANIFEST.in names the C++ sources so the sdist can build, and they sit
+      # inside the package tree -- so a lapse in include-package-data silently
+      # installs all of them into every wheel. It happened once already.
+      - name: Verify the wheels ship no source
+        run: |
+          set -euo pipefail
+          for whl in wheelhouse/*.whl; do
+            bad=$(unzip -Z1 "$whl" | grep -E '\.(cpp|h|pyx|c)$' || true)
+            if [ -n "$bad" ]; then
+              echo "$(basename "$whl") ships source files:"; echo "$bad"; exit 1
+            fi
+            n=$(unzip -Z1 "$whl" | grep -cE '\.so$')
+            echo "$(basename "$whl"): $n compiled modules, no source"
+            [ "$n" -eq 8 ] || { echo "expected 8 .so (7 pybind11 + _maxvol), got $n"; exit 1; }
+          done
+
       - uses: actions/upload-artifact@v7
         with:
           name: wheels-linux-x86_64
