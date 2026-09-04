@@ -189,9 +189,9 @@ def test_fcc_stress():
 
 def test_relaxation():
     try:
+        # ASE >= 3.23
         from ase.filters import UnitCellFilter
     except ImportError:
-        # ase < 3.23
         from ase.constraints import UnitCellFilter
     from ase.optimize import QuasiNewton
 

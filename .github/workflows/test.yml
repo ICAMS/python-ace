@@ -38,16 +38,19 @@ jobs:
         #python setup.py install
         pip install . 
     - name: Install python-ace
-      run: |
+      run: |    
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
         #python setup.py install
-        pip install .
+        pip install . 
     - name: Install maxvolpy
+      # `pip install .` builds a wheel and never runs setup.py's custom
+      # InstallMaxVolPyLocalPackage(install) hook, so lib/maxvolpy is not
+      # installed and the active-learning tests fail to import. Build it
+      # explicitly; --no-build-isolation is required because
+      # lib/maxvolpy/setup.py imports Cython and numpy at module level
+      # without declaring them in a pyproject.toml build-system.
       run: |
-        # pip install . does not run the setup.py install hook that installs
-        # the vendored maxvolpy, so install it explicitly. Its setup.py imports
-        # Cython and numpy at the top level, hence no build isolation.
-        pip install cython
+        pip install Cython scipy
         pip install --no-build-isolation ./lib/maxvolpy
     - name: Test with python-ace with tensorpotential
       run: |
