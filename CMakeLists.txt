@@ -139,9 +139,9 @@ set(GRACE_FS_SOURCES
 # C++ FLAGS
 #---------------------------------------------------------
 #set(CMAKE_CXX_FLAGS "-Wall -Wextra")
-#set(CMAKE_CXX_FLAGS_DEBUG "-g")
 set(CMAKE_CXX_FLAGS_RELEASE "-Ofast -DNDEBUG")
-set(CMAKE_CXX_FLAGS_DEBUG "-Ofast -DNDEBUG")
+# keep Debug builds debuggable (only used with -DCMAKE_BUILD_TYPE=Debug / DEBUG=1)
+set(CMAKE_CXX_FLAGS_DEBUG "-Og -g")
 
 #Finally create the package
 #--------------------------------------------------------
