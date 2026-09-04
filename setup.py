@@ -137,7 +137,10 @@ class CMakeBuild(build_ext):
 
         cmake_args = [
             f"-DCMAKE_LIBRARY_OUTPUT_DIRECTORY={extdir}{os.sep}",
+            # PYTHON_EXECUTABLE is the legacy FindPythonLibsNew name; pybind11 3.x
+            # uses FindPython, which reads Python_EXECUTABLE. Pass both.
             f"-DPYTHON_EXECUTABLE={sys.executable}",
+            f"-DPython_EXECUTABLE={sys.executable}",
             f"-DCMAKE_BUILD_TYPE={cfg}",  # not used on MSVC, but no harm
         ]
 
