@@ -159,10 +159,9 @@ def main(args):
 
     assert isinstance(args_yaml, dict)
     if "cutoff" in args_yaml:
-        cutoff = args_yaml["cutoff"]
-    else:
-        log.warning("No 'cutoff' provided in YAML file, please specify it")
-        raise ValueError("No 'cutoff' provided in YAML file, please specify it")
+        log.warning("Top-level 'cutoff' is deprecated and is ignored. "
+                    "The cutoff for the neighbour list construction is deduced from the potential "
+                    "as the maximum over `potential::bonds::rcut`.")
 
     if "seed" in args_yaml:
         seed = args_yaml["seed"]
@@ -325,8 +324,8 @@ def generate_template_input():
         """Enter number of functions per element ([ENTER] - default 700): """) or 700)
     print("Number of functions per element: ", number_of_functions_per_element)
 
-    cutoff = float(input("Enter cutoff (Angstrom, default:7.0): ") or 7.0)
-    print("Cutoff: ", cutoff)
+    rcut = float(input("Enter outer cutoff `rcut` (Angstrom, default:7.0): ") or 7.0)
+    print("Outer cutoff rcut: ", rcut)
 
     # weighting scheme
     default_energy_based_weighting = """{ type: EnergyBasedWeightingPolicy, DElow: 1.0, DEup: 10.0, DFup: 50.0, DE: 1.0, DF: 1.0, wlow: 0.75, energy: convex_hull, reftype: all,seed: 42}"""
@@ -349,7 +348,7 @@ def generate_template_input():
         input_yaml_text = f.read()
 
     input_yaml_text = input_yaml_text.replace("{{ELEMENTS}}", str(elements))
-    input_yaml_text = input_yaml_text.replace("{{CUTOFF}}", str(cutoff))
+    input_yaml_text = input_yaml_text.replace("{{RCUT}}", str(rcut))
     input_yaml_text = input_yaml_text.replace("{{DATAFILENAME}}", train_filename)
     input_yaml_text = input_yaml_text.replace("{{number_of_functions_per_element}}",
                                               "number_of_functions_per_element: {}".format(

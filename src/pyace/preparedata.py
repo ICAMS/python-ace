@@ -674,7 +674,7 @@ class ACEDataset:
             # for joint train+test
             self.fitting_data["train"] = True
             self.test_data["train"] = False
-            joint_df = pd.concat([self.fitting_data, self.test_data], axis=0)
+            joint_df = pd.concat([self.fitting_data, self.test_data], axis=0).reset_index(drop = True)
             joint_df = apply_weights(joint_df, self.weighting_policy_spec, self.ignore_weights)
             self.fitting_data = joint_df.query("train").reset_index(drop=True)
             self.test_data = joint_df.query("~train").reset_index(drop=True)

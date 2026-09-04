@@ -163,7 +163,8 @@ data:
 ## I want to change the cutoff, what should I do ?
 
 If you change cutoff, i.e. from `rcut: 7` to `rcut: 6.5`, then potential should be refitted from the scratch.
-`pacemaker` will recompute neighbourlists on every run, so, no need to extra options except for specifying cutoff. 
+Change `potential::bonds::rcut` only - the cutoff for the neighbour lists is deduced from it automatically.
+`pacemaker` recomputes the neighbour lists on every run, so no extra options are needed.
 
 
 
