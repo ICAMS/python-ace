@@ -1,0 +1,20 @@
+[build-system]
+# Declaring the build dependencies means `pip install .` provisions them itself
+# instead of silently degrading: without ninja the CMake build falls back to
+# make, which schedules this project's seven modules much less effectively, and
+# without Cython the maxvol extension is skipped entirely.
+#
+# numpy>=2.0 is a *build* pin, not a preference: pyace.maxvol._maxvol is a
+# Cython extension against the numpy C-API, so the numpy it is compiled against
+# sets the minimum numpy it will import under at runtime. Keep this consistent
+# with install_requires in setup.py.
+requires = [
+    "setuptools>=64",
+    "wheel",
+    "cmake>=3.15",
+    "ninja; platform_system!='Windows'",
+    "Cython>=0.29.32",
+    "numpy>=2.0",
+    "scipy",
+]
+build-backend = "setuptools.build_meta"

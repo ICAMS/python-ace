@@ -1,35 +1,18 @@
+from __future__ import annotations
+
 import os
 import re
+import shutil
 import subprocess
 import sys
 from pathlib import Path
-import platform
-from distutils.version import LooseVersion
 from setuptools import Extension, setup, find_packages
 from setuptools.command.build_ext import build_ext
-from setuptools.command.install import install
 
 import versioneer
 
 with open('README.md') as readme_file:
     readme = readme_file.read()
-
-
-class InstallMaxVolPyLocalPackage(install):
-    def run(self):
-        install.run(self)
-        cmd = "cd lib/maxvolpy; python setup.py install; cd ../.."
-        if platform.system() != "Windows":
-            cmd = "pip install Cython; " + cmd
-        returncode = subprocess.call(
-            cmd, shell=True
-        )
-        if returncode != 0:
-            print("=" * 40)
-            print("=" * 16, "WARNING", "=" * 17)
-            print("=" * 40)
-            print("Installation of `lib/maxvolpy` return {} code!".format(returncode))
-            print("Active learning/selection of active set will not work!")
 
 
 # Convert distutils Windows platform specifiers to CMake -A arguments
@@ -45,60 +28,138 @@ PLAT_TO_CMAKE = {
 # The name must be the _single_ output extension from the CMake build.
 # If you need multiple extensions, see scikit-build.
 class CMakeExtension(Extension):
-    def __init__(self, name: str, target=None, sourcedir: str = "") -> None:
+    def __init__(self, name: str, sourcedir: str = "") -> None:
         super().__init__(name, sources=[])
         self.sourcedir = os.fspath(Path(sourcedir).resolve())
-        self.target = target
+
+
+def _cgroup_memory_limit() -> int | None:
+    """Memory ceiling imposed by a container, or None if unlimited."""
+    for path, parse in (
+        ("/sys/fs/cgroup/memory.max", lambda s: None if s.strip() == "max" else int(s)),
+        ("/sys/fs/cgroup/memory/memory.limit_in_bytes", int),
+    ):
+        try:
+            value = parse(Path(path).read_text())
+        except (OSError, ValueError):
+            continue
+        # cgroup v1 reports a huge sentinel rather than omitting the limit
+        if value and value < (1 << 62):
+            return value
+    return None
+
+
+def _available_memory() -> int | None:
+    limit = _cgroup_memory_limit()
+    try:
+        for line in Path("/proc/meminfo").read_text().splitlines():
+            if line.startswith("MemAvailable:"):
+                available = int(line.split()[1]) * 1024
+                return min(available, limit) if limit else available
+    except (OSError, ValueError, IndexError):
+        pass
+    return limit
+
+
+def default_parallel_jobs() -> int:
+    """
+    Choose a compile job count that is safe on small machines.
+
+    os.cpu_count() reports the *host* CPU count, so inside a container pinned to
+    two cores on a large host it returns the host's count and we end up spawning
+    dozens of compilers -- which thrashes or gets OOM-killed. The affinity mask
+    reflects taskset and cpuset limits, so prefer it. Cap by available memory as
+    well: these translation units pull in pybind11 and are linked with -flto, so
+    budget ~2 GB per concurrent job.
+    """
+    try:
+        cpus = len(os.sched_getaffinity(0))  # Linux only; honours taskset/cpuset
+    except AttributeError:
+        cpus = os.cpu_count() or 1
+
+    # Reserve a core for the rest of the system, but not when that would halve
+    # throughput: on a 2-core runner we want both cores.
+    jobs = cpus if cpus <= 2 else cpus - 1
+
+    memory = _available_memory()
+    if memory:
+        jobs = max(1, min(jobs, memory // (2 * 1024 ** 3)))
+    return jobs
+
+
+def compiler_launcher() -> str | None:
+    """Path to ccache/sccache if one is installed and not disabled."""
+    if os.environ.get("PYACE_NO_COMPILER_CACHE"):
+        return None
+    for name in ("ccache", "sccache"):
+        path = shutil.which(name)
+        if path:
+            return path
+    return None
 
 
 class CMakeBuild(build_ext):
+    """
+    Configure and build every CMake extension in a single build tree.
 
-    def build_extension(self, ext: CMakeExtension) -> None:
+    setuptools calls build_extension() once per Extension. Doing the CMake work
+    there gave each module its own build directory, so `pip install .` ran seven
+    configures and seven independent builds -- recompiling yaml-cpp four times,
+    cnpy three times, and the shared ACE sources once per consuming module.
+    Building all of them from one tree compiles each object exactly once and
+    lets the generator schedule every module's work in parallel.
+    """
+
+    def build_extensions(self) -> None:
+        cmake_extensions = [e for e in self.extensions if isinstance(e, CMakeExtension)]
+        other_extensions = [e for e in self.extensions if not isinstance(e, CMakeExtension)]
+        if not cmake_extensions:
+            super().build_extensions()
+            return
+
         try:
-            out = subprocess.check_output(['cmake', '--version'])
+            subprocess.check_output(["cmake", "--version"])
         except OSError:
-            raise RuntimeError(
-                "CMake must be installed to build the extensions")
-        self.parallel = os.cpu_count() - 1
-        if self.parallel < 1:
-            self.parallel = 1
-        # Must be in this form due to bug in .resolve() only fixed in Python 3.10+
-        ext_fullpath = Path.cwd() / self.get_ext_fullpath(ext.name)
-        extdir = ext_fullpath.parent.resolve()
+            raise RuntimeError("CMake must be installed to build the extensions")
 
-        # Using this requires trailing slash for auto-detection & inclusion of
-        # auxiliary "native" libs
+        # Every module is placed in the same package, so one output directory
+        # serves them all. Assert it rather than assume it.
+        outdirs = {
+            Path.cwd().joinpath(self.get_ext_fullpath(e.name)).parent.resolve()
+            for e in cmake_extensions
+        }
+        if len(outdirs) != 1:
+            raise RuntimeError(
+                "CMake extensions must share one output directory, got: "
+                + ", ".join(sorted(str(d) for d in outdirs))
+            )
+        extdir = outdirs.pop()
 
         debug = int(os.environ.get("DEBUG", 0)) if self.debug is None else self.debug
         cfg = "Debug" if debug else "Release"
 
-        # CMake lets you override the generator - we need to check this.
-        # Can be set with Conda-Build, for example.
         cmake_generator = os.environ.get("CMAKE_GENERATOR", "")
 
-        # Set Python_EXECUTABLE instead if you use PYBIND11_FINDPYTHON
-        # EXAMPLE_VERSION_INFO shows you how to pass a value into the C++ code
-        # from Python.
         cmake_args = [
             f"-DCMAKE_LIBRARY_OUTPUT_DIRECTORY={extdir}{os.sep}",
             f"-DPYTHON_EXECUTABLE={sys.executable}",
             f"-DCMAKE_BUILD_TYPE={cfg}",  # not used on MSVC, but no harm
         ]
+
+        launcher = compiler_launcher()
+        if launcher:
+            cmake_args += [
+                f"-DCMAKE_C_COMPILER_LAUNCHER={launcher}",
+                f"-DCMAKE_CXX_COMPILER_LAUNCHER={launcher}",
+            ]
+
         build_args = []
-        # Adding CMake arguments set as environment variable
-        # (needed e.g. to build for ARM OSx on conda-forge)
         if "CMAKE_ARGS" in os.environ:
             cmake_args += [item for item in os.environ["CMAKE_ARGS"].split(" ") if item]
 
-        # In this example, we pass in the version to C++. You might not need to.
-        # cmake_args += [f"-DEXAMPLE_VERSION_INFO={self.distribution.get_version()}"]
-
         if self.compiler.compiler_type != "msvc":
-            # Using Ninja-build since it a) is available as a wheel and b)
-            # multithreads automatically. MSVC would require all variables be
-            # exported for Ninja to pick it up, which is a little tricky to do.
-            # Users can override the generator with CMAKE_GENERATOR in CMake
-            # 3.15+.
+            # Ninja schedules across all modules far better than Make here, and
+            # is available as a wheel. Users can override with CMAKE_GENERATOR.
             if not cmake_generator or cmake_generator == "Ninja":
                 try:
                     import ninja
@@ -110,56 +171,77 @@ class CMakeBuild(build_ext):
                     ]
                 except ImportError:
                     pass
-
         else:
-            # Single config generators are handled "normally"
             single_config = any(x in cmake_generator for x in {"NMake", "Ninja"})
-
-            # CMake allows an arch-in-generator style for backward compatibility
             contains_arch = any(x in cmake_generator for x in {"ARM", "Win64"})
 
-            # Specify the arch if using MSVC generator, but only if it doesn't
-            # contain a backward-compatibility arch spec already in the
-            # generator name.
             if not single_config and not contains_arch:
                 cmake_args += ["-A", PLAT_TO_CMAKE[self.plat_name]]
 
-            # Multi-config generators have a different way to specify configs
             if not single_config:
-                cmake_args += [
-                    f"-DCMAKE_LIBRARY_OUTPUT_DIRECTORY_{cfg.upper()}={extdir}"
-                ]
+                cmake_args += [f"-DCMAKE_LIBRARY_OUTPUT_DIRECTORY_{cfg.upper()}={extdir}"]
                 build_args += ["--config", cfg]
 
-        if ext.target is not None:
-            build_args += ["--target", ext.target]
-
         if sys.platform.startswith("darwin"):
-            # Cross-compile support for macOS - respect ARCHFLAGS if set
             archs = re.findall(r"-arch (\S+)", os.environ.get("ARCHFLAGS", ""))
             if archs:
                 cmake_args += ["-DCMAKE_OSX_ARCHITECTURES={}".format(";".join(archs))]
 
-        # Set CMAKE_BUILD_PARALLEL_LEVEL to control the parallel build level
-        # across all generators.
+        # CMAKE_BUILD_PARALLEL_LEVEL, then an explicit `build_ext -j`, then our
+        # own estimate. Never silently override what the caller asked for.
         if "CMAKE_BUILD_PARALLEL_LEVEL" not in os.environ:
-            # self.parallel is a Python 3 only way to set parallel jobs by hand
-            # using -j in the build_ext call, not supported by pip or PyPA-build.
-            if hasattr(self, "parallel") and self.parallel:
-                # CMake 3.12+ only.
-                build_args += [f"-j{self.parallel}"]
+            if not getattr(self, "parallel", None):
+                self.parallel = default_parallel_jobs()
+            build_args += [f"-j{self.parallel}"]
 
-        build_temp = Path(self.build_temp) / ext.name
-        if not build_temp.exists():
-            build_temp.mkdir(parents=True)
+        build_temp = Path(self.build_temp)
+        build_temp.mkdir(parents=True, exist_ok=True)
 
-        subprocess.run(
-            ["cmake", ext.sourcedir, *cmake_args], cwd=build_temp, check=True
+        sourcedir = cmake_extensions[0].sourcedir
+        subprocess.run(["cmake", sourcedir, *cmake_args], cwd=build_temp, check=True)
+        # No --target: the default target already covers every module, which
+        # keeps this working on CMake older than the 3.15 multi-target syntax.
+        subprocess.run(["cmake", "--build", ".", *build_args], cwd=build_temp, check=True)
+
+        # Anything that is not a CMakeExtension (e.g. a cythonised extension)
+        # is still built the ordinary setuptools way.
+        if other_extensions:
+            saved, self.extensions = self.extensions, other_extensions
+            try:
+                super().build_extensions()
+            finally:
+                self.extensions = saved
+
+
+def maxvol_extension():
+    """
+    The float64 maxvol kernel, built as an ordinary cythonised extension.
+
+    It used to live in lib/maxvolpy and was installed by a custom `install`
+    command, which pip never runs when it builds a wheel -- so `pip install .`
+    silently produced a pyace whose active-learning entry points could not
+    import. Building it here makes it part of the wheel like any other module.
+
+    Cython is resolved lazily so that a tree without it (e.g. `setup.py --help`)
+    still imports; the build itself declares Cython in pyproject.toml.
+    """
+    try:
+        from Cython.Build import cythonize
+        import numpy
+    except ImportError:
+        return []
+    return cythonize([
+        Extension(
+            "pyace.maxvol._maxvol",
+            ["src/pyace/maxvol/_maxvol.pyx"],
+            include_dirs=[numpy.get_include()],
+            # No -march=native: it bakes in the build machine's ISA and
+            # SIGILLs on any older CPU, which makes wheels non-redistributable.
+            # No -ffast-math either -- this is a pivoting algorithm whose
+            # comparisons decide which rows get selected.
+            extra_compile_args=["-O3"] if os.name != "nt" else [],
         )
-        args = ["cmake", "--build", ".", *build_args]
-        subprocess.run(
-            args, cwd=build_temp, check=True
-        )
+    ], language_level=3)
 
 
 # The information here can also be placed in setup.cfg - better separation of
@@ -180,25 +262,26 @@ setup(
     package_dir={'': 'src'},
 
     # add an extension module named 'python_cpp_example' to the package
-    ext_modules=[CMakeExtension('pyace/sharmonics', target='sharmonics'),
-                 CMakeExtension('pyace/coupling', target='coupling'),
-                 CMakeExtension('pyace/basis', target='basis'),
-                 CMakeExtension('pyace/evaluator', target='evaluator'),
-                 CMakeExtension('pyace/catomicenvironment', target='catomicenvironment'),
-                 CMakeExtension('pyace/calculator', target='calculator'),
-                 CMakeExtension('pyace/grace_fs', target='grace_fs'),
+    ext_modules=[CMakeExtension('pyace/sharmonics'),
+                 CMakeExtension('pyace/coupling'),
+                 CMakeExtension('pyace/basis'),
+                 CMakeExtension('pyace/evaluator'),
+                 CMakeExtension('pyace/catomicenvironment'),
+                 CMakeExtension('pyace/calculator'),
+                 CMakeExtension('pyace/grace_fs'),
+                 *maxvol_extension(),
                  ],
     # add custom build_ext command
-    cmdclass=versioneer.get_cmdclass(dict(install=InstallMaxVolPyLocalPackage,
-                                          build_ext=CMakeBuild)),
+    cmdclass=versioneer.get_cmdclass(dict(build_ext=CMakeBuild)),
     zip_safe=False,
     url='https://github.com/ICAMS/python-ace',
-    install_requires=['numpy<2.2.0',
+    install_requires=['numpy>=2.0,<2.2.0',
                       'ase',
                       'pandas',
                       'ruamel.yaml',
                       'psutil',
-                      'scikit-learn'
+                      'scikit-learn',
+                      'scipy'
                       ],
     classifiers=[
         'Programming Language :: Python :: 3',
@@ -206,7 +289,10 @@ setup(
     package_data={"pyace.data": [
         "mus_ns_uni_to_rawlsLS_np_rank.pckl",
         "input_template.yaml"
-    ]},
+    ],
+        # MIT notice must travel with the vendored maxvol kernel
+        "pyace.maxvol": ["LICENSE.maxvolpy.txt"],
+    },
     scripts=["bin/pacemaker", "bin/pace_yaml2yace",
              "bin/pace_timing", "bin/pace_info",
              "bin/pace_activeset", "bin/pace_select",

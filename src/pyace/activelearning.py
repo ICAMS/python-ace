@@ -7,7 +7,7 @@ from typing import Dict, List, Optional, Union, Tuple
 import pandas as pd
 from ase import Atoms
 from ase.io.lammpsrun import read_lammps_dump_text
-from maxvolpy.maxvol import maxvol
+from pyace.maxvol import maxvol
 
 from pyace.asecalc import PyACECalculator, PyGRACEFSCalculator
 from pyace.atomicenvironment import aseatoms_to_atomicenvironment, ACEAtomicEnvironment
