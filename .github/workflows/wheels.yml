@@ -72,12 +72,18 @@ jobs:
         uses: pypa/cibuildwheel@v4.2.0
         env:
           CIBW_ARCHS_LINUX: x86_64
-          # Only a deliberate manual run builds all five interpreters; pushes and
-          # pull requests build one, so routine commits cost a single build
-          # rather than five. Upper bound is pybind11 3.1, which supports 3.9
-          # through 3.14; the floor matches requires-python.
+          # Routine commits build one interpreter; all five are built only when
+          # asked for, so a normal push costs one build rather than five. Ask
+          # either with a manual run, or -- since workflow_dispatch is invisible
+          # until this file reaches the default branch -- by putting
+          # [full-matrix] in the pushed commit's message.
+          #
+          # Upper bound is pybind11 3.1, which supports 3.9 through 3.14; the
+          # floor matches requires-python. head_commit is absent on
+          # pull_request events, where contains() is simply false.
           CIBW_BUILD: >-
-            ${{ github.event_name == 'workflow_dispatch'
+            ${{ (github.event_name == 'workflow_dispatch'
+                 || contains(github.event.head_commit.message, '[full-matrix]'))
                 && 'cp39-manylinux_x86_64 cp310-manylinux_x86_64 cp311-manylinux_x86_64 cp312-manylinux_x86_64 cp313-manylinux_x86_64'
                 || 'cp312-manylinux_x86_64' }}
 
