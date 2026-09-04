@@ -22,7 +22,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "python-ace"
-version = "0.4.0"
+version = "0.4.0rc1"
 authors = [
     { name = "Yury Lysogorskiy", email = "yury.lysogorskiy@rub.de" },
     { name = "Anton Bochkarev" },
