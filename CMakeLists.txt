@@ -69,71 +69,103 @@ add_subdirectory(lib/ace)
 
 #Now add sources
 #--------------------------------------------------------
-set(SOURCES_SHARMONICS "${ACE_SRC}/ace_couplings.cpp"
-            "${ACE_SRC}/ace_spherical_polar.cpp"
-            "${ACE_SRC}/ace_clebsch_gordan.cpp"
-            "${SOURCE_DIR}/ace/ace_spherical_polar_binding.cpp"
-            )
 
-set(SOURCES_COUPLING "${ACE_SRC}/ace_couplings.cpp"
+# Translation units shared by more than one module live in OBJECT libraries so
+# they are compiled once instead of once per consuming module. The grouping is
+# by the *exact* set of modules that already used each source, so every module
+# still links precisely the objects it linked before.
+#
+# Compile settings match what pybind11_add_module applies to the modules: PIC,
+# hidden visibility (required -- some of these are pybind11 binding units), and
+# the same LTO selection, so each object is byte-identical to before.
+function(ace_add_object_library name)
+    add_library(${name} OBJECT ${ARGN})
+    target_link_libraries(${name} PRIVATE pybind11::module)
+    if (TARGET pybind11::lto)
+        target_link_libraries(${name} PRIVATE pybind11::lto)
+    endif ()
+    set_target_properties(${name} PROPERTIES
+            POSITION_INDEPENDENT_CODE ON
+            CXX_VISIBILITY_PRESET hidden)
+    if (CMAKE_COMPILER_IS_GNUCC)
+        target_compile_options(${name} PRIVATE -Wunused-variable -Wvla -Wno-effc++ -Werror=vla)
+    endif ()
+endfunction()
+
+# used by: sharmonics, coupling, basis, evaluator
+ace_add_object_library(ace_coupling_obj
         "${ACE_SRC}/ace_clebsch_gordan.cpp"
-        "${SOURCE_DIR}/ace/ace_coupling_binding.cpp")
+        "${ACE_SRC}/ace_couplings.cpp")
 
-set(SOURCES_BASIS "${ACE_EVALUATOR_SRC}/ace_c_basis.cpp"
-        "${ACE_EVALUATOR_SRC}/ace_radial.cpp"
-        "${ACE_EVALUATOR_SRC}/ace_spherical_cart.cpp"
+# used by: basis, evaluator, calculator, grace_fs
+ace_add_object_library(ace_radial_obj
         "${ACE_EVALUATOR_SRC}/ace_abstract_basis.cpp"
+        "${ACE_EVALUATOR_SRC}/ace_radial.cpp"
+        "${ACE_EVALUATOR_SRC}/ace_spherical_cart.cpp")
+
+# used by: catomicenvironment, evaluator, calculator
+ace_add_object_library(ace_atoms_obj
+        "${ACE_EVALUATOR_EXTRA}/ace_atoms.cpp")
+
+# used by: evaluator, calculator
+ace_add_object_library(ace_evaluator_obj
+        "${ACE_EVALUATOR_SRC}/ace_evaluator.cpp")
+
+# used by: basis, evaluator
+ace_add_object_library(ace_bbasis_obj
+        "${ACE_EVALUATOR_SRC}/ace_c_basis.cpp"
         "${ACE_EVALUATOR_SRC}/ace_flatten_basis.cpp"
         "${ACE_EVALUATOR_SRC}/ships_radial.cpp"
         "${ACE_SRC}/ace_b_basis.cpp"
         "${ACE_SRC}/ace_b_basisfunction.cpp"
-        "${ACE_SRC}/ace_clebsch_gordan.cpp"
-        "${ACE_SRC}/ace_couplings.cpp"
         "${ACE_SRC}/ace_yaml_input.cpp"
-        "${SOURCE_DIR}/ace-evaluator/ace_c_basis_binding.cpp"
         "${SOURCE_DIR}/ace-evaluator/ace_bbasis_spec_helper.cpp"
-        "${SOURCE_DIR}/ace/ace_radial_helper.cpp"
-        "${SOURCE_DIR}/ace/ace_c_basisfunction_helper.cpp"
+        "${SOURCE_DIR}/ace-evaluator/ace_c_basis_binding.cpp"
         "${SOURCE_DIR}/ace/ace_c_basis_helper.cpp"
-  )
+        "${SOURCE_DIR}/ace/ace_c_basisfunction_helper.cpp"
+        "${SOURCE_DIR}/ace/ace_radial_helper.cpp")
 
-set(SOURCES_EVALUATOR "${ACE_EVALUATOR_SRC}/ace_c_basis.cpp"
-             "${ACE_EVALUATOR_SRC}/ace_abstract_basis.cpp"
-             "${ACE_EVALUATOR_SRC}/ace_flatten_basis.cpp"
-             "${ACE_EVALUATOR_SRC}/ace_evaluator.cpp"
-             "${ACE_EVALUATOR_SRC}/ace_recursive.cpp"
-             "${ACE_EVALUATOR_EXTRA}/ace_atoms.cpp"
-             "${ACE_EVALUATOR_SRC}/ace_radial.cpp"
-             "${ACE_EVALUATOR_SRC}/ace_spherical_cart.cpp"
-             "${ACE_SRC}/ace_b_evaluator.cpp"
-             "${ACE_SRC}/ace_b_basis.cpp"
-             "${ACE_SRC}/ace_clebsch_gordan.cpp"
-             "${ACE_SRC}/ace_yaml_input.cpp"
-             "${ACE_SRC}/ace_couplings.cpp"
-             "${SOURCE_DIR}/ace-evaluator/ace_evaluator_binding.cpp"
-        )
+# Per-module sources: only the units unique to that module.
+set(SOURCES_SHARMONICS
+        "${ACE_SRC}/ace_spherical_polar.cpp"
+        "${SOURCE_DIR}/ace/ace_spherical_polar_binding.cpp"
+        $<TARGET_OBJECTS:ace_coupling_obj>)
 
-set(SOURCES_CATOMICENVIRONMENT "${ACE_EVALUATOR_EXTRA}/ace_atoms.cpp"
-            "${SOURCE_DIR}/utils/ace_atoms_binding.cpp")
+set(SOURCES_COUPLING
+        "${SOURCE_DIR}/ace/ace_coupling_binding.cpp"
+        $<TARGET_OBJECTS:ace_coupling_obj>)
 
+set(SOURCES_CATOMICENVIRONMENT
+        "${SOURCE_DIR}/utils/ace_atoms_binding.cpp"
+        $<TARGET_OBJECTS:ace_atoms_obj>)
+
+set(SOURCES_BASIS
+        $<TARGET_OBJECTS:ace_coupling_obj>
+        $<TARGET_OBJECTS:ace_radial_obj>
+        $<TARGET_OBJECTS:ace_bbasis_obj>)
+
+set(SOURCES_EVALUATOR
+        "${ACE_EVALUATOR_SRC}/ace_recursive.cpp"
+        "${ACE_SRC}/ace_b_evaluator.cpp"
+        "${SOURCE_DIR}/ace-evaluator/ace_evaluator_binding.cpp"
+        $<TARGET_OBJECTS:ace_coupling_obj>
+        $<TARGET_OBJECTS:ace_radial_obj>
+        $<TARGET_OBJECTS:ace_atoms_obj>
+        $<TARGET_OBJECTS:ace_evaluator_obj>
+        $<TARGET_OBJECTS:ace_bbasis_obj>)
 
 set(SOURCES_CALCULATOR
-        "${ACE_EVALUATOR_SRC}/ace_radial.cpp"
-        "${ACE_EVALUATOR_SRC}/ace_abstract_basis.cpp"
-        "${ACE_EVALUATOR_EXTRA}/ace_atoms.cpp"
-        "${ACE_EVALUATOR_SRC}/ace_spherical_cart.cpp"
         "${ACE_EVALUATOR_EXTRA}/ace_calculator.cpp"
-        "${ACE_EVALUATOR_SRC}/ace_evaluator.cpp"
-        "${SOURCE_DIR}/utils/ace_calculator_binding.cpp")
+        "${SOURCE_DIR}/utils/ace_calculator_binding.cpp"
+        $<TARGET_OBJECTS:ace_radial_obj>
+        $<TARGET_OBJECTS:ace_atoms_obj>
+        $<TARGET_OBJECTS:ace_evaluator_obj>)
 
 set(GRACE_FS_SOURCES
-        "${ACE_EVALUATOR_SRC}/ace_abstract_basis.cpp"
-        "${ACE_EVALUATOR_SRC}/ace_radial.cpp"
-        "${ACE_EVALUATOR_SRC}/ace_spherical_cart.cpp"
-        "${SOURCE_DIR}/ace/grace_fs_binding.cpp"
         "${ACE_SRC}/grace_fs_evaluator.cpp"
         "${ACE_EXTRA_SRC}/grace_fs_calculator.cpp"
-)
+        "${SOURCE_DIR}/ace/grace_fs_binding.cpp"
+        $<TARGET_OBJECTS:ace_radial_obj>)
 
 
 # C++ FLAGS
@@ -168,14 +200,12 @@ if (CMAKE_COMPILER_IS_GNUCC)
   target_compile_options(basis PRIVATE -Wunused-variable -Wvla -Wno-effc++ -Werror=vla)
 endif ()
 
-pybind11_add_module(evaluator ${SOURCES_EVALUATOR}  ${SOURCES_BASIS} )
+pybind11_add_module(evaluator ${SOURCES_EVALUATOR} )
 target_link_libraries(evaluator PRIVATE yaml-cpp-pace)
 target_link_libraries(evaluator PRIVATE cnpy)
 if (CMAKE_COMPILER_IS_GNUCC)
   target_compile_options(evaluator PRIVATE -Wunused-variable -Wvla -Wno-effc++ -Werror=vla)
 endif ()
-
-
 
 pybind11_add_module(grace_fs  ${GRACE_FS_SOURCES})
 target_link_libraries(grace_fs PRIVATE yaml-cpp-pace)
@@ -188,4 +218,3 @@ pybind11_add_module(calculator ${SOURCES_CALCULATOR} )
 if (CMAKE_COMPILER_IS_GNUCC)
   target_compile_options(calculator PRIVATE -Wunused-variable -Wvla -Wno-effc++ -Werror=vla)
 endif ()
-
