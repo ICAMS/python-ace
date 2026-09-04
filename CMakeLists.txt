@@ -171,7 +171,26 @@ set(GRACE_FS_SOURCES
 # C++ FLAGS
 #---------------------------------------------------------
 #set(CMAKE_CXX_FLAGS "-Wall -Wextra")
-set(CMAKE_CXX_FLAGS_RELEASE "-Ofast -DNDEBUG")
+
+# -Ofast implies -ffast-math, which lets gcc route exp/log/pow through glibc's
+# vector math library (libmvec: _ZGVbN2v_exp and friends) and the __*_finite
+# aliases. That is fast, but it raises the floor of the resulting binary to
+# GLIBC_2.22 and adds a libmvec.so.1 dependency -- and auditwheel's
+# manylinux_2_17 policy caps GLIBC at 2.17 and does not whitelist libmvec, so a
+# wheel built this way cannot be tagged below manylinux_2_28.
+#
+# Redistributable builds turn this option on to trade vectorised transcendental
+# math for that lower floor. Builds for a known machine -- local, HPC -- should
+# leave it off and keep -Ofast. This is why wheels may be measurably slower than
+# a source build; measure with `pace_timing` before assuming either way.
+option(PYACE_PORTABLE_MATH
+       "Drop -ffast-math to keep the glibc floor low enough for manylinux_2_17" OFF)
+
+if (PYACE_PORTABLE_MATH)
+    set(CMAKE_CXX_FLAGS_RELEASE "-O3 -fno-fast-math -DNDEBUG")
+else ()
+    set(CMAKE_CXX_FLAGS_RELEASE "-Ofast -DNDEBUG")
+endif ()
 # keep Debug builds debuggable (only used with -DCMAKE_BUILD_TYPE=Debug / DEBUG=1)
 set(CMAKE_CXX_FLAGS_DEBUG "-Og -g")
 
