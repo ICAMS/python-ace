@@ -1,0 +1,25 @@
+# What the sdist needs in order to build.
+#
+# None of this is inferable by setuptools: CMakeExtension declares sources=[],
+# so nothing under lib/ or src/pyace/*.cpp is picked up automatically, and an
+# sdist without them cannot build at all. That is the fallback path for every
+# platform and python we publish no wheel for, so it has to work.
+
+include CMakeLists.txt
+
+# Vendored dependencies, all compiled from source as part of the extension
+# build: ace + ace-evaluator (which carry yaml-cpp, cnpy and wigner-cpp) and
+# pybind11. Grafted wholesale rather than by extension -- these trees contain
+# CMake fragments, .clang-format, LICENSE files and yaml-cpp's own build files,
+# and enumerating them by pattern is how a file goes missing again later.
+#
+# A graft copies what is on disk, not what git tracks, so build a release sdist
+# from a clean checkout -- an in-tree cmake build would otherwise be swept in.
+graft lib/ace
+graft lib/pybind11
+
+# Binding translation units, plus the cythonised maxvol kernel. _maxvol.pyx
+# needs listing explicitly: maxvol_extension() in setup.py only registers it as
+# an Extension source when Cython is importable, so relying on that would make
+# the sdist's contents depend on the environment it was built in.
+recursive-include src/pyace *.cpp *.h *.pyx
