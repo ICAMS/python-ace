@@ -1,3 +1,5 @@
+import pickle
+
 import numpy as np
 import pytest
 
@@ -258,3 +260,66 @@ def test_ZBL_analytical_derivative():
 
     at = Atoms("H2", positions=[[0, 0, 0], [0, 0, 1.5]])  # ZBL
     check(at, "ZBL forces are inconsistent")
+
+
+def minimize_dimer(calc, elements):
+    from ase.optimize import BFGS
+
+    at = Atoms(elements, positions=[[0, 0, 0], [0, 0, 2.0]], pbc=False)
+    at.set_calculator(calc)
+
+    energies = [at.get_potential_energy()]
+    forces = [at.get_forces()]
+
+    opt = BFGS(at, logfile=None)
+    opt.attach(lambda: (energies.append(at.get_potential_energy()),
+                        forces.append(at.get_forces())))
+    opt.run(fmax=1e-3, steps=50)
+
+    return np.array(energies), np.array(forces)
+
+
+def check_pickle_roundtrip(calc, elements=("Al", "Al")):
+    calc2 = pickle.loads(pickle.dumps(calc))
+
+    # minimize the dimer with the original and the unpickled calculator and
+    # compare energies/forces along the whole trajectory
+    e1, f1 = minimize_dimer(calc, elements)
+    e2, f2 = minimize_dimer(calc2, elements)
+
+    assert len(e1) > 1
+    assert e1.shape == e2.shape
+    assert np.allclose(e1, e2)
+    assert np.allclose(f1, f2)
+    return calc2
+
+
+def test_pickle_bbasis_calculator():
+    calc = PyACECalculator(basis_set="tests/Al.pbe.13.2.yaml")
+    calc2 = check_pickle_roundtrip(calc)
+    assert isinstance(calc2.basis, ACEBBasisSet)
+    assert isinstance(calc2.evaluator, ACEBEvaluator)
+
+
+def test_pickle_ctilde_calculator():
+    calc = PyACECalculator(basis_set="tests/Al.pbe.rhocore.ace")
+    calc2 = check_pickle_roundtrip(calc)
+    assert isinstance(calc2.basis, ACECTildeBasisSet)
+    assert isinstance(calc2.evaluator, ACECTildeEvaluator)
+
+
+def test_pickle_yace_calculator():
+    calc = PyACECalculator(basis_set="tests/Al-Ni_opt_all.yace")
+    calc2 = check_pickle_roundtrip(calc, elements=("Al", "Ni"))
+    assert isinstance(calc2.basis, ACECTildeBasisSet)
+    assert isinstance(calc2.evaluator, ACECTildeEvaluator)
+
+
+def test_pickle_ctilde_recursive_calculator():
+    from pyace.evaluator import ACERecursiveEvaluator
+
+    calc = PyACECalculator(basis_set="tests/Al.pbe.rhocore.ace",
+                           recursive_evaluator=True, recursive=True)
+    calc2 = check_pickle_roundtrip(calc)
+    assert isinstance(calc2.basis, ACECTildeBasisSet)
+    assert isinstance(calc2.evaluator, ACERecursiveEvaluator)

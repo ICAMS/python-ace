@@ -212,6 +212,22 @@ PyACE ASE calculator
         write(fname, atoms, format="cfg")
         self.current_extrapolation_structure_index += 1
 
+    def __reduce__(self):
+        # B-basis potentials are dumped as a full BBasisConfiguration, so that
+        # unpickling works on other machines or in different locations even if
+        # the calculator was created from a file name.  Ctilde basis sets
+        # cannot be converted back to a BBasisConfiguration, but their binding
+        # provides native pickle support, so they are passed through as is.
+        if isinstance(self.basis, ACEBBasisSet):
+            basis_spec = self.basis.to_BBasisConfiguration()
+        else:
+            basis_spec = self.basis
+        kwargs = {k: v for k, v in self.parameters.items() if k != "basis_set"}
+        return (_unpickle_calculator, (type(self), basis_spec, kwargs))
+
+
+def _unpickle_calculator(cls, basis_spec, kwargs):
+    return cls(basis_spec, **kwargs)
 
 class PyACEEnsembleCalculator(Calculator):
     """
