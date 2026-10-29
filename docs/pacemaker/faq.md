@@ -6,7 +6,7 @@ If `batch_size_reduction=True` (default option), then automatic batch size reduc
 
 ## My fit on GPU crushes with OOM error, what to do ?
 This means that you are trying to fit at once too much data into the GPU memory. The amount of data processed by GPU
-at once is controlled by [batch_size](#backend-specification) parameter, try to reduce it or set `batch_size_reduction=True`. An optimal value for
+at once is controlled by [batch_size](inputfile.md#backend_specification) parameter, try to reduce it or set `batch_size_reduction=True`. An optimal value for
 this parameter is totally empirical as it depends on data, potential configuration and GPU itself.
 
 
@@ -47,7 +47,7 @@ If you want to continue fit without changing the basis size, you can do the foll
     
   doing this will override specifications in the `input.yaml`.
 
-If you want to extend the basis (aka do the [ladder scheme fitting](#inputfile.md#ladder_hiererchical_basis_extension)):
+If you want to extend the basis (aka do the [ladder scheme fitting](inputfile.md#ladder_hiererchical_basis_extension)):
  
 - Specify your potential as initial potential
   

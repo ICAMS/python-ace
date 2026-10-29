@@ -5,7 +5,7 @@ contains structural information as well as corresponding energies and forces tha
 Input file contains details about desired ACE potential configuration and various parameters influencing optimization 
 process.  
 In this section we will describe the format of the fitting dataset, we will run a fit with an example dataset and
-overview the output produced by `pacemaker`. Input parameters are detailed in the [section](inputfile.md#Input_file) below.    
+overview the output produced by `pacemaker`. Input parameters are detailed in the [section](inputfile.md#input_file) below.
 
 ## Automatic DFT data collection
 
@@ -23,7 +23,7 @@ Both commands will scan through all folders and subfolders and collect DFT free 
 and make a single atom corrections. Resulting dataset will be stored into `collected.pckl.gzip` file.
 
 If you need more flexibility for DFT dataset manipulation,
-please check [Manual fitting dataset preparation](#manual_fitting_dataset_preparation).
+please check [Manual fitting dataset preparation](#optional_manual_fitting_dataset_preparation).
 
 ## Automatic input file generation
 
@@ -165,7 +165,7 @@ Note, that `tensorpotential` can be used without a GPU as well.
 
 During and after the fitting `pacemaker` produces several outputs, including:
 
-- `interim_potential_X.yaml`: current state of the potential at each iteration of [fit cycle](inputfile.md#fitting-settings) (i.g. X=0, 1, ...)
+- `interim_potential_X.yaml`: current state of the potential at each iteration of [fit cycle](inputfile.md#fitting_settings) (i.g. X=0, 1, ...)
 - `interim_potential_best_cycle.yaml`: best out of X interim potentials
 - `log.txt`: log file containing all current information including summary of the optimization steps.
 - `report`: folder containing figures displaying various error statistics and distributions. 
@@ -178,7 +178,7 @@ There are two main types of the information in the log file:
 ```text
 Iteration   #999  (1052 evals):     Loss: 0.000192 | RMSE Energy(low): 17.95 (16.79) meV/at | Forces(low): 7.89 (7.04) meV/A | Time/eval: 517.83 mcs/at
 ```
-where `Iteration` is the index of the optimization step performed by the [optimizer](inputfile.md#fitting-settings)
+where `Iteration` is the index of the optimization step performed by the [optimizer](inputfile.md#fitting_settings)
 (number in parentheses shows the number of function evaluation calls done by optimizaer), `Loss` 
 is the current value of the loss function, `RMSE Energy/Forces` is the current root mean-squared error 
 for energy/forces wrt. training dataset (numbers in paretheses show corresponding values for the structures which
@@ -206,8 +206,8 @@ Number of params./funcs:    232/86                                   Avg. time: 
 ```
 
 
-Every [display_step](inputfile.md#backend-specification) the summary of fit statistics is printed out. It displays the total 
-loss function value and contributions to it from energy, forces and other [regularizations parameters](inputfile.md#fitting-settings).
+Every [display_step](inputfile.md#backend_specification) the summary of fit statistics is printed out. It displays the total
+loss function value and contributions to it from energy, forces and other [regularizations parameters](inputfile.md#fitting_settings).
 In addition to RMSE, mean-absolute error (MAE) and maximum absolute error (MAX_AE) are also printed.
 
 
@@ -219,7 +219,7 @@ Fitted potential can be used for calculations both in [LAMMPS](https://docs.lamm
 
 ### LAMMPS
 
-Using potential with [LAMMPS](https://www.lammps.org/) requires its [conversion](utilities.md#potential-conversion) into **YACE** format with command
+Using potential with [LAMMPS](https://www.lammps.org/) requires its [conversion](utilities.md#potential_conversion) into **YACE** format with command
 ```asm
 pace_yaml2yace output_potential.yaml
 ```

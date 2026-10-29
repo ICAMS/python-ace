@@ -27,7 +27,8 @@ class FitMetrics:
         :return: fit metrics dictionary
         """
 
-        regularization_loss = [float(r_comp * r_weight) for r_comp, r_weight in zip(self.regs, self.reg_weights)]
+        regularization_loss = [float(np.asarray(r_comp * r_weight).item())
+                               for r_comp, r_weight in zip(self.regs, self.reg_weights)]
         l1 = regularization_loss[0]
         l2 = regularization_loss[1]
         smoothness_reg_loss = regularization_loss[2:]
