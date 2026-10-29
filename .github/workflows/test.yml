@@ -24,6 +24,9 @@ jobs:
       CUDA_VISIBLE_DEVICES: "-1"
       TF_USE_LEGACY_KERAS: "1"
       CMAKE_BUILD_PARALLEL_LEVEL: "2"
+      OMP_NUM_THREADS: "2"
+      TF_NUM_INTRAOP_THREADS: "2"
+      TF_NUM_INTEROP_THREADS: "2"
 
     steps:
     - uses: actions/checkout@v4
@@ -39,6 +42,8 @@ jobs:
       uses: actions/checkout@v4
       with:
         repository: ICAMS/grace-tensorpotential
+        # Includes the NumPy scalar fix and TensorFlow 2.21 bound from PR #43.
+        ref: 9ccb9090f53292a836cbbc3de4cadcae54c7ce1a
         path: tensorpotential
     - name: Install tensorpotential
       run: |
@@ -50,6 +55,7 @@ jobs:
     - name: Test with python-ace with tensorpotential
       run: |
         python -m pip check
+        python -c 'import pyace, tensorpotential, tensorflow as tf, numpy as np; print("Versions:", pyace.__version__, tensorpotential.__version__, tf.__version__, np.__version__)'
         python -m pytest tests/ --runtensorpot
     - name: Integration test of CLI
       run: |
