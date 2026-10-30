@@ -36,7 +36,7 @@ data:
 ```
 
 Dataset could be saved into file as a pickled `pandas` dataframe with special names
-for [columns](#fitting-dataset-preparation).
+for [columns](quickstart.md#optional_manual_fitting_dataset_preparation).
 
 ```YAML
 data:
