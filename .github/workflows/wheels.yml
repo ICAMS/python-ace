@@ -149,11 +149,13 @@ jobs:
           #     fallback -- it silently vanished from wheels before.
           #  4. a console entry point resolves, since bin/ scripts became
           #     [project.scripts].
+          CIBW_TEST_REQUIRES: pytest
           CIBW_TEST_COMMAND: >-
             python -c "import pyace; print('version:', pyace.__version__); assert pyace.__version__ != 'unknown', 'distribution-name lookup failed'"
             && python -c "import pyace.sharmonics, pyace.coupling, pyace.basis, pyace.evaluator, pyace.catomicenvironment, pyace.calculator, pyace.grace_fs; print('7 pybind11 modules ok')"
             && python -c "from pyace.maxvol import c_maxvol; import numpy as np; i, c = c_maxvol(np.random.rand(64, 8), 1.05, 100, -1, 0); print('compiled maxvol ok, selected', len(i), 'rows')"
             && pace_info --help > /dev/null && echo 'entry points ok'
+            && cd "{project}" && python -m pytest tests/test_PyACECalculator.py -q
 
       # MANIFEST.in names the C++ sources so the sdist can build, and they sit
       # inside the package tree -- so a lapse in include-package-data silently
