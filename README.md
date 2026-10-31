@@ -5,12 +5,12 @@ It is based on the `pyace` (this repo) and `tensorpotential` ([GRACE TensorPoten
 
 # Installation
 
-Please follow the [installation instructions](https://python-ace.readthedocs.io/en/latest/pacemaker/install/). The GRACE backend is installed from PyPI as `tensorpotential`; the pacemaker distribution is `python-ace`.
+Please follow the [installation instructions](https://pacemaker.readthedocs.io/en/latest/pacemaker/install/). The GRACE backend is installed from PyPI as `tensorpotential`; the pacemaker distribution is `python-ace`.
 
 
 # Documentation
 
-Please see the `docs` folder for documentation or check [online documentation](https://python-ace.readthedocs.io/)
+Please see the `docs` folder for documentation or check [online documentation](https://pacemaker.readthedocs.io/)
 
 
 # Citation
