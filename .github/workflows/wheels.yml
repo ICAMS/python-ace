@@ -23,8 +23,24 @@ on:
         default: none
         options: [none, testpypi, pypi]
 
+permissions:
+  contents: read
+
 jobs:
+  plan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - name: Check package version and publication target
+        env:
+          RELEASE_TARGET: ${{ github.event_name == 'workflow_dispatch' && inputs.publish || 'none' }}
+        run: python tools/check_release.py --target "$RELEASE_TARGET"
+
   sdist:
+    needs: plan
     name: sdist
     runs-on: ubuntu-latest
     steps:
@@ -59,10 +75,11 @@ jobs:
 
       - uses: actions/upload-artifact@v7
         with:
-          name: sdist
+          name: release-sdist
           path: dist/*.tar.gz
 
   wheels:
+    needs: plan
     name: wheels (linux x86_64)
     runs-on: ubuntu-latest
     steps:
@@ -141,29 +158,80 @@ jobs:
 
       - uses: actions/upload-artifact@v7
         with:
-          name: wheels-linux-x86_64
+          name: release-wheels-linux-x86_64
           path: wheelhouse/*.whl
 
-  publish:
-    name: publish to ${{ github.event.inputs.publish }}
+  validate:
     needs: [sdist, wheels]
-    if: github.event_name == 'workflow_dispatch' && github.event.inputs.publish != 'none'
     runs-on: ubuntu-latest
-    environment: ${{ github.event.inputs.publish }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: release-*
+          path: dist
+          merge-multiple: true
+      - run: python -m pip install twine
+      - name: Validate distribution metadata and wheel coverage
+        env:
+          FULL_MATRIX: ${{ github.event_name == 'workflow_dispatch' }}
+        run: |
+          python -m twine check --strict dist/*
+          if [ "$FULL_MATRIX" = "true" ]; then
+            python tools/check_release.py --artifacts dist --full-matrix
+          else
+            python tools/check_release.py --artifacts dist
+          fi
+
+  publish-testpypi:
+    name: Publish to TestPyPI
+    needs: validate
+    if: github.event_name == 'workflow_dispatch' && inputs.publish == 'testpypi'
+    runs-on: ubuntu-latest
+    environment:
+      name: testpypi
+      url: https://test.pypi.org/project/python-ace/
+    concurrency:
+      group: publish-python-ace-testpypi
+      cancel-in-progress: false
     permissions:
-      id-token: write # trusted publishing; no API token in secrets
+      id-token: write
     steps:
       - uses: actions/download-artifact@v8
         with:
+          pattern: release-*
           path: dist
           merge-multiple: true
-
-      - run: ls -l dist/
-
-      - name: Publish
-        uses: pypa/gh-action-pypi-publish@release/v1
+      - uses: pypa/gh-action-pypi-publish@release/v1
         with:
-          repository-url: >-
-            ${{ github.event.inputs.publish == 'testpypi'
-                && 'https://test.pypi.org/legacy/'
-                || 'https://upload.pypi.org/legacy/' }}
+          password: ${{ secrets.TEST_PYPI_API_TOKEN }}
+          attestations: ${{ secrets.TEST_PYPI_API_TOKEN == '' }}
+          repository-url: https://test.pypi.org/legacy/
+
+  publish-pypi:
+    name: Publish to PyPI
+    needs: validate
+    if: github.event_name == 'workflow_dispatch' && inputs.publish == 'pypi'
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/project/python-ace/
+    concurrency:
+      group: publish-python-ace-pypi
+      cancel-in-progress: false
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: release-*
+          path: dist
+          merge-multiple: true
+      - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          user: ${{ secrets.PYPI_USERNAME || '__token__' }}
+          password: ${{ secrets.PYPI_PASSWORD }}
+          attestations: ${{ secrets.PYPI_PASSWORD == '' }}
