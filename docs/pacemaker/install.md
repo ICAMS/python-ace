@@ -12,8 +12,8 @@ You can use `conda` instead of `mamba`.
 ## Install pacemaker
 
 ```bash
-python -m pip install --upgrade pip
-python -m pip install --upgrade python-ace
+pip install --upgrade pip
+pip install --upgrade python-ace
 ```
 
 Wheels are available for Linux, Apple Silicon, and Intel Macs.
@@ -23,7 +23,7 @@ Wheels are available for Linux, Apple Silicon, and Intel Macs.
 On Linux or Apple Silicon, install:
 
 ```bash
-python -m pip install --upgrade tensorpotential 'numpy<2.4'
+pip install --upgrade tensorpotential 'numpy<2.4'
 ```
 
 GRACE is published as `tensorpotential`; pip selects its TensorFlow and Keras
@@ -33,7 +33,7 @@ GRACE release.
 ## Check the installation
 
 ```bash
-python -m pip check
+pip check
 pacemaker --help
 ```
 
