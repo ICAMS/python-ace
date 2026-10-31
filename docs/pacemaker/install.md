@@ -1,6 +1,6 @@
 # Installation
 
-Use Python 3.12 in a separate environment:
+Create a separate environment; for example:
 
 ```bash
 mamba create -n ace python=3.12 pip
@@ -13,7 +13,7 @@ You can use `conda` instead of `mamba`.
 
 ```bash
 python -m pip install --upgrade pip
-python -m pip install 'python-ace==0.4.0'
+python -m pip install --upgrade python-ace
 ```
 
 Wheels are available for Linux, Apple Silicon, and Intel Macs.
@@ -23,12 +23,12 @@ Wheels are available for Linux, Apple Silicon, and Intel Macs.
 On Linux or Apple Silicon, install:
 
 ```bash
-python -m pip install 'tensorpotential==0.6.2.1' 'numpy>=2,<2.4' 'tensorflow~=2.20.0' 'tf-keras~=2.20.0'
+python -m pip install --upgrade tensorpotential 'numpy<2.4'
 ```
 
-GRACE is published as `tensorpotential`. Use these versions together: this
-backend release requires NumPy below 2.4 for pacemaker fitting.
-TensorFlow 2.20 does not provide Intel Mac wheels.
+GRACE is published as `tensorpotential`; pip selects its TensorFlow and Keras
+dependencies. The NumPy upper bound works around a fitting bug in the current
+GRACE release.
 
 ## Check the installation
 
