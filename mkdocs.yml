@@ -1,4 +1,11 @@
 site_name: pacemaker
+site_url: https://python-ace.readthedocs.io/en/latest/
+repo_url: https://github.com/ICAMS/python-ace
+
+validation:
+  links:
+    unrecognized_links: warn
+    anchors: warn
 
 theme:
   name: "material"
@@ -18,6 +25,7 @@ extra_javascript:
   - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js
 
 nav:
+    - Home: index.md
     - Installation: pacemaker/install.md
     - Quick start: pacemaker/quickstart.md
     - Pacemaker workflow: pacemaker/workflow.md

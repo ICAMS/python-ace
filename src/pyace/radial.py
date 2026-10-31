@@ -6,9 +6,6 @@
 import numpy as np
 from typing import Union
 
-# np.trapz was renamed to np.trapezoid in numpy 2.0 and removed in numpy 2.4
-_trapezoid = np.trapezoid if hasattr(np, "trapezoid") else np.trapz
-
 from pyace import ACECTildeBasisSet, ACEBBasisSet, BBasisConfiguration
 
 
@@ -20,7 +17,7 @@ def integrate(xs, table):
         frs = np.abs(table)
         sum_frs = np.sum(frs, axis=(1, 2))
         integrand = sum_frs * xs ** 2
-        integral = _trapezoid(integrand, x=xs)
+        integral = np.trapezoid(integrand, x=xs)
         return integral
     else:
         return 0

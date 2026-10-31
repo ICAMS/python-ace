@@ -271,7 +271,7 @@ def test_generate_tp_atoms():
 
     from ase.calculators.singlepoint import SinglePointCalculator
     spcalc = SinglePointCalculator(atoms, energy=-100, forces=np.zeros((len(atoms), 3)))
-    atoms.set_calculator(spcalc)
+    atoms.calc = spcalc
 
     tp_atoms = generate_tp_atoms(atoms, cutoff=r_cut)
     assert isinstance(tp_atoms, dict)

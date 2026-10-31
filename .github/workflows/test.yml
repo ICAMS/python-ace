@@ -5,7 +5,7 @@ name: Python package
 
 on:
   pull_request:
-    branches: [ "master" ]
+    branches: [ "master", "feature/build-speedup" ]
 
 jobs:
   build:
@@ -14,46 +14,48 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.9", "3.10"] # ver. 3.11 is not supported by TP
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
+        tensorflow-version: ["2.20.0", "2.21.0"]
+        include:
+          - python-version: "3.9"
+            tensorflow-version: "2.20.0"
+
+    env:
+      CUDA_VISIBLE_DEVICES: "-1"
+      TF_USE_LEGACY_KERAS: "1"
+      CMAKE_BUILD_PARALLEL_LEVEL: "2"
+      OMP_NUM_THREADS: "2"
+      TF_NUM_INTRAOP_THREADS: "2"
+      TF_NUM_INTEROP_THREADS: "2"
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v3
+      uses: actions/setup-python@v6
       with:
         python-version: ${{ matrix.python-version }}
     - name: Install general dependencies
       run: |
         python -m pip install --upgrade pip
         python -m pip install pytest
-    - name: Checkout tensorpotential
-      uses: actions/checkout@v2
+    - name: Checkout current tensorpotential with PACE compatibility
+      uses: actions/checkout@v4
       with:
-        repository: ICAMS/TensorPotential
+        repository: ICAMS/grace-tensorpotential
+        # Includes the NumPy scalar fix and TensorFlow 2.21 bound from PR #43.
+        ref: 9ccb9090f53292a836cbbc3de4cadcae54c7ce1a
         path: tensorpotential
     - name: Install tensorpotential
       run: |
         cd tensorpotential
-        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-        #python setup.py install
-        pip install . 
+        python -m pip install "tensorflow==${{ matrix.tensorflow-version }}" "tf-keras~=${{ matrix.tensorflow-version }}" .
     - name: Install python-ace
       run: |    
-        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-        #python setup.py install
-        pip install . 
-    - name: Install maxvolpy
-      # `pip install .` builds a wheel and never runs setup.py's custom
-      # InstallMaxVolPyLocalPackage(install) hook, so lib/maxvolpy is not
-      # installed and the active-learning tests fail to import. Build it
-      # explicitly; --no-build-isolation is required because
-      # lib/maxvolpy/setup.py imports Cython and numpy at module level
-      # without declaring them in a pyproject.toml build-system.
-      run: |
-        pip install Cython scipy
-        pip install --no-build-isolation ./lib/maxvolpy
+        python -m pip install .
     - name: Test with python-ace with tensorpotential
       run: |
+        python -m pip check
+        python -c 'import pyace, tensorpotential, tensorflow as tf, numpy as np; print("Versions:", pyace.__version__, tensorpotential.__version__, tf.__version__, np.__version__)'
         python -m pytest tests/ --runtensorpot
     - name: Integration test of CLI
       run: |

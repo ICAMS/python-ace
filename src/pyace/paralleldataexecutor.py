@@ -87,7 +87,7 @@ class ParallelDataExecutor:
 
         self.parallel_mode = parallel_mode
         self._n_workers = n_workers
-        if self.parallel_mode != ParallelDataExecutor.MODE_PROCESS:
+        if self.parallel_mode != ParallelDataExecutor.MODE_PROCESS and n_workers is not None:
             warnings.warn("ParallelDataExecutor: n_workers ({}) would be ignored for parallel_mode={}".format(n_workers,
                                                                                                               parallel_mode))
 

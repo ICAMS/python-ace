@@ -133,6 +133,7 @@ class ZBLCalculator(Calculator):
 
         S[d < self.cut_in] = C[d < self.cut_in]
         S[d > self.cutoff] = 0
+        E_ij[d > self.cutoff] = 0  # just to be sure, but NN list is upt to cutoff only
         self.energy = K / 2 * np.sum(Zi * Zj * (E_ij + S))
 
         # forces
@@ -142,6 +143,7 @@ class ZBLCalculator(Calculator):
 
         dS_dr[d < self.cut_in] = 0
         dS_dr[d > self.cutoff] = 0
+        dEdr[d > self.cutoff] = 0  # just to be sure, but NN list is upt to cutoff only
 
         pair_forces = -(dEdr + dS_dr).reshape(-1, 1) * (D / d.reshape(-1, 1))
         pair_forces *= (Zi * Zj).reshape(-1, 1) * K / 2

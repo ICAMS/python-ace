@@ -113,7 +113,7 @@ def test_LinearACEFit():
     e_pred, f_pred = linear_fit.predict(ds, reshape_forces=True)
     # take first  ase_atoms
     at = df.iloc[0]["ase_atoms"].copy()
-    at.set_calculator(calc)
+    at.calc = calc
     at.get_potential_energy()
     assert np.allclose(at.get_potential_energy() / len(at), e_pred[0])
     assert np.allclose(at.get_forces(), f_pred[:len(at)])

@@ -31,9 +31,9 @@
 #ifndef ACE_VERSION_H
 #define ACE_VERSION_H
 
-#define VERSION_YEAR 2023
-#define VERSION_MONTH 11
-#define VERSION_DAY 25
+#define VERSION_YEAR 2024
+#define VERSION_MONTH 7
+#define VERSION_DAY 4
 
 #endif //ACE_VERSION_Hls
 

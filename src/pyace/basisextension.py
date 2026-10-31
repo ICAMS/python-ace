@@ -98,11 +98,11 @@ def check_backward_compatible_parameters(potential_config: Dict):
     # "lmax" -> "lmax_by_orders"
 
     if POTENTIAL_NRADMAX_KW in potential_config:
-        log.warn("potential_config:'{}' is deprecated parameter, please use '{}'".format(POTENTIAL_NRADMAX_KW,
+        log.warning("potential_config:'{}' is deprecated parameter, please use '{}'".format(POTENTIAL_NRADMAX_KW,
                                                                                          ORDERS_NRADMAX_KW))
         potential_config[ORDERS_NRADMAX_KW] = potential_config[POTENTIAL_NRADMAX_KW]
 
     if POTENTIAL_LMAX_KW in potential_config:
-        log.warn(
+        log.warning(
             "potential_config:'{}' is deprecated parameter, please use '{}'".format(POTENTIAL_LMAX_KW, ORDERS_LMAX_KW))
         potential_config[ORDERS_LMAX_KW] = potential_config[POTENTIAL_LMAX_KW]

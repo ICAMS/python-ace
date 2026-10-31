@@ -1,4 +1,0 @@
-numpy>=1.10.1
-numpydoc
-scipy
-cython>=0.23.4

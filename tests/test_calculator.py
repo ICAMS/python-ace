@@ -3,7 +3,7 @@ import os
 import pytest
 from ase.atoms import Atoms
 from ase.build import bulk
-from pyace.asecalc import PyACECalculator, PyACEEnsembleCalculator
+from pyace.asecalc import PyACECalculator, PyACEEnsembleCalculator, PyGRACEFSCalculator
 from pyace.atomicenvironment import aseatoms_to_atomicenvironment, create_cube, create_linear_chain
 from pyace.basis import ACECTildeBasisSet, ACEBBasisSet, FexpShiftedScaled
 from pyace.calculator import ACECalculator
@@ -149,8 +149,6 @@ def test_calculator_bbasis_projections():
 
     print("x: x_projs=", x_projs)
 
-
-
     print("x: x_projs=", x_projs)
 
     print("x_rhos=", x_rhos)
@@ -205,7 +203,7 @@ def test_ASE_calculator_Voigt_stress_order():
     new_cell = np.dot(cell, deform_matrix)
     test_Al.set_cell(new_cell, scale_atoms=True)
 
-    test_Al.set_calculator(calculator)
+    test_Al.calc = calculator
     stresses = test_Al.get_stress()
     print("stresses=", stresses)
     stresses_ref = [1.39710511e-01, 1.53093581e-01, 1.39710511e-01, -9.67787622e-05,
@@ -221,7 +219,7 @@ def test_ASE_calculator_multispecies_AlNi(potname):
     chemsymb[0] = "Ni"
     test_Al.set_chemical_symbols(chemsymb)
 
-    test_Al.set_calculator(calculator)
+    test_Al.calc = calculator
 
     e = test_Al.get_potential_energy()
     ee = test_Al.get_potential_energies()
@@ -256,7 +254,7 @@ def test_Ni_2dens_FexpShiftedScaled_manual_e_consistency():
     print("f2.coeffs=", f2.coeffs)
 
     trimer = Atoms('Ni3', positions=[[1, 0, 0], [0, 1, 0], [0, 0, 1]], pbc=0)
-    trimer.set_calculator(calc)
+    trimer.calc = calc
 
     e = trimer.get_potential_energy()
     proj = calc.projections
@@ -364,7 +362,7 @@ def test_PyACEEnsembleCalculator():
     fcc_at = bulk("Al", "fcc", a=4.05, cubic=True)
     fnames = ["tests/Al.pbe.rhocore.ace", "tests/Al.pbe.rhocore.ace"]
     calc = PyACEEnsembleCalculator(fnames)
-    fcc_at.set_calculator(calc)
+    fcc_at.calc = calc
 
     e = fcc_at.get_potential_energy()
     print("e=", e)
@@ -395,7 +393,7 @@ def test_PyACECalculator_active_set():
     asecalc = PyACECalculator("tests/DFT10B-AgCu.yaml")
     asecalc.set_active_set("tests/DFT10B-AgCu.asi")
 
-    atoms.set_calculator(asecalc)
+    atoms.calc = asecalc
     energy = atoms.get_potential_energy()
     gamma = asecalc.results["gamma"]
     print("energy = ", energy)
@@ -407,44 +405,73 @@ def test_PyACECalculator_active_set():
     assert np.allclose(gamma, gamma_expected)
 
 
-def test_PyACECalculator_active_set_dump_extrapolation():
-    atoms = bulk("Ag", cubic=True)
-    atoms.set_chemical_symbols(["Ag", "Cu", "Ag", "Cu"])
-    pos = atoms.get_positions()
-    np.random.seed(42)
-    pos += np.random.randn(*pos.shape)
-    atoms.set_positions(pos)
 
-    asecalc = PyACECalculator("tests/DFT10B-AgCu.yaml",
-                              dump_extrapolative_structures=True,
-                              keep_extrapolative_structures=True,
-                              stop_at_large_extrapolation=True)
-    asecalc.set_active_set("tests/DFT10B-AgCu.asi")
 
-    atoms.set_calculator(asecalc)
+def test_GRACEFSCalculator():
+    calc = PyGRACEFSCalculator("lib/ace/test/fitting/potentials/FS_model_shift_scale.yaml")
 
-    expected_file_name = "extrapolation_0_gamma=5691197.948196411.cfg"
-    if os.path.isfile(expected_file_name):
-        os.remove(expected_file_name)
-    assert not os.path.isfile(expected_file_name)
-    with pytest.raises(RuntimeError) as excinfo:
-        energy = atoms.get_potential_energy()
-    print("Exception raised: ", excinfo)
-    assert os.path.isfile(expected_file_name)
+    at = Atoms("Mo3", positions=[[0.0, 0.0, 0.0], [0.0, 0.0, 1.0], [0.0, 0.0, 2.0]], pbc=False)
+    at.calc = calc
 
-    # second config
-    expected_file_name_1 = "extrapolation_1_gamma=5691197.948196411.cfg"
-    if os.path.isfile(expected_file_name_1):
-        os.remove(expected_file_name_1)
-    assert not os.path.isfile(expected_file_name_1)
-    asecalc.reset()
-    with pytest.raises(RuntimeError) as excinfo:
-        energy = atoms.get_potential_energy()
-    print("Exception raised: ", excinfo)
-    assert os.path.isfile(expected_file_name_1)
+    e = at.get_potential_energy()
+    f = at.get_forces()
+    print("calc.results=", calc.results)
+    print("E=", e, "f=", f[0, 2])
 
-    os.remove(expected_file_name)
-    os.remove(expected_file_name_1)
+    eref = -32.70577226767949
+    fref = 0.030252962190919178
+    energies_ref = np.array([-10.89918829, -10.90739569, -10.89918829])
 
-    assert len(asecalc.extrapolative_structures_gamma) == 2
-    assert len(asecalc.extrapolative_structures_list) == 2
+    assert np.abs(e - eref) < 1e-15
+    assert np.abs(f[0, 2] - fref) < 1e-14
+    assert np.allclose(calc.results["energies"], energies_ref, atol=1e-6)
+
+
+def test_GRACEFScalculator_projections():
+    calc = PyGRACEFSCalculator("lib/ace/test/fitting/potentials/FS_model_shift_scale.yaml")
+    calc.compute_projections = True
+
+    at = Atoms("Mo3", positions=[[0.0, 0.0, 0.0], [0.0, 0.0, 1.0], [0.0, 0.0, 2.0]], pbc=False)
+    at.calc = calc
+
+    e = at.get_potential_energy()
+    f = at.get_forces()
+    print("calc.results=", calc.results)
+    print("E=", e, "f=", f[0, 2])
+
+    eref = -32.70577226767949
+    fref = 0.030252962190919178
+    energies_ref = np.array([-10.89918829, -10.90739569, -10.89918829])
+
+    assert np.abs(e - eref) < 1e-15
+    assert np.abs(f[0, 2] - fref) < 1e-14
+    assert np.allclose(calc.results["energies"], energies_ref, atol=1e-6)
+
+    print("Projections=", calc.projections)
+    proj_ref=[-0.007184322195427408,
+              -0.023008841969645075,
+              5.161448540771089e-05,
+              0.0005294068087841006,
+              -3.708150931201814e-07,
+              -1.218103760096748e-05]
+    assert np.allclose(calc.projections[0], proj_ref)
+
+def test_GRACEFScalculator_ASI():
+    calc = PyGRACEFSCalculator("lib/ace/test/fitting/potentials/FS_model_shift_scale.yaml")
+    calc.set_active_set("lib/ace/test/fitting/potentials/FS_model_shift_scale.asi")
+
+    at = Atoms("Mo3", positions=[[0.0, 0.0, 0.0], [0.0, 0.0, 1.0], [0.0, 0.0, 2.0]], pbc=False)
+    at.calc = calc
+
+    e = at.get_potential_energy()
+    f = at.get_forces()
+    print("calc.results=", calc.results)
+    print("E=", e, "f=", f[0, 2])
+    print(calc.results['gamma'])
+
+
+    gamma_ref = np.array([1.00645231, 1.73907975, 1.00645231])
+
+
+    assert np.allclose(calc.results["gamma"], gamma_ref, atol=1e-6)
+

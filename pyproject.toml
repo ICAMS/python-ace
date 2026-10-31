@@ -1,0 +1,92 @@
+[build-system]
+# Declaring the build dependencies means `pip install .` provisions them itself
+# instead of silently degrading: without ninja the CMake build falls back to
+# make, which schedules this project's seven modules much less effectively, and
+# without Cython the maxvol extension is skipped entirely.
+#
+# Build against numpy>=2.0 for pyace.maxvol._maxvol: the 2.x C-API is frozen, so
+# a binary compiled against any 2.x runs under every numpy >= 2.0 (verified:
+# built against 2.2.6, imports fine under 2.1.3). Capped below 3.0 because the
+# next ABI break would silently raise the built wheel's runtime floor above the
+# numpy>=2.0 we advertise in [project.dependencies].
+requires = [
+    "setuptools>=77",   # PEP 639 license/license-files support
+    "wheel",
+    "cmake>=3.15",
+    "ninja; platform_system!='Windows'",
+    "Cython>=0.29.32",
+    "numpy>=2.0,<3",
+    "scipy",
+]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "python-ace"
+version = "0.4.0rc1"
+authors = [
+    { name = "Yury Lysogorskiy", email = "yury.lysogorskiy@rub.de" },
+    { name = "Anton Bochkarev" },
+    { name = "Sarath Menon" },
+    { name = "Ralf Drautz" },
+]
+description = 'Python bindings, utilities  for PACE and fitting code "pacemaker"'
+readme = "README.md"
+# Matches grace-tensorpotential, which pyace must stay installable beside.
+# Deliberately no upper bound: a ceiling here would apply to the resolver
+# forever, making an already-published release unselectable on a python it
+# would actually work on. Where the limit is real it is enforced already --
+# tensorflow publishes no wheels for unsupported pythons.
+requires-python = ">=3.9"
+license = "LicenseRef-Academic-Software-License"
+license-files = ["LICENSE.md", "src/pyace/maxvol/LICENSE.maxvolpy.txt"]
+classifiers = [
+    # No "License ::" classifier: PEP 639 deprecates them in favour of the
+    # SPDX expression above.
+    "Programming Language :: Python :: 3",
+]
+dependencies = [
+    # Upper bounds follow master (numpy<3, pandas>=2,<4, scikit-learn<2), which
+    # widened them from the old numpy<=1.26.4 / pandas<=2.0 / scikit-learn<=1.4.2.
+    # numpy<3 also matches grace-tensorpotential. The >=2.0 floor is this
+    # branch's own (a7e19fa); note it makes the numpy-1.x compat shims master
+    # carries in radial.py unreachable, so they are dropped here.
+    "numpy>=2.0,<3",
+    "ase",
+    "pandas>=2,<4",
+    "ruamel.yaml",
+    "psutil",
+    "scikit-learn<2",
+    "scipy",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/ICAMS/python-ace"
+
+[project.scripts]
+pacemaker = "pyace.cli.pacemaker:main"
+pace_activeset = "pyace.cli.pace_activeset:main"
+pace_augment = "pyace.cli.pace_augment:main"
+pace_collect = "pyace.cli.pace_collect:main"
+pace_corerep = "pyace.cli.pace_corerep:main"
+pace_info = "pyace.cli.pace_info:main"
+pace_select = "pyace.cli.pace_select:main"
+pace_timing = "pyace.cli.pace_timing:main"
+pace_yaml2yace = "pyace.cli.pace_yaml2yace:main"
+
+[tool.setuptools]
+zip-safe = false
+# MANIFEST.in has to name the C++ sources so the sdist can build, but those
+# live inside the package tree, and include-package-data (which defaults to
+# true here) would then install them into every wheel as well -- 17 .cpp/.h
+# files, the generated _maxvol.c, and pyace/ace-evaluator/, which is not even
+# an importable package. Turning it off makes MANIFEST.in govern the sdist and
+# the package-data table below govern what ships installed; sdist contents are
+# unaffected. Anything a user needs at runtime must be listed there.
+include-package-data = false
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+"pyace.data" = ["mus_ns_uni_to_rawlsLS_np_rank.pckl", "input_template.yaml"]
+# MIT notice must travel with the vendored maxvol kernel
+"pyace.maxvol" = ["LICENSE.maxvolpy.txt"]

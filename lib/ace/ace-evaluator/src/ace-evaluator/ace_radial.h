@@ -38,6 +38,11 @@ using namespace std;
 //typedef void (*RadialFunctions)(DOUBLE_TYPE x);
 typedef std::function<void(DOUBLE_TYPE)> RadialFunctions;
 
+DOUBLE_TYPE sinc(DOUBLE_TYPE x);
+DOUBLE_TYPE dsinc(DOUBLE_TYPE x);
+DOUBLE_TYPE simplified_bessel_aux(DOUBLE_TYPE x, DOUBLE_TYPE rc, int n);
+DOUBLE_TYPE dsimplified_bessel_aux(DOUBLE_TYPE x, DOUBLE_TYPE rc, int n);
+
 /**
  * Class that implement spline interpolation and caching for radial functions
  */

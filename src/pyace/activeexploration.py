@@ -87,7 +87,7 @@ class ActiveExploration:
             print("(too small)")
             return 1000 * (self.min_dist - min_dist)
 
-        new_atoms.set_calculator(self.calc)
+        new_atoms.calc=self.calc
         self.calc.reset()
         new_atoms.get_potential_energy()
         max_gamma = max(self.calc.results["gamma"])
@@ -232,7 +232,7 @@ class ActiveExploration:
 
             # compute gamma wrt. original ASI
             gat = new_atoms.copy()
-            gat.set_calculator(self.calc)
+            gat.calc=self.calc
             gat.get_potential_energy()
 
             gamma = self.calc.results['gamma']
@@ -264,7 +264,7 @@ class ActiveExploration:
         return cur_atoms
 
     def attach_gamma_array(self, atoms):
-        atoms.set_calculator(self.calc)
+        atoms.calc=self.calc
         self.calc.reset()
         atoms.get_potential_energy()
         atoms.arrays["gamma"] = self.calc.results['gamma']

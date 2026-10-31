@@ -49,6 +49,9 @@ void ACECartesianSphericalHarmonics::init(LS_TYPE lm) {
     ylm.init(lmax, "ylm");
     dylm.init(lmax, "dylm");
 
+    real_ylm.init(lmax, "real_ylm");
+    real_dylm.init(lmax, "real_dylm");
+
     pre_compute();
 }
 
@@ -216,3 +219,26 @@ void ACECartesianSphericalHarmonics::compute_ylm(DOUBLE_TYPE rx, DOUBLE_TYPE ry,
 
 }
 
+void ACECartesianSphericalHarmonics::compute_real_ylm(DOUBLE_TYPE rx, DOUBLE_TYPE ry, DOUBLE_TYPE rz, LS_TYPE lmaxi) {
+    // compute complex spherical harmonics
+    compute_ylm(rx, ry, rz, lmaxi);
+    SHORT_INT_TYPE factor;
+    //convert ylm, dylm  to real_ylm, real_dylm
+    for (LS_TYPE l = 0; l <= lmaxi; l++) {
+        // m = 0
+        real_ylm(l, 0) = ylm(l, 0).real;
+        real_dylm(l, 0) = dylm(l, 0).real();
+
+        for (MS_TYPE m = 1; m <= l; m++) {
+            factor = m % 2 == 0 ? 1 : -1;
+            // m > 0
+            real_ylm(l, m) = sq2 * factor * ylm(l, m).real;
+            real_dylm(l, m) = dylm(l, m).real() * sq2 * factor;
+
+            // m < 0
+            real_ylm(l, -m) = sq2 * factor * ylm(l, m).img;
+            real_dylm(l, -m) = dylm(l, m).img() * sq2 * factor;
+        }
+    }
+
+}

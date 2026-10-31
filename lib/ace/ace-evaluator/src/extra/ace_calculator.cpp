@@ -206,16 +206,21 @@ void ACECalculator::compute(ACEAtomicEnvironment &atomic_environment,  bool comp
 
 #ifdef FINE_TIMING
     if (verbose) {
-        printf("   Total time: %ld microseconds\n", evaluator->total_time_calc_timer.as_microseconds());
-        printf("Per atom time:    %ld microseconds\n",
+        printf("(Calculator)Total time: %ld microseconds\n", evaluator->total_time_calc_timer.as_microseconds());
+        printf("(Evaluator) Total time/at:    %ld microseconds\n",
                evaluator->per_atom_calc_timer.as_microseconds() / atomic_environment.n_atoms_real);
 
+        printf("setup/atom: %ld microseconds\n",
+               evaluator->setup_timer.as_microseconds() / atomic_environment.n_atoms_real);
 
-        printf("Loop_over_nei/atom: %ld microseconds\n",
-               evaluator->loop_over_neighbour_timer.as_microseconds() / atomic_environment.n_atoms_real);
+        printf("A_construction/atom: %ld microseconds\n",
+               evaluator->A_construction_timer.as_microseconds() / atomic_environment.n_atoms_real);
 
         printf("       Energy/atom: %ld microseconds\n",
                evaluator->energy_calc_timer.as_microseconds() / atomic_environment.n_atoms_real);
+
+        printf("Weights and theta/atom: %ld microseconds\n",
+               evaluator->weights_and_theta_timer.as_microseconds() / atomic_environment.n_atoms_real);
 
         printf("       Forces/atom: %ld microseconds\n",
                evaluator->forces_calc_loop_timer.as_microseconds() / atomic_environment.n_atoms_real);
@@ -223,8 +228,8 @@ void ACECalculator::compute(ACEAtomicEnvironment &atomic_environment,  bool comp
 //        printf("phi_recalcs/atom: %ld microseconds\n",
 //               evaluator->phi_recalc_timer.as_microseconds() / atomic_environment.n_atoms_real);
 
-        printf("     forces_neig: %ld microseconds\n",
-               evaluator->forces_calc_neighbour_timer.as_microseconds() / atomic_environment.n_atoms_real);
+//        printf("     forces_neig: %ld microseconds\n",
+//               evaluator->forces_calc_neighbour_timer.as_microseconds() / atomic_environment.n_atoms_real);
 
     }
 #endif

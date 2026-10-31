@@ -64,13 +64,13 @@ public:
 
     // set of timers for code profiling
 
-    ACETimer loop_over_neighbour_timer; ///< timer for loop over neighbours when constructing A's for single central atom
+    ACETimer A_construction_timer; ///< timer for loop over neighbours when constructing A's for single central atom
     ACETimer per_atom_calc_timer; ///< timer for single compute_atom call
-
+    ACETimer setup_timer;
 
     ACETimer forces_calc_loop_timer; ///< timer for forces calculations for single central atom
     ACETimer forces_calc_neighbour_timer; ///< timer for loop over neighbour atoms for force calculations
-
+    ACETimer weights_and_theta_timer;
     ACETimer energy_calc_timer; ///< timer for energy calculation
     ACETimer total_time_calc_timer; ///< timer for total calculations of all atoms within given atomic environment system
 
