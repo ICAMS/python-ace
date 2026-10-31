@@ -80,15 +80,31 @@ jobs:
 
   wheels:
     needs: plan
-    name: wheels (linux x86_64)
-    runs-on: ubuntu-latest
+    name: wheels (${{ matrix.platform }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux-x86_64
+            os: ubuntu-latest
+            arch: x86_64
+          - platform: macos-arm64
+            os: macos-15
+            arch: arm64
+          - platform: macos-x86_64
+            os: macos-15-intel
+            arch: x86_64
     steps:
       - uses: actions/checkout@v7
 
       - name: Build wheels
         uses: pypa/cibuildwheel@v4.2.0
         env:
-          CIBW_ARCHS_LINUX: x86_64
+          CIBW_SKIP: "*-musllinux_*"
+          CIBW_ARCHS_LINUX: ${{ matrix.arch }}
+          CIBW_ARCHS_MACOS: ${{ matrix.arch }}
+          MACOSX_DEPLOYMENT_TARGET: "11.0"
           # Routine commits build one interpreter; all five are built only when
           # asked for, so a normal push costs one build rather than five. Ask
           # either with a manual run, or -- since workflow_dispatch is invisible
@@ -101,8 +117,8 @@ jobs:
           CIBW_BUILD: >-
             ${{ (github.event_name == 'workflow_dispatch'
                  || contains(github.event.head_commit.message, '[full-matrix]'))
-                && 'cp39-manylinux_x86_64 cp310-manylinux_x86_64 cp311-manylinux_x86_64 cp312-manylinux_x86_64 cp313-manylinux_x86_64'
-                || 'cp312-manylinux_x86_64' }}
+                && 'cp39-* cp310-* cp311-* cp312-* cp313-*'
+                || 'cp312-*' }}
 
           # glibc 2.28 -- RHEL/Alma/Rocky 8+, Ubuntu 20.04+, Debian 10+. This is
           # the floor the dependency set allows, not a compromise.
@@ -134,11 +150,13 @@ jobs:
           #     fallback -- it silently vanished from wheels before.
           #  4. a console entry point resolves, since bin/ scripts became
           #     [project.scripts].
+          CIBW_TEST_REQUIRES: pytest
           CIBW_TEST_COMMAND: >-
             python -c "import pyace; print('version:', pyace.__version__); assert pyace.__version__ != 'unknown', 'distribution-name lookup failed'"
             && python -c "import pyace.sharmonics, pyace.coupling, pyace.basis, pyace.evaluator, pyace.catomicenvironment, pyace.calculator, pyace.grace_fs; print('7 pybind11 modules ok')"
             && python -c "from pyace.maxvol import c_maxvol; import numpy as np; i, c = c_maxvol(np.random.rand(64, 8), 1.05, 100, -1, 0); print('compiled maxvol ok, selected', len(i), 'rows')"
             && pace_info --help > /dev/null && echo 'entry points ok'
+            && cd "{project}" && python -m pytest tests/test_PyACECalculator.py -q
 
       # MANIFEST.in names the C++ sources so the sdist can build, and they sit
       # inside the package tree -- so a lapse in include-package-data silently
@@ -158,7 +176,7 @@ jobs:
 
       - uses: actions/upload-artifact@v7
         with:
-          name: release-wheels-linux-x86_64
+          name: release-wheels-${{ matrix.platform }}
           path: wheelhouse/*.whl
 
   validate:
@@ -177,7 +195,7 @@ jobs:
       - run: python -m pip install twine
       - name: Validate distribution metadata and wheel coverage
         env:
-          FULL_MATRIX: ${{ github.event_name == 'workflow_dispatch' }}
+          FULL_MATRIX: ${{ github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[full-matrix]') }}
         run: |
           python -m twine check --strict dist/*
           if [ "$FULL_MATRIX" = "true" ]; then
