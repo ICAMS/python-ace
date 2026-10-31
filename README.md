@@ -1,16 +1,16 @@
 # Description
 
 This repository contains `pacemaker` - a tool for fitting of interatomic potentials in a general nonlinear Atomic Cluster Expansion (ACE) form.
-It is based on the `pyace` (this repo) and `tensorpotential`([another repo](https://github.com/ICAMS/TensorPotential)) Python packages.
+It is based on the `pyace` (this repo) and `tensorpotential` ([GRACE TensorPotential](https://github.com/ICAMS/grace-tensorpotential)) Python packages.
 
 # Installation
 
-Please follow [these](https://pacemaker.readthedocs.io/en/latest/pacemaker/install/) instructions.
+Please follow the [installation instructions](https://python-ace.readthedocs.io/en/latest/pacemaker/install/). The GRACE backend is installed from PyPI as `tensorpotential`; the pacemaker distribution is `python-ace`.
 
 
 # Documentation
 
-Please see the `docs` folder for documentation or check [online documentation](https://pacemaker.readthedocs.io/)
+Please see the `docs` folder for documentation or check [online documentation](https://python-ace.readthedocs.io/)
 
 
 # Citation

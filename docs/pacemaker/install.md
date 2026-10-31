@@ -23,26 +23,18 @@ build dependencies, including CMake and Ninja, are installed automatically.
 
 ## Install the fitting backend
 
-Install the current backend from source:
+Install the GRACE backend from PyPI. Its distribution name is
+`tensorpotential`; `grace-tensorpotential` is the GitHub repository name.
+The following released-package combination works around the PACE metrics
+scalar-conversion bug in TensorPotential 0.6.2.1:
 
 ```bash
-git clone https://github.com/ICAMS/grace-tensorpotential.git
-cd grace-tensorpotential
-python -m pip install .
-cd ..
+python -m pip install 'tensorpotential==0.6.2.1' 'numpy>=2,<2.4' 'tensorflow~=2.20.0' 'tf-keras~=2.20.0'
 ```
 
-This backend must include the PACE metrics scalar-conversion fix for NumPy
-2.4 and newer. The released TensorPotential 0.6.2.1 also caps TensorFlow at
-2.20; TensorFlow 2.21 needs the updated backend dependency bound. Updating
-`python-ace` alone does not update either of these backend requirements.
-
-The updated backend permits TensorFlow releases below 2.22. To select the
-2.21 series explicitly, install matching TensorFlow and legacy Keras versions:
-
-```bash
-python -m pip install 'tensorflow~=2.21.0' 'tf-keras~=2.21.0'
-```
+Keep NumPy below 2.4 when using that backend release. The NumPy fix and
+TensorFlow 2.21 support have been merged upstream but are not included in
+PyPI's 0.6.2.1 release. See the development installation below to use them.
 
 On Linux the backend dependencies include `tensorflow[and-cuda]`. GPU execution
 also requires a compatible NVIDIA driver. CPU fitting is available with
@@ -51,17 +43,34 @@ also requires a compatible NVIDIA driver. CPU fitting is available with
 
 ## Install pacemaker
 
-For the modern source branch:
+Install the published pacemaker release candidate explicitly:
 
 ```bash
-git clone --branch feature/build-speedup https://github.com/ICAMS/python-ace.git
+python -m pip install 'python-ace==0.4.0rc1'
+```
+
+The version is explicit because an unqualified `pip install python-ace`
+selects the older stable 0.2.8 release. The modern package includes the maxvol
+extension used by the active-learning tools; a separate `maxvolpy`
+installation is unnecessary.
+
+### Development installation
+
+To use the merged TensorFlow 2.21 and NumPy fixes, install the backend from
+GitHub and pacemaker from the default `master` branch:
+
+```bash
+python -m pip install --upgrade 'tensorpotential @ git+https://github.com/ICAMS/grace-tensorpotential.git' 'tensorflow~=2.21.0' 'tf-keras~=2.21.0'
+python -m pip install --upgrade 'python-ace @ git+https://github.com/ICAMS/python-ace.git'
+```
+
+For a source checkout or to run the tests:
+
+```bash
+git clone https://github.com/ICAMS/python-ace.git
 cd python-ace
 python -m pip install .
 ```
-
-When working in an existing checkout, run `python -m pip install .` there.
-This build includes the maxvol extension used by the active-learning tools;
-a separate `maxvolpy` installation is unnecessary.
 
 Check the installed versions and command-line tools:
 
