@@ -13,7 +13,7 @@ You can use `conda` instead of `mamba`.
 
 ```bash
 python -m pip install --upgrade pip
-python -m pip install 'python-ace==0.4.0' 'tensorpotential==0.6.2.1' 'numpy>=2,<2.4' 'tensorflow~=2.20.0' 'tf-keras~=2.20.0'
+python -m pip install 'python-ace==0.4.0rc1' 'tensorpotential==0.6.2.1' 'numpy>=2,<2.4' 'tensorflow~=2.20.0' 'tf-keras~=2.20.0'
 ```
 
 The GRACE backend is published on PyPI as `tensorpotential`.
