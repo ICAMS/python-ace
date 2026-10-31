@@ -58,11 +58,25 @@ def main():
         if len(entries) != 1:
             raise SystemExit("Expected one top-level PKG-INFO in the source distribution.")
         check_metadata(archive.extractfile(entries[0]).read(), sdists[0])
-    if args.full_matrix:
-        expected = {"cp39", "cp310", "cp311", "cp312", "cp313"}
-        actual = [w.name.split("-")[2] for w in wheels]
-        if set(actual) != expected or len(actual) != len(expected):
-            raise SystemExit(f"Expected exactly one wheel per interpreter {sorted(expected)}, found {actual}")
+    interpreters = {"cp39", "cp310", "cp311", "cp312", "cp313"} if args.full_matrix else {"cp312"}
+    platforms = {"linux-x86_64", "macos-arm64", "macos-x86_64"}
+    actual = []
+    for wheel in wheels:
+        interpreter = wheel.name.split("-")[2]
+        tag = wheel.name.rsplit("-", 1)[1].removesuffix(".whl")
+        if tag.startswith("manylinux") and tag.endswith("_x86_64"):
+            platform = "linux-x86_64"
+        elif tag.startswith("macosx_") and tag.endswith("_arm64"):
+            platform = "macos-arm64"
+        elif tag.startswith("macosx_") and tag.endswith("_x86_64"):
+            platform = "macos-x86_64"
+        else:
+            raise SystemExit(f"Unexpected wheel platform: {wheel.name}")
+        actual.append((interpreter, platform))
+    expected = {(interpreter, platform) for interpreter in interpreters for platform in platforms}
+    if set(actual) != expected or len(actual) != len(expected):
+        missing = sorted(expected - set(actual))
+        raise SystemExit(f"Wheel coverage incomplete or duplicated; missing={missing}, found={actual}")
     print(f"Validated {len(wheels)} wheels and one source distribution for {name} {version}.")
 
 

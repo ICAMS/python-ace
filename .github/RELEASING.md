@@ -1,17 +1,21 @@
 # Building and publishing python-ace
 
 The **Build wheels** GitHub Actions workflow (`.github/workflows/wheels.yml`)
-builds a source distribution and Linux x86-64 manylinux_2_28 wheels. Pull
+builds a source distribution, Linux x86-64 manylinux_2_28 wheels, and native
+macOS wheels for Apple Silicon (arm64) and Intel (x86-64). Pull
 requests and normal pushes build Python 3.12; manual runs build Python
 3.9, 3.10, 3.11, 3.12, and 3.13. The wheels are installed and smoke-tested,
 then all distributions pass metadata, package-content, and version checks.
-This workflow currently produces Linux x86-64 wheels; other platforms can
-build from the source distribution with a C++ compiler.
+Each macOS architecture is built and smoke-tested on its matching native
+runner. A manual release requires 15 wheels: five Python versions on each
+of the three platforms. Other platforms can build from the source distribution
+with a C++ compiler.
 
 ## Build without uploading
 
 In GitHub Actions, select **Build wheels → Run workflow** and leave `publish`
-as `none`. Download `release-sdist` and `release-wheels-linux-x86_64` from the
+as `none`. Download `release-sdist` and `release-wheels-linux-x86_64`,
+`release-wheels-macos-arm64`, and `release-wheels-macos-x86_64` from the
 completed run. This works before allocating a new release version.
 
 ```bash
